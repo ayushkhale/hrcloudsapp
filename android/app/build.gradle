@@ -2,6 +2,26 @@ apply plugin: "com.android.application"
 apply plugin: "org.jetbrains.kotlin.android"
 apply plugin: "com.facebook.react"
 
+// ---------------------------------------------------------------------------
+// react-native-config - compiles .env into the native build (BuildConfig and
+// resources), which is how src/config/env.js gets API_BASE_URL.
+//
+// TWO THINGS THAT BITE:
+//  1. These values are baked in at BUILD time. Changing .env needs a REBUILD,
+//     not a Metro reload. If a URL change seems ignored, that is why.
+//  2. A half-done setup yields undefined for EVERY key, with no error at all.
+//     Verify on a RELEASE build, not just in Metro -
+//     NativeRef/00-plan/04-environment-setup.md section Group B.
+//
+// The map below picks the .env file per build type, so a release build cannot
+// accidentally ship the development gateway.
+// ---------------------------------------------------------------------------
+project.ext.envConfigFiles = [
+    debug  : '.env.development',
+    release: '.env.production',
+]
+apply from: project(':react-native-config').projectDir.getPath() + '/dotenv.gradle'
+
 /**
  * This is the configuration block to customize your React Native Android app.
  * By default you don't need to apply any configuration, just uncomment the lines you need.
@@ -77,9 +97,9 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
-    namespace "com.hrcloudsemployee"
+    namespace "com.hrclouds"
     defaultConfig {
-        applicationId "com.hrcloudsemployee"
+        applicationId "com.hrclouds"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
@@ -103,6 +123,11 @@ android {
             signingConfig signingConfigs.debug
             minifyEnabled enableProguardInReleaseBuilds
             proguardFiles getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro"
+        }
+    }
+    externalNativeBuild {
+        cmake {
+            buildStagingDirectory file("C:/cxx")
         }
     }
 }

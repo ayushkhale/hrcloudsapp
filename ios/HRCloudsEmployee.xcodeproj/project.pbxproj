@@ -11,6 +11,14 @@
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
 		761780ED2CA45674006654EE /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 761780EC2CA45674006654EE /* AppDelegate.swift */; };
 		81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */; };
+		833F6646C2514FDD9A67EEE5 /* Manrope-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = DF395A3952594772957B2E53 /* Manrope-Bold.ttf */; };
+		0BFD180846CD4BA8A53095D9 /* Manrope-ExtraBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = F7612EE2E3254E0E8554BE95 /* Manrope-ExtraBold.ttf */; };
+		D8A283E0103243B1A426BD72 /* Manrope-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 5860308D98DB4C5A86059827 /* Manrope-Medium.ttf */; };
+		C4472A26511F45EF96826B72 /* Manrope-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 03A3BD049C6B49BF854B6B49 /* Manrope-Regular.ttf */; };
+		0D285920FC8E405D82DCA274 /* Manrope-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 6E11A333E87E4C8DBD47F827 /* Manrope-SemiBold.ttf */; };
+		0A2261A001984E429D0B7A9E /* .gitkeep in Resources */ = {isa = PBXBuildFile; fileRef = C0ABE20C82844D64B315D192 /* .gitkeep */; };
+		DC26AD8A70E34A95BF789C87 /* BootSplash.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 485FF63FB18E44248A86472E /* BootSplash.storyboard */; };
+		CDB76C7CD57C44CF954A30CB /* Colors.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 548A590EF2774B418425E085 /* Colors.xcassets */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -24,6 +32,14 @@
 		761780EC2CA45674006654EE /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = HRCloudsEmployee/AppDelegate.swift; sourceTree = "<group>"; };
 		81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = LaunchScreen.storyboard; path = HRCloudsEmployee/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
+		DF395A3952594772957B2E53 /* Manrope-Bold.ttf */ = {isa = PBXFileReference; name = "Manrope-Bold.ttf"; path = "../src/assets/fonts/Manrope-Bold.ttf"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
+		F7612EE2E3254E0E8554BE95 /* Manrope-ExtraBold.ttf */ = {isa = PBXFileReference; name = "Manrope-ExtraBold.ttf"; path = "../src/assets/fonts/Manrope-ExtraBold.ttf"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
+		5860308D98DB4C5A86059827 /* Manrope-Medium.ttf */ = {isa = PBXFileReference; name = "Manrope-Medium.ttf"; path = "../src/assets/fonts/Manrope-Medium.ttf"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
+		03A3BD049C6B49BF854B6B49 /* Manrope-Regular.ttf */ = {isa = PBXFileReference; name = "Manrope-Regular.ttf"; path = "../src/assets/fonts/Manrope-Regular.ttf"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
+		6E11A333E87E4C8DBD47F827 /* Manrope-SemiBold.ttf */ = {isa = PBXFileReference; name = "Manrope-SemiBold.ttf"; path = "../src/assets/fonts/Manrope-SemiBold.ttf"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
+		C0ABE20C82844D64B315D192 /* .gitkeep */ = {isa = PBXFileReference; name = ".gitkeep"; path = "../src/assets/fonts/.gitkeep"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
+		485FF63FB18E44248A86472E /* BootSplash.storyboard */ = {isa = PBXFileReference; name = "BootSplash.storyboard"; path = "HRCloudsEmployee/BootSplash.storyboard"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
+		548A590EF2774B418425E085 /* Colors.xcassets */ = {isa = PBXFileReference; name = "Colors.xcassets"; path = "HRCloudsEmployee/Colors.xcassets"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = folder.assetcatalog; explicitFileType = undefined; includeInIndex = 0; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -46,6 +62,8 @@
 				13B07FB61A68108700A75B9A /* Info.plist */,
 				81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */,
 				13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */,
+				485FF63FB18E44248A86472E /* BootSplash.storyboard */,
+				548A590EF2774B418425E085 /* Colors.xcassets */,
 			);
 			name = HRCloudsEmployee;
 			sourceTree = "<group>";
@@ -74,6 +92,7 @@
 				83CBBA001A601CBA00E9B192 /* Products */,
 				2D16E6871FA4F8E400B85C8A /* Frameworks */,
 				BBD78D7AC51CEA395F1C20DB /* Pods */,
+				C3CEB1004ABC40A3BF9454DC /* Resources */,
 			);
 			indentWidth = 2;
 			sourceTree = "<group>";
@@ -96,6 +115,20 @@
 			);
 			path = Pods;
 			sourceTree = "<group>";
+		};
+		C3CEB1004ABC40A3BF9454DC /* Resources */ = {
+			isa = "PBXGroup";
+			children = (
+				DF395A3952594772957B2E53 /* Manrope-Bold.ttf */,
+				F7612EE2E3254E0E8554BE95 /* Manrope-ExtraBold.ttf */,
+				5860308D98DB4C5A86059827 /* Manrope-Medium.ttf */,
+				03A3BD049C6B49BF854B6B49 /* Manrope-Regular.ttf */,
+				6E11A333E87E4C8DBD47F827 /* Manrope-SemiBold.ttf */,
+				C0ABE20C82844D64B315D192 /* .gitkeep */,
+			);
+			name = Resources;
+			sourceTree = "<group>";
+			path = "";
 		};
 /* End PBXGroup section */
 
@@ -159,6 +192,14 @@
 			files = (
 				81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */,
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
+				833F6646C2514FDD9A67EEE5 /* Manrope-Bold.ttf in Resources */,
+				0BFD180846CD4BA8A53095D9 /* Manrope-ExtraBold.ttf in Resources */,
+				D8A283E0103243B1A426BD72 /* Manrope-Medium.ttf in Resources */,
+				C4472A26511F45EF96826B72 /* Manrope-Regular.ttf in Resources */,
+				0D285920FC8E405D82DCA274 /* Manrope-SemiBold.ttf in Resources */,
+				0A2261A001984E429D0B7A9E /* .gitkeep in Resources */,
+				DC26AD8A70E34A95BF789C87 /* BootSplash.storyboard in Resources */,
+				CDB76C7CD57C44CF954A30CB /* Colors.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -271,7 +312,7 @@
 					"-ObjC",
 					"-lc++",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = "org.reactjs.native.example.$(PRODUCT_NAME:rfc1034identifier)";
+				PRODUCT_BUNDLE_IDENTIFIER = "com.hrclouds";
 				PRODUCT_NAME = HRCloudsEmployee;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
@@ -300,7 +341,7 @@
 					"-ObjC",
 					"-lc++",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = "org.reactjs.native.example.$(PRODUCT_NAME:rfc1034identifier)";
+				PRODUCT_BUNDLE_IDENTIFIER = "com.hrclouds";
 				PRODUCT_NAME = HRCloudsEmployee;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SWIFT_VERSION = 5.0;

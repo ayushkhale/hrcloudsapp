@@ -5,6 +5,35 @@ require Pod::Executable.execute_command('node', ['-p',
     {paths: [process.argv[1]]},
   )', __dir__]).strip
 
+# ─────────────────────────────────────────────────────────────────────────────
+# react-native-permissions — THE HANDLER LIST IS COMPILED IN.
+#
+# Unlike Android, iOS does not decide permissions at runtime from a manifest:
+# react-native-permissions only compiles the handlers named here. A permission
+# left out of this list fails at runtime with "handler not found" rather than
+# prompting — and because this project is developed on Windows with no Mac yet,
+# nobody will see that until the first iOS build.
+#
+# So the list is kept COMPLETE AND AHEAD of the code, in the same commit as the
+# Android manifest change that needs it (see IOS-TODO.md). Entries:
+#   LocationWhenInUse — the punch. Never LocationAlways: we do not punch in the
+#                       background, and asking triggers an App Store review
+#                       question we do not want to answer.
+#   Camera            — claim receipts and document upload (phase 5/6)
+#   PhotoLibrary      — the same, from the gallery
+#   Notifications     — push: punch reminder, approval outcome (phase 6)
+#   FaceID            — the biometric app lock (phase 8)
+# ─────────────────────────────────────────────────────────────────────────────
+require_relative '../node_modules/react-native-permissions/scripts/setup'
+
+setup_permissions([
+  'LocationWhenInUse',
+  'Camera',
+  'PhotoLibrary',
+  'Notifications',
+  'FaceID',
+])
+
 platform :ios, min_ios_version_supported
 prepare_react_native_project!
 
