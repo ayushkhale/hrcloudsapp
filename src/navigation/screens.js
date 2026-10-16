@@ -33,7 +33,7 @@ import { color, gutter, space, text } from '../theme/tokens';
  */
 const MODULES = {
   // ── Phase 2–3: the heart of the app (40-screens/02-home-and-punch.md) ─────
-  // Home:            () => require('../features/home/screens/HomeScreen').default,
+  Home: () => require('../features/home/screens/HomeScreen').default,
   // DayLog:          () => require('../features/attendance/screens/DayLogScreen').default,
 
   // ── Phase 4: time (40-screens/03-time.md) ────────────────────────────────

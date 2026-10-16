@@ -50,7 +50,10 @@ import {
   normalizeWorkMode,
   permittedWorkModes,
 } from '../../../lib/geofence';
-import { attendanceErrorMessage, isStateReconciliation } from '../../../lib/errors';
+// Imported from the module, not the barrel: lib/errors/index.js exposes these
+// through its registry (errorPresentation) rather than re-exporting them, so a
+// barrel import would resolve to undefined and crash on the first punch.
+import { attendanceErrorMessage, isStateReconciliation } from '../../../lib/errors/attendanceErrors';
 import { WORK_MODE_VALUES, normalizeStatusKey } from '../../../lib/enums';
 import { fmtClockMinutes, fmtClockTime } from '../../../lib/dates';
 import { color, space, text } from '../../../theme/tokens';

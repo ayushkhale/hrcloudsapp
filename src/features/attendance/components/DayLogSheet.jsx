@@ -29,8 +29,8 @@ import React, { useEffect, useState } from 'react';
 import { attendanceAPI } from '../../../api';
 import { unwrap } from '../../../lib/normalize';
 import { fmtClockMinutes, fmtClockTime, fmtDate } from '../../../lib/dates';
-import { humanize, normalizeStatusKey } from '../../../lib/enums';
-import { color, space, text } from '../../../theme/tokens';
+import { humanize } from '../../../lib/enums';
+import { space } from '../../../theme/tokens';
 import {
   EmptyState, ErrorState, RecordSheet, SheetFooterNote, SheetGrid, SheetSection,
   SheetStats, SheetTable, SheetText, StatusBadge,
@@ -69,7 +69,6 @@ export function DayLogSheet({ date, onClose }) {
 
   const { loading, error, day } = state;
   const eyebrow = fmtDate(date, '');
-  const statusKey = normalizeStatusKey(day?.status || day?.day_status);
   const statusLabel = day?.status ? humanize(day.status) : 'That day';
 
   // A record with an id (or any punch/figure) exists; otherwise the day is
