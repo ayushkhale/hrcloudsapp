@@ -32,7 +32,8 @@ import { ScrollView, Text, View } from 'react-native';
 import { payrollAPI } from '../../../api';
 import { useResource } from '../../../hooks/useResource';
 import { humanize, normalizeStatusKey } from '../../../lib/enums';
-import { formatMoney, formatPeriod } from '../../../lib/format';
+import { formatPeriod } from '../../../lib/format';
+import { formatPay } from '../../../lib/payPrivacy';
 import { toList } from '../../../lib/normalize';
 import { space, text } from '../../../theme/tokens';
 import { icons } from '../../../theme/icons';
@@ -80,10 +81,10 @@ function LoanSheet({ loan, onClose }) {
     >
       <SheetStats
         items={[
-          { icon: icons.down, label: 'Still to repay', value: formatMoney(outstanding(loan)) },
-          { icon: icons.calendar, label: 'Every month', value: formatMoney(loan.emi_amount) },
-          { icon: icons.cash, label: 'Borrowed', value: formatMoney(loan.principal_amount) },
-          { icon: icons.check, label: 'Repaid so far', value: formatMoney(loan.recovered_amount ?? loan.total_recovered) },
+          { icon: icons.down, label: 'Still to repay', value: formatPay(outstanding(loan)) },
+          { icon: icons.calendar, label: 'Every month', value: formatPay(loan.emi_amount) },
+          { icon: icons.cash, label: 'Borrowed', value: formatPay(loan.principal_amount) },
+          { icon: icons.check, label: 'Repaid so far', value: formatPay(loan.recovered_amount ?? loan.total_recovered) },
         ]}
       />
 
@@ -115,7 +116,7 @@ function LoanSheet({ loan, onClose }) {
             columns={[
               { header: '#', render: (r) => String(r.installment_number ?? ''), flex: 0.4 },
               { header: 'Month', render: (r) => formatPeriod(r.period_month) },
-              { header: 'Payment', align: 'right', render: (r) => formatMoney(r.total_amount ?? r.amount) },
+              { header: 'Payment', align: 'right', render: (r) => formatPay(r.total_amount ?? r.amount) },
             ]}
             rows={schedule.rows}
             empty={
@@ -192,8 +193,8 @@ export function LoansTab() {
       {live.length > 0 ? (
         <StatCards
           items={[
-            { icon: icons.down, tone: 'purple', label: 'Still to repay', value: formatMoney(owed) },
-            { icon: icons.calendar, tone: 'indigo', label: 'Every month', value: formatMoney(monthly) },
+            { icon: icons.down, tone: 'purple', label: 'Still to repay', value: formatPay(owed) },
+            { icon: icons.calendar, tone: 'indigo', label: 'Every month', value: formatPay(monthly) },
           ]}
         />
       ) : null}
@@ -205,12 +206,12 @@ export function LoansTab() {
           tone={normalizeStatusKey(loan.status) === 'active' ? 'purple' : 'slate'}
           title={loanTitle(loan)}
           subtitle={`${loan.tenure_months ?? 0} months from ${formatPeriod(loan.start_period_month)}`}
-          value={formatMoney(outstanding(loan))}
+          value={formatPay(outstanding(loan))}
           badge={<StatusBadge kind="loan" status={loan.status} />}
           onPress={() => setOpen(loan)}
           accessibilityLabel={`${loanTitle(loan)}. Open it.`}
           meta={[
-            { label: 'Every month', value: formatMoney(loan.emi_amount) },
+            { label: 'Every month', value: formatPay(loan.emi_amount) },
             loan.next_due_period_month
               ? { label: 'Next', value: formatPeriod(loan.next_due_period_month) }
               : null,

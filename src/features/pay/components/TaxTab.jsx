@@ -58,7 +58,8 @@ import { errorMessage } from '../../../lib/errors';
 import { payrollErrorCode } from '../../../lib/errors/payrollErrors';
 import { ATTENDANCE_EVENTS, useAttendanceChanged } from '../../../lib/events';
 import { normalizeAttachment } from '../../../lib/attachments';
-import { formatMoney, formatPeriod } from '../../../lib/format';
+import { formatPeriod } from '../../../lib/format';
+import { formatPay } from '../../../lib/payPrivacy';
 import { toList } from '../../../lib/normalize';
 import { openPayrollAttachment } from '../../../ui/AttachmentPicker';
 import { color, elevate, radius, space, text, toneOf } from '../../../theme/tokens';
@@ -221,8 +222,8 @@ function ThisYear({ fy, summary, projection }) {
           icon={icons.tax}
           eyebrow={`Income tax · FY ${fy}`}
           metric
-          title={formatMoney(yearTax)}
-          caption={`${formatMoney(deducted)} deducted so far · ${formatMoney(remaining)} to go`}
+          title={formatPay(yearTax)}
+          caption={`${formatPay(deducted)} deducted so far · ${formatPay(remaining)} to go`}
           progress={pct}
           right={<FieldHelp surface="payroll.tax_summary" field="remaining_tds" label="income tax still to deduct" />}
         />
@@ -231,19 +232,19 @@ function ThisYear({ fy, summary, projection }) {
       <FigureList
         title="For the year"
         rows={[
-          { icon: icons.rupee, tone: 'indigo', label: 'Taxable pay', value: formatMoney(annual.gross_taxable ?? p.projected_gross ?? p.annual_gross) },
-          taxOn ? { icon: icons.calendar, tone: 'purple', label: 'Tax this month', caption: 'Taken from this month’s pay', value: formatMoney(tds.this_month ?? tds.monthly_tds ?? tds.amount ?? p.monthly_tds) } : null,
-          { icon: icons.bank, tone: 'emerald', label: 'Provident fund (PF)', value: formatMoney(annual.epf) },
-          { icon: icons.office, tone: 'slate', label: 'Professional tax', value: formatMoney(annual.professional_tax) },
+          { icon: icons.rupee, tone: 'indigo', label: 'Taxable pay', value: formatPay(annual.gross_taxable ?? p.projected_gross ?? p.annual_gross) },
+          taxOn ? { icon: icons.calendar, tone: 'purple', label: 'Tax this month', caption: 'Taken from this month’s pay', value: formatPay(tds.this_month ?? tds.monthly_tds ?? tds.amount ?? p.monthly_tds) } : null,
+          { icon: icons.bank, tone: 'emerald', label: 'Provident fund (PF)', value: formatPay(annual.epf) },
+          { icon: icons.office, tone: 'slate', label: 'Professional tax', value: formatPay(annual.professional_tax) },
         ]}
       />
 
       <FigureList
         title="Deducted so far"
         rows={[
-          { icon: icons.bank, tone: 'emerald', label: 'Provident fund (PF)', value: formatMoney(ytd.pf) },
-          { icon: icons.heart, tone: 'rose', label: 'Health insurance (ESI)', value: formatMoney(ytd.esi) },
-          { icon: icons.office, tone: 'slate', label: 'Professional tax', value: formatMoney(ytd.pt ?? ytd.professional_tax) },
+          { icon: icons.bank, tone: 'emerald', label: 'Provident fund (PF)', value: formatPay(ytd.pf) },
+          { icon: icons.heart, tone: 'rose', label: 'Health insurance (ESI)', value: formatPay(ytd.esi) },
+          { icon: icons.office, tone: 'slate', label: 'Professional tax', value: formatPay(ytd.pt ?? ytd.professional_tax) },
         ]}
       />
 
@@ -372,7 +373,7 @@ function Declared({ fy, declaration, onEdit }) {
   return (
     <>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[2] }}>
-        <Text style={[text.caption, { flex: 1 }]}>{`FY ${fy} · ${formatMoney(total)} declared`}</Text>
+        <Text style={[text.caption, { flex: 1 }]}>{`FY ${fy} · ${formatPay(total)} declared`}</Text>
         {d.status ? <StatusBadge kind="declaration" status={d.status} /> : null}
       </View>
 
@@ -383,9 +384,9 @@ function Declared({ fy, declaration, onEdit }) {
           tone="purple"
           title={it.section || '80C'}
           subtitle={it.sub_category || humanize(it.category) || null}
-          value={formatMoney(it.declared_amount ?? it.amount)}
+          value={formatPay(it.declared_amount ?? it.amount)}
           meta={it.approved_amount != null
-            ? [{ label: 'Accepted', value: formatMoney(it.approved_amount) }]
+            ? [{ label: 'Accepted', value: formatPay(it.approved_amount) }]
             : []}
         />
       ))}
@@ -438,11 +439,11 @@ function Monthly({ fy, monthly }) {
         tone="purple"
         title={formatPeriod(period)}
         subtitle="Income tax deducted"
-        value={formatMoney(m.tds ?? m.income_tax)}
+        value={formatPay(m.tds ?? m.income_tax)}
         meta={[
-          { label: 'PF', value: formatMoney(m.pf) },
-          { label: 'ESI', value: formatMoney(m.esi) },
-          { label: 'Prof. tax', value: formatMoney(m.pt ?? m.professional_tax) },
+          { label: 'PF', value: formatPay(m.pf) },
+          { label: 'ESI', value: formatPay(m.esi) },
+          { label: 'Prof. tax', value: formatPay(m.pt ?? m.professional_tax) },
         ]}
       />
     );

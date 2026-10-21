@@ -26,7 +26,7 @@ import { payrollAPI } from '../../../api';
 import { useResource } from '../../../hooks/useResource';
 import { fmtDate } from '../../../lib/dates';
 import { humanize } from '../../../lib/enums';
-import { formatMoney } from '../../../lib/format';
+import { formatPay } from '../../../lib/payPrivacy';
 import { toList } from '../../../lib/normalize';
 import { color, elevate, radius, space, text } from '../../../theme/tokens';
 import { icons } from '../../../theme/icons';
@@ -38,7 +38,7 @@ import { componentAmount, componentName, salaryBreakdown } from '../payMeta';
 
 const COMPONENT_COLUMNS = [
   { header: 'Component', render: componentName, flex: 1.6 },
-  { header: 'A month', align: 'right', render: (c) => formatMoney(componentAmount(c)) },
+  { header: 'A month', align: 'right', render: (c) => formatPay(componentAmount(c)) },
 ];
 
 /* ─── One revision ───────────────────────────────────────────────────────── */
@@ -52,13 +52,13 @@ function RevisionSheet({ revision, onClose }) {
       onClose={onClose}
       eyebrow="Salary revision"
       icon={icons.chart}
-      title={formatMoney(revision.annual_ctc)}
+      title={formatPay(revision.annual_ctc)}
       subtitle={`From ${fmtDate(revision.effective_from, 'N/A')}`}
     >
       <SheetStats
         items={[
-          { icon: icons.rupee, label: 'Take-home a month', value: formatMoney(b.net) },
-          { icon: icons.up, label: 'Gross a month', value: formatMoney(b.gross) },
+          { icon: icons.rupee, label: 'Take-home a month', value: formatPay(b.net) },
+          { icon: icons.up, label: 'Gross a month', value: formatPay(b.gross) },
         ]}
       />
 
@@ -151,7 +151,7 @@ export function SalaryTab() {
         icon={icons.rupee}
         eyebrow="Take-home a month"
         metric
-        title={formatMoney(b.net)}
+        title={formatPay(b.net)}
         caption={`Before tax at source · since ${fmtDate(structure.effective_from, 'N/A')}`}
       />
 
@@ -195,7 +195,7 @@ export function SalaryTab() {
               minimumFontScale={0.7}
               style={[text.metric, { fontSize: 18, lineHeight: 23, color: color.ink }]}
             >
-              {formatMoney(f.value)}
+              {formatPay(f.value)}
             </Text>
           </View>
         ))}
@@ -221,7 +221,7 @@ export function SalaryTab() {
                 key={String(r.id || i)}
                 icon={icons.clock}
                 tone="slate"
-                title={formatMoney(r.annual_ctc)}
+                title={formatPay(r.annual_ctc)}
                 subtitle={`${fmtDate(r.effective_from, 'N/A')} – ${r.effective_to ? fmtDate(r.effective_to, '') : 'Present'}`}
                 value={humanize(r.revision_type) || null}
                 onPress={() => setOpen(r)}

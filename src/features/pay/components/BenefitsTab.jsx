@@ -28,7 +28,7 @@ import { payrollAPI } from '../../../api';
 import { useResource } from '../../../hooks/useResource';
 import { fmtDate } from '../../../lib/dates';
 import { normalizeStatusKey } from '../../../lib/enums';
-import { formatMoney } from '../../../lib/format';
+import { formatPay } from '../../../lib/payPrivacy';
 import { toList } from '../../../lib/normalize';
 import { color, radius, space, text } from '../../../theme/tokens';
 import { icons } from '../../../theme/icons';
@@ -95,8 +95,8 @@ export function BenefitsTab() {
         <StatCards
           items={[
             { icon: icons.heart, tone: 'purple', label: 'Covered by', value: String(active.length) },
-            { icon: icons.down, tone: 'indigo', label: 'Costs you', value: formatMoney(yours) },
-            { icon: icons.ok, tone: 'emerald', label: 'Company pays', value: formatMoney(theirs) },
+            { icon: icons.down, tone: 'indigo', label: 'Costs you', value: formatPay(yours) },
+            { icon: icons.ok, tone: 'emerald', label: 'Company pays', value: formatPay(theirs) },
           ]}
         />
       ) : null}
@@ -110,10 +110,10 @@ export function BenefitsTab() {
             tone={live ? 'purple' : 'slate'}
             title={planName(e)}
             subtitle={benefitTypeLabel(planOf(e)?.benefit_type)}
-            value={num(employeeShare(e)) ? formatMoney(employeeShare(e)) : 'Free to you'}
+            value={num(employeeShare(e)) ? formatPay(employeeShare(e)) : 'Free to you'}
             badge={<StatusBadge kind="enrolment" status={e.status} />}
             meta={[
-              { label: 'Company pays', value: formatMoney(employerShare(e)) },
+              { label: 'Company pays', value: formatPay(employerShare(e)) },
               e.start_date ? { label: 'Cover from', value: fmtDate(e.start_date, '') } : null,
               e.end_date ? { label: 'Until', value: fmtDate(e.end_date, '') } : null,
             ].filter(Boolean)}

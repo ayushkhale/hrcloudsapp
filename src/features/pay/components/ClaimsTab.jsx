@@ -32,7 +32,7 @@ import { fmtDate } from '../../../lib/dates';
 import { ATTENDANCE_EVENTS, useAttendanceChanged } from '../../../lib/events';
 import { normalizeStatusKey } from '../../../lib/enums';
 import { errorMessage } from '../../../lib/errors';
-import { formatMoney } from '../../../lib/format';
+import { formatPay } from '../../../lib/payPrivacy';
 import { toList } from '../../../lib/normalize';
 import { color, radius, space, text } from '../../../theme/tokens';
 import { icons } from '../../../theme/icons';
@@ -125,9 +125,9 @@ function ClaimSheet({ claim, onClose, onCancelled, onContinue }) {
     >
       <SheetStats
         items={[
-          { icon: icons.rupee, label: 'Claimed', value: formatMoney(claimAmount(d)) },
+          { icon: icons.rupee, label: 'Claimed', value: formatPay(claimAmount(d)) },
           d.approved_amount != null
-            ? { icon: icons.check, label: 'Approved', value: formatMoney(d.approved_amount) }
+            ? { icon: icons.check, label: 'Approved', value: formatPay(d.approved_amount) }
             : null,
         ].filter(Boolean)}
       />
@@ -143,7 +143,7 @@ function ClaimSheet({ claim, onClose, onCancelled, onContinue }) {
                   <Text style={[text.bodyStrong, { flex: 1 }]} numberOfLines={1}>
                     {it.category_name || it.description || 'Expense'}
                   </Text>
-                  <Text style={[text.bodyStrong, { fontVariant: ['tabular-nums'] }]}>{formatMoney(it.amount)}</Text>
+                  <Text style={[text.bodyStrong, { fontVariant: ['tabular-nums'] }]}>{formatPay(it.amount)}</Text>
                 </View>
                 <Text style={text.caption}>
                   {[it.expense_date ? fmtDate(it.expense_date, '') : null, it.merchant || null].filter(Boolean).join(' · ') || 'No details'}
@@ -203,13 +203,13 @@ function Categories({ categories, onClaim }) {
         tone="purple"
         title={c.name || 'Category'}
         subtitle={c.description || null}
-        value={row.remaining != null ? formatMoney(row.remaining) : null}
+        value={row.remaining != null ? formatPay(row.remaining) : null}
         onPress={() => onClaim(c)}
         accessibilityLabel={`Claim ${c.name}.`}
         meta={[
-          { label: 'Per claim', value: claimLimitText(c, formatMoney) },
-          { label: 'Overall', value: periodLimitText(c, formatMoney) },
-          { label: 'Receipt', value: receiptRuleText(c, formatMoney) },
+          { label: 'Per claim', value: claimLimitText(c, formatPay) },
+          { label: 'Overall', value: periodLimitText(c, formatPay) },
+          { label: 'Receipt', value: receiptRuleText(c, formatPay) },
         ]}
       />
     );
@@ -288,7 +288,7 @@ export function ClaimsTab({ onNewClaim, onOpenClaim }) {
             tone="purple"
             title={claimTitle(claim)}
             subtitle={claim.created_at ? `Raised ${fmtDate(claim.created_at, '')}` : null}
-            value={formatMoney(claimAmount(claim))}
+            value={formatPay(claimAmount(claim))}
             badge={<StatusBadge kind="claim" status={claim.status} />}
             onPress={claim.id ? () => setOpen(claim) : undefined}
             accessibilityLabel={`${claimTitle(claim)} claim. Open it.`}

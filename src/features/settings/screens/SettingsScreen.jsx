@@ -105,7 +105,7 @@ export default function SettingsScreen({ navigation }) {
         <SettingsRow
           icon={icons.fingerprint || icons.locked}
           label="Hide my pay"
-          caption="Confirm it’s you before My Pay shows your salary."
+          caption="Amounts on My Pay stay as dots until you confirm it’s you."
           toggle={{ value: payPrivacy.hideEnabled, onChange: setHidePay }}
         />
       </SettingsGroup>

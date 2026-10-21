@@ -1,5 +1,6 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// lib/payPrivacy.js — My Pay stays hidden until the phone confirms it's you.
+// lib/payPrivacy.js — My Pay's AMOUNTS stay as dots until the phone confirms it's you
+// (the screens load as normal — `formatPay` masks the figures, nothing else).
 //
 // User, 2026-10-21: "in salary showing screen, show it hidden, ask biometric
 // and then show it, it can be turned off from settings". Pay is the one thing
@@ -23,6 +24,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { AppState, NativeModules, Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../state/AuthContext';
+import { formatMoney } from './format';
 
 const Native = Platform.OS === 'android' ? NativeModules.HRDeviceSafety : null;
 const storageKey = (userId) => `hrc.pay.hidden.${userId || 'anon'}`;
@@ -54,6 +56,19 @@ AppState.addEventListener('change', (next) => {
     publish();
   }
 });
+
+/** Amounts are masked right now (the setting is on and nobody has unlocked). */
+export const payMasked = () => store.hide && !store.unlocked;
+
+/**
+ * `formatMoney`, but dots while the pay is hidden. Every AMOUNT on My Pay
+ * goes through this; the screens themselves load and draw as normal.
+ * Same signature as lib/format `formatMoney`.
+ */
+export function formatPay(val, opts = {}) {
+  if (payMasked()) return opts.withSymbol === false ? '••••' : '₹ ••••';
+  return formatMoney(val, opts);
+}
 
 /**
  * Ask the phone. Resolves 'ok' | 'cancelled' | 'locked_out' | 'failed'.

@@ -41,7 +41,8 @@ import { payrollAPI } from '../../../api';
 import { TERMS } from '../../../config/dictionary';
 import { useResource } from '../../../hooks/useResource';
 import { humanize } from '../../../lib/enums';
-import { formatDayCount, formatMoney, formatPeriod } from '../../../lib/format';
+import { formatDayCount, formatPeriod } from '../../../lib/format';
+import { formatPay } from '../../../lib/payPrivacy';
 import { toList } from '../../../lib/normalize';
 import { space } from '../../../theme/tokens';
 import { icons } from '../../../theme/icons';
@@ -132,11 +133,11 @@ export function ExtrasTab() {
                 tone="purple"
                 title={TERMS.ENCASHMENT}
                 subtitle={encashSourceLabel(raw, TERMS.COMP_OFF)}
-                value={formatMoney(raw.amount)}
+                value={formatPay(raw.amount)}
                 badge={<StatusBadge kind="extra" status={raw.status} />}
                 meta={[
                   { label: 'Leave', value: formatDayCount(raw.days) },
-                  raw.per_day_amount != null ? { label: 'Per day', value: formatMoney(raw.per_day_amount) } : null,
+                  raw.per_day_amount != null ? { label: 'Per day', value: formatPay(raw.per_day_amount) } : null,
                   periodOf(raw) ? { label: 'With', value: formatPeriod(periodOf(raw)) } : null,
                 ].filter(Boolean)}
               />
@@ -150,7 +151,7 @@ export function ExtrasTab() {
               tone={off ? 'rose' : 'emerald'}
               title={extraTitle(raw)}
               subtitle={off ? 'Taken off your pay' : kind === 'bonus' ? 'Bonus' : 'Added to your pay'}
-              value={formatMoney(extraAmount(raw))}
+              value={formatPay(extraAmount(raw))}
               badge={<StatusBadge kind="extra" status={raw.status} />}
               meta={[
                 periodOf(raw) ? { label: 'With', value: formatPeriod(periodOf(raw)) } : null,

@@ -34,7 +34,8 @@ import { payrollAPI, payrollFiles } from '../../../api';
 import { downloadFile } from '../../../api/files';
 import { useResource } from '../../../hooks/useResource';
 import { fmtDate } from '../../../lib/dates';
-import { formatMoney, formatPeriod, formatDayCount } from '../../../lib/format';
+import { formatPeriod, formatDayCount } from '../../../lib/format';
+import { formatPay } from '../../../lib/payPrivacy';
 import { toList } from '../../../lib/normalize';
 import { errorMessage } from '../../../lib/errors';
 import { color, space, text } from '../../../theme/tokens';
@@ -91,7 +92,7 @@ function PayslipSheet({ runId, period, onClose }) {
     {
       header: 'Amount',
       align: 'right',
-      render: (l) => formatMoney(l.amount ?? l.calculated_amount),
+      render: (l) => formatPay(l.amount ?? l.calculated_amount),
     },
   ];
 
@@ -124,9 +125,9 @@ function PayslipSheet({ runId, period, onClose }) {
         <>
           <SheetStats
             items={[
-              { icon: icons.rupee, label: 'Reached your bank', value: formatMoney(figures.net_pay) },
-              { icon: icons.up, label: 'Earned', value: formatMoney(figures.gross_earnings ?? figures.gross_pay) },
-              { icon: icons.down, label: 'Deducted', value: formatMoney(figures.total_deductions) },
+              { icon: icons.rupee, label: 'Reached your bank', value: formatPay(figures.net_pay) },
+              { icon: icons.up, label: 'Earned', value: formatPay(figures.gross_earnings ?? figures.gross_pay) },
+              { icon: icons.down, label: 'Deducted', value: formatPay(figures.total_deductions) },
               {
                 icon: icons.calendar,
                 label: 'Paid days',
@@ -224,7 +225,7 @@ function AnnualStatement() {
                   numberOfLines={1}
                   style={[text.smallStrong, { fontSize: 15, color: color.brandSoftFg, fontVariant: ['tabular-nums'] }]}
                 >
-                  {formatMoney(value)}
+                  {formatPay(value)}
                 </Text>
               </View>
             ))}
@@ -246,10 +247,10 @@ function AnnualStatement() {
             tone={m.empty ? 'slate' : 'purple'}
             title={formatPeriod(m.period)}
             subtitle={m.empty ? 'No pay run this month' : null}
-            value={m.empty ? null : formatMoney(m.net_pay)}
+            value={m.empty ? null : formatPay(m.net_pay)}
             meta={m.empty ? [] : [
-              { label: 'Earned', value: formatMoney(m.gross_earnings) },
-              { label: 'Deducted', value: formatMoney(m.total_deductions) },
+              { label: 'Earned', value: formatPay(m.gross_earnings) },
+              { label: 'Deducted', value: formatPay(m.total_deductions) },
             ]}
           />
         ))
@@ -317,13 +318,13 @@ export function PayslipsTab({ payslips }) {
               tone="purple"
               title={formatPeriod(period)}
               subtitle={paidOn ? `Paid ${fmtDate(paidOn, '')}` : null}
-              value={formatMoney(slipNet(slip))}
+              value={formatPay(slipNet(slip))}
               onPress={runId ? () => setOpen({ runId, period }) : undefined}
               accessibilityLabel={`Payslip for ${formatPeriod(period)}. Open it.`}
               meta={[
-                { label: 'Earned', value: formatMoney(slipGross(slip)) },
+                { label: 'Earned', value: formatPay(slipGross(slip)) },
                 // Dropped, not "N/A" — the list endpoint simply doesn't carry it.
-                deducted != null ? { label: 'Deducted', value: formatMoney(deducted) } : null,
+                deducted != null ? { label: 'Deducted', value: formatPay(deducted) } : null,
               ].filter(Boolean)}
             />
           );
