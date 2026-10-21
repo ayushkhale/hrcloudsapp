@@ -29,6 +29,7 @@ export { TabStrip } from './TabStrip';
 export { MonthStepper, PeriodStepper } from './MonthStepper';
 
 export { RecordSheet } from './RecordSheet';
+export { RecordPage, RecordPageScope } from './RecordPage';
 export {
   SheetStats, SheetSection, SheetGrid, SheetTable, SheetText, SheetFooterNote, SheetMoneySplit, SheetTimeline,
 } from './SheetParts';

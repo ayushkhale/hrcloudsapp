@@ -85,6 +85,7 @@ import { icons } from '../theme/icons';
 import { IconButton } from './Button';
 import { Skeleton } from './Skeleton';
 import { SheetScrollView, SheetShell } from './SheetShell';
+import { RecordPage, useRecordPage } from './RecordPage';
 
 /**
  * @param {object} props
@@ -100,7 +101,15 @@ import { SheetScrollView, SheetShell } from './SheetShell';
  * @param {React.ReactNode} [props.footer]
  * @param {'tall'|'short'} [props.height]
  */
-export function RecordSheet({
+export function RecordSheet(props) {
+  // Inside a RecordPageScope the same record is drawn as a full page
+  // (2026-10-22, ui/RecordPage.jsx). Two components, so neither runs the
+  // other's hooks.
+  const asPage = useRecordPage();
+  return asPage ? <RecordPage {...props} /> : <RecordSheetPanel {...props} />;
+}
+
+function RecordSheetPanel({
   visible = true,
   onClose,
   eyebrow,

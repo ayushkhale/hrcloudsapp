@@ -48,6 +48,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useCallback, useMemo, useState } from 'react';
+import { useNavigation } from '@react-navigation/native';
 import { useListRefresh } from '../../../hooks/useListRefresh';
 import { FlatList, View } from 'react-native';
 import { attendanceAPI } from '../../../api';
@@ -65,7 +66,6 @@ import {
   EmptyState, ErrorState, FieldHelp, FilterTabs, InlineAlert, ListFooter,
   SkeletonBlock, StatusBadge,
 } from '../../../ui';
-import { EarnedLeaveSheet } from './SelfRecordSheets';
 import { CardsSkeleton, RecordCard, StatCards, cardListStyle } from '../../../ui/ListCards';
 
 const TERM = TERMS.COMP_OFF;
@@ -86,7 +86,9 @@ const isExpiringSoon = (r, today) => {
 
 export function EarnedLeaveTab() {
   const [status, setStatus] = useState('');
-  const [selected, setSelected] = useState(null);
+  // An earned day is a PAGE now, not a sheet (2026-10-22) — screens/EarnedLeaveDayScreen.jsx.
+  const navigation = useNavigation();
+  const setSelected = (p) => navigation.navigate('EarnedLeaveDay', p);
   const today = todayYMD();
 
   const list = usePagedList(
@@ -256,17 +258,6 @@ export function EarnedLeaveTab() {
         refreshControl={refreshControl}
       />
 
-      {selected ? (
-        <EarnedLeaveSheet
-          item={selected.record}
-          term={TERM}
-          workedOn={selected.workedOn}
-          credit={selected.credit}
-          expiresOn={selected.expiry}
-          expiringSoon={selected.soon}
-          onClose={() => setSelected(null)}
-        />
-      ) : null}
     </>
   );
 }

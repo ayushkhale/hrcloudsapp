@@ -22,6 +22,8 @@ import {
 // The imperative toast, straight from the module rather than the `ui` barrel:
 // the auth layer must not pull in every screen component to say one sentence.
 import { showToast } from '../ui/Toast';
+import { clearMemoryCache } from '../lib/memoryCache';
+import { clearImageCache } from '../lib/imageCache';
 
 const AuthContext = createContext(null);
 
@@ -123,6 +125,10 @@ export function AuthProvider({ children }) {
      identity is wiped once the shell has gone. `sessionGen` lets a sign-in
      inside that window cancel the wipe rather than lose its own user. */
   const endSession = useCallback(async ({ expired = false } = {}) => {
+    // The cached profile and saved photos belong to this session (lib/
+    // memoryCache.js, lib/imageCache.js) — never to the next person.
+    clearMemoryCache();
+    clearImageCache();
     setIsAuthenticated(false);
     setTokenExp(null);
     setSelection(null);
@@ -276,6 +282,7 @@ export function AuthProvider({ children }) {
     setSessionExpired(false);
     setSelection(null);
     sessionGen.current += 1; // cancels a sign-out's pending wipe (endSession)
+    clearMemoryCache(); // a new session (another org, say) starts with nothing cached
     setUser({ ...auth.user, ...session.user });
     setRole(session.role);
     setOrgId(session.orgId);

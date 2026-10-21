@@ -116,7 +116,8 @@ function PeopleCard({ stats, onOpenChart }) {
 }
 
 export default function CompanyScreen({ navigation }) {
-  const details = useResource(() => organizationAPI.getOrganizationDetails());
+  // Drawn at once from the last read this session (2026-10-22).
+  const details = useResource(() => organizationAPI.getOrganizationDetails(), { cacheKey: 'org-details' });
   const data = details.data;
 
   if (details.loading && !data) {

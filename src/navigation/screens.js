@@ -62,6 +62,7 @@ const MODULES = {
   // features/attendance/components/LeaveTab.jsx. Applying is still a page,
   // because a record being WRITTEN is a page (§3).
   ApplyLeave: () => require('../features/attendance/screens/ApplyLeaveScreen').default,
+  EarnedLeaveDay: () => require('../features/attendance/screens/EarnedLeaveDayScreen').default,
 
   // ── Phase 6: pay (00-plan/07-pay-screen-plan.md) ─────────────────────────
   // Salary, Payslips, Claims, Loans and Tax ARE NOT ROUTES — they are the
@@ -73,10 +74,17 @@ const MODULES = {
   BankAccount:     () => require('../features/pay/screens/BankAccountScreen').default,
   ClaimForm:       () => require('../features/pay/screens/ClaimFormScreen').default,
   DeclarationForm: () => require('../features/pay/screens/DeclarationFormScreen').default,
+  // Records read on a PAGE (2026-10-22) — ui/RecordPage.jsx.
+  PayslipDetail:   () => require('../features/pay/screens/PayRecordScreens').PayslipDetailScreen,
+  SalaryRevision:  () => require('../features/pay/screens/PayRecordScreens').SalaryRevisionScreen,
+  LoanDetail:      () => require('../features/pay/screens/PayRecordScreens').LoanDetailScreen,
+  ClaimDetail:     () => require('../features/pay/screens/PayRecordScreens').ClaimDetailScreen,
 
   // ── Phase 7: documents (40-screens/06-documents.md) ──────────────────────
   DocumentsHome:  () => require('../features/documents/screens/DocumentsScreen').default,
   UploadDocument: () => require('../features/documents/screens/UploadDocumentScreen').default,
+  CompanyDocument: () => require('../features/documents/screens/DocumentRecordScreens').CompanyDocumentScreen,
+  MyDocument:      () => require('../features/documents/screens/DocumentRecordScreens').MyDocumentScreen,
 
   // ── Schedules — the tab that replaced Docs (2026-10-22), empty for now ────
   Schedules: () => require('../features/schedules/screens/SchedulesScreen').default,
@@ -108,6 +116,7 @@ const MODULES = {
   Profile:   () => require('../features/profile/screens/ProfileScreen').default,
   Settings:  () => require('../features/settings/screens/SettingsScreen').default,
   QuickActions: () => require('../features/settings/screens/QuickActionsScreen').default,
+  QuickActionPick: () => require('../features/settings/screens/QuickActionPickScreen').default,
 
   // ── First run (no spec — product decision) ───────────────────────────────
   Onboarding: () => require('../features/onboarding/screens/OnboardingScreen').default,

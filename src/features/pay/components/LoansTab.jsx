@@ -27,6 +27,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useEffect, useMemo, useState } from 'react';
+import { useNavigation } from '@react-navigation/native';
 import { useListRefresh } from '../../../hooks/useListRefresh';
 import { ScrollView, Text, View } from 'react-native';
 import { payrollAPI } from '../../../api';
@@ -52,7 +53,7 @@ const INTEREST_METHOD = {
 
 /* ─── One loan ───────────────────────────────────────────────────────────── */
 
-function LoanSheet({ loan, onClose }) {
+export function LoanSheet({ loan, onClose }) {
   const [schedule, setSchedule] = useState({ rows: [], loading: true, failed: false });
 
   useEffect(() => {
@@ -142,7 +143,9 @@ function LoanSheet({ loan, onClose }) {
 /* ─── The section ────────────────────────────────────────────────────────── */
 
 export function LoansTab() {
-  const [open, setOpen] = useState(null);
+  // A loan is a PAGE now, not a sheet (2026-10-22) — screens/PayRecordScreens.jsx.
+  const navigation = useNavigation();
+  const setOpen = (loan) => navigation.navigate('LoanDetail', { loan });
 
   const loans = useResource(() => payrollAPI.getMyLoans(), {
     select: (data) => toList(data, ['loans', 'records']),
@@ -219,7 +222,6 @@ export function LoansTab() {
         />
       ))}
 
-      {open ? <LoanSheet loan={open} onClose={() => setOpen(null)} /> : null}
     </ScrollView>
   );
 }

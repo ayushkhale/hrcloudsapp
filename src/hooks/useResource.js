@@ -19,6 +19,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { unwrap } from '../lib/normalize';
+import { readCache, writeCache } from '../lib/memoryCache';
 
 /**
  * @param {() => Promise<any>} fetcher
@@ -28,12 +29,18 @@ import { unwrap } from '../lib/normalize';
  *   select?: (data:any)=>any,  // shape the payload once, here
  *   initial?: any,
  *   onError?: (e:any)=>void,   // for a non-fatal read (e.g. the profile name)
+ *   cacheKey?: string,         // draw the last answer at once, refresh underneath
+ *                              // (lib/memoryCache.js — this session only)
  * }} [options]
  */
 export function useResource(fetcher, {
-  deps = [], enabled = true, select, initial = null, onError,
+  deps = [], enabled = true, select, initial = null, onError, cacheKey,
 } = {}) {
-  const [state, setState] = useState({ data: initial, loading: enabled, error: null });
+  // A cached answer is real data: no skeleton, and the read below refreshes it.
+  const [state, setState] = useState(() => {
+    const cached = enabled ? readCache(cacheKey) : undefined;
+    return { data: cached !== undefined ? cached : initial, loading: enabled, error: null };
+  });
 
   const fetcherRef = useRef(fetcher);
   fetcherRef.current = fetcher;
@@ -46,7 +53,8 @@ export function useResource(fetcher, {
   // change. See the header: a failed re-read of the SAME query keeps its data.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const query = useMemo(() => ({}), [enabled, ...deps]);
-  const dataQuery = useRef(null);
+  // A cached answer counts as this query's data, so a failed refresh keeps it.
+  const dataQuery = useRef(enabled && readCache(cacheKey) !== undefined ? query : null);
 
   const load = useCallback(async () => {
     if (!enabled) {
@@ -60,7 +68,9 @@ export function useResource(fetcher, {
       if (id !== requestId.current) return;
       const raw = unwrap(res);
       dataQuery.current = query;
-      setState({ data: selectRef.current ? selectRef.current(raw) : raw, loading: false, error: null });
+      const data = selectRef.current ? selectRef.current(raw) : raw;
+      writeCache(cacheKey, data);
+      setState({ data, loading: false, error: null });
     } catch (error) {
       if (id !== requestId.current) return;
       const keep = dataQuery.current === query;

@@ -188,8 +188,17 @@ header records why it stopped calling `Alert.alert`.
 you tap to dismiss — a sheet that reaches the status bar has no way out but the X,
 and people reach for the gap first.
 
-**A record being read is local state, never a route.** Routing a sheet unmounts the
-list behind it, and the master–detail illusion is the entire point.
+**A short record being read is a sheet, as local state, never a route.** Routing a
+sheet unmounts the list behind it, and the master–detail illusion is the point.
+
+**A record that holds too much for a 75% sheet is a PAGE** (user, 2026-10-22: "the
+content is too much, it's hiding"). Today: payslip, salary revision, loan, claim,
+Earned Leave day, company document, personal document. Don't rewrite the record:
+its component keeps rendering `RecordSheet`, and its route wraps it in
+`<RecordPageScope>` so it draws as a full page (`ui/RecordPage.jsx`). Params are
+plain data; callbacks become navigation or the event bus. Tables, schedules, a list
+of versions or attachments, or several sections all mean a page. Sheet-sized
+records stay sheets (correction, flag, overtime, leave request, device, a person).
 
 ### The Android shadow trap
 

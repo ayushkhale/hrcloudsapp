@@ -28,6 +28,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useCallback, useMemo, useState } from 'react';
+import { useNavigation } from '@react-navigation/native';
 import { useListRefresh } from '../../../hooks/useListRefresh';
 import { ScrollView, Text, View } from 'react-native';
 import { payrollAPI, payrollFiles } from '../../../api';
@@ -57,7 +58,7 @@ const VIEWS = [
 
 /* ─── One payslip, in full ───────────────────────────────────────────────── */
 
-function PayslipSheet({ runId, period, onClose }) {
+export function PayslipSheet({ runId, period, onClose }) {
   const [saving, setSaving] = useState(false);
 
   const slip = useResource(() => payrollAPI.getMyPayslip(runId), {
@@ -272,7 +273,9 @@ function AnnualStatement() {
 
 export function PayslipsTab({ payslips }) {
   const [view, setView] = useState('months');
-  const [open, setOpen] = useState(null);
+  // A payslip is a PAGE now, not a sheet (2026-10-22) — screens/PayRecordScreens.jsx.
+  const navigation = useNavigation();
+  const setOpen = (x) => navigation.navigate('PayslipDetail', x);
 
   const { refreshControl } = useListRefresh(payslips.reload, payslips.loading);
 
@@ -331,9 +334,6 @@ export function PayslipsTab({ payslips }) {
         })
       )}
 
-      {open ? (
-        <PayslipSheet runId={open.runId} period={open.period} onClose={() => setOpen(null)} />
-      ) : null}
     </ScrollView>
   );
 }

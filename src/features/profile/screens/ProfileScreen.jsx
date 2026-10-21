@@ -96,7 +96,8 @@ export default function ProfileScreen() {
   const [choosingPhoto, setChoosingPhoto] = useState(false);
   const [uploading, setUploading] = useState(false);
 
-  const resource = useResource(() => organizationAPI.getMyProfile(), {});
+  // Drawn at once from the last read this session, refreshed underneath (2026-10-22).
+  const resource = useResource(() => organizationAPI.getMyProfile(), { cacheKey: 'my-profile' });
   const { data, loading, error, reload } = resource;
 
   // `useResource` unwraps the envelope; keep the newest of the two.

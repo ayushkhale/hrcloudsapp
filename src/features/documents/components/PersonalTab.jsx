@@ -27,6 +27,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useNavigation } from '@react-navigation/native';
 import { useListRefresh } from '../../../hooks/useListRefresh';
 import { ScrollView, Text, View } from 'react-native';
 import { documentsAPI } from '../../../api';
@@ -65,7 +66,7 @@ const NEEDS_ACTION = ['rejected', 'expired'];
 
 /* ─── One document ───────────────────────────────────────────────────────── */
 
-function DocumentSheet({ doc: initial, type, onClose, onUpload, onChanged }) {
+export function DocumentSheet({ doc: initial, type, onClose, onUpload, onChanged }) {
   const confirm = useConfirm();
   const [doc, setDoc] = useState(initial);
   const [loading, setLoading] = useState(true);
@@ -229,7 +230,7 @@ export function PersonalTab({ onUpload }) {
   const [state, setState] = useState({ rows: [], loading: true, error: null });
   const [types, setTypes] = useState({ rows: [], loading: true, error: null });
   const [filter, setFilter] = useState(null); // null until the first load decides
-  const [open, setOpen] = useState(null);
+  const navigation = useNavigation();
 
   const load = useCallback(async () => {
     setState((s) => ({ ...s, loading: true, error: null }));
@@ -258,6 +259,8 @@ export function PersonalTab({ onUpload }) {
   );
 
   const index = useMemo(() => new Map(types.rows.map((t) => [t.id, t])), [types.rows]);
+  // A document is a PAGE now, not a sheet (2026-10-22) — screens/DocumentRecordScreens.jsx.
+  const setOpen = (d) => navigation.navigate('MyDocument', { doc: d, type: index.get(d?.document_type_id) });
   const rows = useMemo(() => state.rows.map((d) => ({ ...d, _display: displayStatus(d) })), [state.rows]);
   const count = (pred) => rows.filter(pred).length;
   const needs = count((d) => NEEDS_ACTION.includes(d._display));
@@ -377,15 +380,6 @@ export function PersonalTab({ onUpload }) {
       ) : null}
       {current === 'types' ? renderTypes() : renderDocs()}
 
-      {open ? (
-        <DocumentSheet
-          doc={open}
-          type={index.get(open.document_type_id)}
-          onClose={() => setOpen(null)}
-          onUpload={onUpload}
-          onChanged={load}
-        />
-      ) : null}
     </ScrollView>
   );
 }

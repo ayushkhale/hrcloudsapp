@@ -76,6 +76,8 @@ export const EMPLOYEE_TABS = [
       { name: 'Profile', title: 'My Profile' },
       { name: 'Settings', title: 'Settings' },
       { name: 'QuickActions', title: 'Quick actions' },
+      // The picker, a page since 2026-10-22 (a sheet of ~40 cards wouldn't scroll well).
+      { name: 'QuickActionPick', title: 'Change shortcut' },
       { name: 'Company', title: 'Org Profile' },
       { name: 'OrgChart', title: 'Org Chart' },
       { name: 'Directory', title: 'Directory' },
@@ -93,6 +95,10 @@ export const EMPLOYEE_TABS = [
       // sections and the upload form are unchanged.
       { name: 'DocumentsHome', title: 'My Documents' },
       { name: 'UploadDocument', title: 'Upload a document', presentation: 'modal' },
+      // Records READ on a page, not a sheet, because they hold too much for
+      // one (user, 2026-10-22; ui/RecordPage.jsx).
+      { name: 'CompanyDocument', title: 'Company document' },
+      { name: 'MyDocument', title: 'My document' },
     ],
   },
   {
@@ -106,6 +112,8 @@ export const EMPLOYEE_TABS = [
       { name: 'ApplyLeave', title: 'Apply for leave', presentation: 'modal' },
       { name: 'OvertimeForm', title: 'Claim overtime', presentation: 'modal' },
       { name: 'EarnedLeaveForm', title: 'Use earned leave', presentation: 'modal' },
+      // Read on a page (2026-10-22) — it hid content in a sheet.
+      { name: 'EarnedLeaveDay', title: 'Earned Leave' },
     ],
   },
   {
@@ -117,6 +125,11 @@ export const EMPLOYEE_TABS = [
       { name: 'BankAccount', title: 'Bank account', presentation: 'modal' },
       { name: 'ClaimForm', title: 'Make a claim', presentation: 'modal' },
       { name: 'DeclarationForm', title: 'Declare an investment', presentation: 'modal' },
+      // Records READ on a page, not a sheet — too much for one (2026-10-22).
+      { name: 'PayslipDetail', title: 'Payslip' },
+      { name: 'SalaryRevision', title: 'Salary revision' },
+      { name: 'LoanDetail', title: 'Loan' },
+      { name: 'ClaimDetail', title: 'Claim' },
     ],
   },
   {

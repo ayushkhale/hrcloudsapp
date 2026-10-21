@@ -19,7 +19,8 @@
 // that already exists (`payroll.my_salary` / `annual_ctc`).
 // ─────────────────────────────────────────────────────────────────────────────
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
+import { useNavigation } from '@react-navigation/native';
 import { useListRefresh } from '../../../hooks/useListRefresh';
 import { ScrollView, Text, View } from 'react-native';
 import { payrollAPI } from '../../../api';
@@ -43,7 +44,7 @@ const COMPONENT_COLUMNS = [
 
 /* ─── One revision ───────────────────────────────────────────────────────── */
 
-function RevisionSheet({ revision, onClose }) {
+export function RevisionSheet({ revision, onClose }) {
   const b = useMemo(() => salaryBreakdown(revision), [revision]);
 
   return (
@@ -93,7 +94,9 @@ function RevisionSheet({ revision, onClose }) {
 /* ─── The section ────────────────────────────────────────────────────────── */
 
 export function SalaryTab() {
-  const [open, setOpen] = useState(null);
+  // A revision is a PAGE now, not a sheet (2026-10-22) — screens/PayRecordScreens.jsx.
+  const navigation = useNavigation();
+  const setOpen = (revision) => navigation.navigate('SalaryRevision', { revision });
 
   const current = useResource(() => payrollAPI.getMyCurrentStructure());
   const history = useResource(() => payrollAPI.getMyStructureHistory(), {
@@ -231,7 +234,6 @@ export function SalaryTab() {
         </>
       ) : null}
 
-      {open ? <RevisionSheet revision={open} onClose={() => setOpen(null)} /> : null}
     </ScrollView>
   );
 }

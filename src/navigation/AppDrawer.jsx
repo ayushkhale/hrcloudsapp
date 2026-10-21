@@ -52,6 +52,8 @@ import { useAuth } from '../state/AuthContext';
 import { useReducedMotion } from '../hooks/useReducedMotion';
 import { NAV, TERMS } from '../config/dictionary';
 import { icons } from '../theme/icons';
+import { useCachedImageUri } from '../lib/imageCache';
+import { readCache, writeCache } from '../lib/memoryCache';
 import { color, elevate, font, iconSize, radius, space, text } from '../theme/tokens';
 import { useConfirm, useToast } from '../ui';
 import { mayaAvailable, openMaya } from '../features/maya/mayaBridge';
@@ -222,6 +224,8 @@ function OrgHeader({ org, user }) {
   const [logoFailed, setLogoFailed] = useState(false);
   const { name, logoUrl, address, initials } = extractOrgIdentity(org, user);
   const logo = !logoFailed && logoUrl ? logoUrl : null;
+  // Saved on the phone after the first view (lib/imageCache.js, 2026-10-22).
+  const logoUri = useCachedImageUri(logo);
 
   return (
     <View
@@ -237,7 +241,8 @@ function OrgHeader({ org, user }) {
     >
       {logo ? (
         <Image
-          source={{ uri: logo }}
+          source={{ uri: logoUri }}
+          fadeDuration={0}
           resizeMode="contain"
           onError={() => setLogoFailed(true)}
           accessibilityRole="image"
@@ -427,7 +432,8 @@ export function AppDrawer({ open, onClose, inbox = 0 }) {
   const reduced = useReducedMotion();
   const go = useGo();
 
-  const [org, setOrg] = useState(null);
+  // Seeded from this session's cache — the same entry Org Profile fills.
+  const [org, setOrg] = useState(() => readCache('org-details') || null);
   const [expanded, setExpanded] = useState({
     'My time': true,
     'My pay': false,
@@ -481,18 +487,40 @@ export function AppDrawer({ open, onClose, inbox = 0 }) {
     settings: useRouteTarget('settings'),
   };
 
-  // Fetched once the drawer is first opened, not on mount: Home has five
-  // requests of its own to get through first, and nobody is looking at this.
+  /* NOT ON MOUNT — Home has five requests of its own to get through first —
+     but not on first open either any more (2026-10-22: "org images take a
+     little time to show up"). A few seconds after the app opens, once Home
+     has its data, the org is read quietly into the session cache
+     (lib/memoryCache.js), so the drawer and Org Profile both open on it at
+     once. Opening the drawer sooner than that still reads it straight away. */
   useEffect(() => {
-    if (!open || org) return;
+    if (org) return undefined;
     let cancelled = false;
-    organizationAPI.getOrganizationDetails()
-      .then((res) => { if (!cancelled) setOrg(unwrap(res) || null); })
+    const read = () => organizationAPI.getOrganizationDetails()
+      .then((res) => {
+        const data = unwrap(res) || null;
+        writeCache('org-details', data);
+        if (!cancelled) setOrg(data);
+      })
       .catch((err) => {
         if (__DEV__) console.warn('[AppDrawer] Failed to fetch organization details:', err?.message || err);
       });
-    return () => { cancelled = true; };
+    if (open) { read(); return () => { cancelled = true; }; }
+    const t = setTimeout(read, 4000);
+    return () => { cancelled = true; clearTimeout(t); };
   }, [open, org]);
+
+  // My Profile, warmed the same quiet way, a moment later (ProfileScreen reads
+  // the 'my-profile' entry). Nothing is drawn from it here.
+  useEffect(() => {
+    if (readCache('my-profile') !== undefined) return undefined;
+    const t = setTimeout(() => {
+      organizationAPI.getMyProfile()
+        .then((res) => writeCache('my-profile', unwrap(res)))
+        .catch(() => { /* My Profile reads it itself when opened. */ });
+    }, 6000);
+    return () => clearTimeout(t);
+  }, []);
 
   useEffect(() => {
     if (open) setMounted(true);

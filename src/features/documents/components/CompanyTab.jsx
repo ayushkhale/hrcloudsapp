@@ -36,6 +36,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useNavigation } from '@react-navigation/native';
 import { useListRefresh } from '../../../hooks/useListRefresh';
 import { ScrollView, Text, View } from 'react-native';
 import { documentsAPI } from '../../../api';
@@ -79,7 +80,7 @@ function StateBadge({ row }) {
 
 /* ─── One document ───────────────────────────────────────────────────────── */
 
-function CompanySheet({ row: initial, onClose, onChanged }) {
+export function CompanySheet({ row: initial, onClose, onChanged }) {
   const { user } = useAuth();
   const [row, setRow] = useState(initial);
   const [loading, setLoading] = useState(true);
@@ -304,7 +305,10 @@ export function CompanyTab({ openId, onOpenHandled }) {
   const [filter, setFilter] = useState(null);
   const [state, setState] = useState({ rows: [], loading: true, error: null });
   const [needsYou, setNeedsYou] = useState(null);
-  const [open, setOpen] = useState(null);
+  // An issued document is a PAGE now, not a sheet (2026-10-22) — the deep link
+  // lands on it too. screens/DocumentRecordScreens.jsx.
+  const navigation = useNavigation();
+  const setOpen = useCallback((row) => navigation.navigate('CompanyDocument', { row }), [navigation]);
   const [gone, setGone] = useState(false);
 
   // How many need me decides where the section opens.
@@ -359,7 +363,7 @@ export function CompanyTab({ openId, onOpenHandled }) {
       })
       .finally(() => onOpenHandled?.());
     return () => { cancelled = true; };
-  }, [openId, onOpenHandled]);
+  }, [openId, onOpenHandled, setOpen]);
 
   const options = useMemo(() => FILTERS.map((f) => (
     f.value === 'pending' && needsYou ? { ...f, label: `Needs you (${needsYou})` } : f
@@ -421,7 +425,6 @@ export function CompanyTab({ openId, onOpenHandled }) {
         })
       )}
 
-      {open ? <CompanySheet row={open} onClose={() => setOpen(null)} onChanged={refresh} /> : null}
     </ScrollView>
   );
 }

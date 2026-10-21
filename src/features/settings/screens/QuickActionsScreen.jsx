@@ -23,26 +23,23 @@
 //     says, next to a ✚, exactly what these are and what tapping does.
 //   • The six look EXACTLY as they do in the ✚ sheet (its own ActionCard), so
 //     there is nothing to translate — each with a pencil on it.
-//   • The picker is titled with the shortcut being changed ("Change Apply for
-//     Leave"), marks that one "Current" and any other shortcut "Already a
-//     shortcut", and says in one line that picking one of those swaps them.
+//   • The picker — its own PAGE since 2026-10-22, QuickActionPickScreen, after
+//     a sheet of ~40 cards proved too much to scroll — is titled with the
+//     shortcut being changed, marks it "Current" and any other shortcut
+//     "Shortcut", and says in one line that picking one of those swaps them.
 //   • Every change answers with a toast that says what happened in words.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import { color, gutter, radius, space, text } from '../../../theme/tokens';
 import { icons } from '../../../theme/icons';
-import { Button, OptionSheet, SkeletonBlock, showToast, useConfirm } from '../../../ui';
+import { Button, SkeletonBlock, showToast, useConfirm } from '../../../ui';
 import { ActionCard, toneFor } from '../../../navigation/ActionSheet';
 import {
-  DEFAULT_QUICK_ACTIONS, availableActions, quickActionFor, replaceSlot, saveQuickActions,
-  useQuickActions,
+  DEFAULT_QUICK_ACTIONS, quickActionFor, saveQuickActions, useQuickActions,
 } from '../quickActions';
-
-const GRID_COLS = 2;
-const GRID_ROW = 104; // an ActionCard (icon, name, two caption lines) plus the row gap
 
 /** The pencil in a shortcut's corner: "tap to change this one". */
 function PencilMark() {
@@ -103,28 +100,11 @@ function Explainer() {
   );
 }
 
-export default function QuickActionsScreen() {
+export default function QuickActionsScreen({ navigation }) {
   const confirm = useConfirm();
-  const { ready, keys, userId, workspace } = useQuickActions();
-  const [slot, setSlot] = useState(null); // which of the six is being changed, or null
+  const { ready, keys, userId } = useQuickActions();
   const [busy, setBusy] = useState(false);
 
-  const catalog = useMemo(() => availableActions(workspace), [workspace]);
-  // The catalog's own groups, in catalog order: "Start something", "My Time", …
-  const groups = useMemo(() => {
-    const out = [];
-    catalog.forEach((a) => {
-      const last = out[out.length - 1];
-      if (last && last.group === a.group) last.items.push(a);
-      else out.push({ group: a.group, items: [a] });
-    });
-    return out;
-  }, [catalog]);
-  // OptionSheet sizes itself from a per-row height; a "row" here is a group.
-  const groupHeight = useMemo(() => {
-    const rows = groups.reduce((n, g) => n + Math.ceil(g.items.length / GRID_COLS), 0);
-    return groups.length ? Math.ceil((groups.length * 44 + rows * GRID_ROW) / groups.length) : GRID_ROW;
-  }, [groups]);
   const isDefault = keys.join('|') === DEFAULT_QUICK_ACTIONS.join('|');
 
   const save = useCallback(async (next, said) => {
@@ -140,21 +120,6 @@ export default function QuickActionsScreen() {
     }
   }, [busy, userId]);
 
-  const pick = (key) => {
-    const index = slot;
-    setSlot(null);
-    if (index == null || keys[index] === key) return;
-    const was = quickActionFor(keys[index]);
-    const now = quickActionFor(key);
-    const swapped = keys.includes(key);
-    save(
-      replaceSlot(keys, index, key),
-      swapped
-        ? `${now?.label} and ${was?.label} swapped places.`
-        : `${now?.label} is now a shortcut, instead of ${was?.label}.`,
-    );
-  };
-
   const reset = async () => {
     const ok = await confirm({
       title: 'Go back to the original 6?',
@@ -165,8 +130,6 @@ export default function QuickActionsScreen() {
     });
     if (ok) save([...DEFAULT_QUICK_ACTIONS], 'Your shortcuts are back to the original 6.');
   };
-
-  const current = slot != null ? quickActionFor(keys[slot]) : null;
 
   return (
     <ScrollView
@@ -190,7 +153,7 @@ export default function QuickActionsScreen() {
                 tone={toneFor(k, i)}
                 badge={<PencilMark />}
                 accessibilityLabel={`${a.label}. Tap to change this shortcut.`}
-                onPress={() => { if (!busy) setSlot(i); }}
+                onPress={() => { if (!busy) navigation.navigate('QuickActionPick', { slot: i }); }}
               />
             );
           })}
@@ -200,50 +163,6 @@ export default function QuickActionsScreen() {
       {ready && !isDefault ? (
         <Button title="Go back to the original 6" icon={icons.refresh} variant="outline" onPress={reset} fullWidth />
       ) : null}
-
-      <OptionSheet
-        visible={slot != null}
-        title={current ? `Change “${current.label}”` : 'Change shortcut'}
-        onClose={() => setSlot(null)}
-        data={groups}
-        keyOf={(g) => g.group}
-        rowHeight={groupHeight}
-        header={(
-          <Text style={[text.small, { paddingHorizontal: gutter, color: color.textSecondary }]}>
-            Pick what goes in its place. Picking one that’s already a shortcut swaps the two.
-          </Text>
-        )}
-        renderRow={(g) => (
-          <View style={{ paddingHorizontal: gutter, paddingTop: space[4], gap: space[2] }}>
-            <Text style={[text.label, { color: color.textMuted }]}>{g.group}</Text>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space[2] }}>
-              {g.items.map((a, i) => {
-                const where = keys.indexOf(a.key);
-                const here = where === slot;
-                const elsewhere = where >= 0 && !here;
-                return (
-                  <ActionCard
-                    key={a.key}
-                    item={a}
-                    tone={toneFor(a.key, i)}
-                    selected={here}
-                    badge={here ? 'Current' : elsewhere ? 'Shortcut' : null}
-                    accessibilityLabel={here
-                      ? `${a.label}. This is the shortcut you’re changing.`
-                      : elsewhere
-                        ? `${a.label}. Already a shortcut — picking it swaps the two.`
-                        : a.label}
-                    onPress={() => pick(a.key)}
-                    // Fixed half width: a lone last card must not stretch
-                    // across the row the way the ✚ sheet's grid lets it.
-                    style={{ flexGrow: 0, flexBasis: '48.5%' }}
-                  />
-                );
-              })}
-            </View>
-          </View>
-        )}
-      />
     </ScrollView>
   );
 }

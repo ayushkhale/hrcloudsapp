@@ -30,6 +30,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { Image, Text, View } from 'react-native';
+import { useCachedImageUri } from '../lib/imageCache';
 import { initials, personName } from '../lib/normalize';
 import { icons } from '../theme/icons';
 import { color, font, radius } from '../theme/tokens';
@@ -64,6 +65,9 @@ const genderOf = (person) => {
  */
 export function Avatar({ person, src, size = 36, onPhotoError, style }) {
   const url = src || photoFrom(person);
+  // Saved on the phone after the first view, keyed without the signature —
+  // a signed URL changes on every read (lib/imageCache.js, 2026-10-22).
+  const uri = useCachedImageUri(url);
   const [failed, setFailed] = useState(false);
 
   // A new URL deserves a new attempt: the host refetched precisely because the
@@ -88,7 +92,9 @@ export function Avatar({ person, src, size = 36, onPhotoError, style }) {
   if (url && !failed) {
     return (
       <Image
-        source={{ uri: url }}
+        source={{ uri }}
+        // No 300ms Android fade on a picture that is already on the phone.
+        fadeDuration={0}
         accessibilityLabel={label}
         onError={() => {
           setFailed(true);

@@ -24,6 +24,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useCallback, useMemo, useState } from 'react';
+import { useNavigation } from '@react-navigation/native';
 import { useListRefresh } from '../../../hooks/useListRefresh';
 import { ScrollView, Text, View } from 'react-native';
 import { payrollAPI } from '../../../api';
@@ -55,7 +56,7 @@ const CANCELLABLE = new Set(['draft', 'submitted', 'pending']);
 
 /* ─── One claim ──────────────────────────────────────────────────────────── */
 
-function ClaimSheet({ claim, onClose, onCancelled, onContinue }) {
+export function ClaimSheet({ claim, onClose, onCancelled, onContinue }) {
   const confirm = useConfirm();
   const [busy, setBusy] = useState(false);
 
@@ -220,7 +221,9 @@ function Categories({ categories, onClaim }) {
 
 export function ClaimsTab({ onNewClaim, onOpenClaim }) {
   const [view, setView] = useState('claims');
-  const [open, setOpen] = useState(null);
+  // A claim is a PAGE now, not a sheet (2026-10-22) — screens/PayRecordScreens.jsx.
+  const navigation = useNavigation();
+  const setOpen = (claim) => navigation.navigate('ClaimDetail', { claim });
 
   const claims = useResource(() => payrollAPI.getMyReimbursementClaims(), {
     select: (data) => toList(data, ['claims', 'records']),
@@ -296,14 +299,6 @@ export function ClaimsTab({ onNewClaim, onOpenClaim }) {
         ))
       )}
 
-      {open ? (
-        <ClaimSheet
-          claim={open}
-          onClose={() => setOpen(null)}
-          onCancelled={claims.reload}
-          onContinue={(c) => onOpenClaim(c.id)}
-        />
-      ) : null}
     </ScrollView>
   );
 }

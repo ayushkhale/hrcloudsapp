@@ -58,6 +58,10 @@ const SLIDES = [
         source={ONBOARDING_1}
         style={{ width: '100%', height: 220 }}
         resizeMode="contain"
+        // Bundled, so there is nothing to download — the wait was Android's
+        // 300ms fade-in and decoding a 1536px PNG at full size (2026-10-22).
+        fadeDuration={0}
+        resizeMethod="resize"
       />
     ),
   },
@@ -71,6 +75,10 @@ const SLIDES = [
         source={ONBOARDING_2}
         style={{ width: '100%', height: 220 }}
         resizeMode="contain"
+        // Bundled, so there is nothing to download — the wait was Android's
+        // 300ms fade-in and decoding a 1536px PNG at full size (2026-10-22).
+        fadeDuration={0}
+        resizeMethod="resize"
       />
     ),
   },
@@ -84,6 +92,10 @@ const SLIDES = [
         source={ONBOARDING_3}
         style={{ width: '100%', height: 220 }}
         resizeMode="contain"
+        // Bundled, so there is nothing to download — the wait was Android's
+        // 300ms fade-in and decoding a 1536px PNG at full size (2026-10-22).
+        fadeDuration={0}
+        resizeMethod="resize"
       />
     ),
   },
