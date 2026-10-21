@@ -30,22 +30,28 @@ export { MonthStepper, PeriodStepper } from './MonthStepper';
 
 export { RecordSheet } from './RecordSheet';
 export {
-  SheetStats, SheetSection, SheetGrid, SheetTable, SheetText, SheetFooterNote, SheetMoneySplit,
+  SheetStats, SheetSection, SheetGrid, SheetTable, SheetText, SheetFooterNote, SheetMoneySplit, SheetTimeline,
 } from './SheetParts';
 
 export { FormSheet, FormSection } from './FormSheet';
 export { Field, ReadOnlyField, FormGrid } from './Field';
 export { TextField, PickerBox } from './TextField';
 export { Select, OptionSheet, Toggle } from './Select';
-export { TimeField, DateField } from './TimeField';
+export { TimeField, DateField, DatePicker } from './TimeField';
 export { PersonSelect, PersonSheet } from './PersonSelect';
 
 export { Avatar } from './Avatar';
+export { IconTile } from './IconTile';
 export { PersonRow } from './PersonRow';
 
-export { ToastProvider, useToast } from './Toast';
+export { ToastProvider, useToast, Toast, showToast } from './Toast';
 export { ConfirmProvider, useConfirm } from './ConfirmProvider';
 export { ReasonPrompt } from './ReasonPrompt';
 export { AttachmentViewer } from './AttachmentViewer';
+export { AttachmentPicker, AttachmentChip, openPayrollAttachment } from './AttachmentPicker';
 
 export { FieldHelp, HelpLabel } from './FieldHelp';
+export { HeaderMenu, useHeaderMenu } from './HeaderMenu';
+
+export { HeroCard } from './HeroCard';
+export { haptic, hapticsEnabled, setHapticsEnabled, onHapticsChange } from './haptics';

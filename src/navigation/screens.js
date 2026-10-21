@@ -23,6 +23,7 @@ import React from 'react';
 import { Text, View } from 'react-native';
 import { EMPLOYEE_SCREEN_NAMES } from './tabs.employee';
 import { color, gutter, space, text } from '../theme/tokens';
+import { AppTopBar } from './AppTopBar';
 
 /**
  * Where each screen lives once you build it. The paths follow
@@ -34,45 +35,76 @@ import { color, gutter, space, text } from '../theme/tokens';
 const MODULES = {
   // ── Phase 2–3: the heart of the app (40-screens/02-home-and-punch.md) ─────
   Home: () => require('../features/home/screens/HomeScreen').default,
-  // DayLog:          () => require('../features/attendance/screens/DayLogScreen').default,
+  Notifications: () => require('../features/notifications/screens/NotificationsScreen').default,
+  NotificationDetail: () => require('../features/notifications/screens/NotificationDetailScreen').default,
+  // One day of attendance — a page since 2026-10-21 (it was a sheet nobody
+  // could scroll). In both the Home and Time stacks; param `{ date }`.
+  DayLog: () => require('../features/attendance/screens/DayLogScreen').default,
 
   // ── Phase 4: time (40-screens/03-time.md) ────────────────────────────────
-  // Time:            () => require('../features/attendance/screens/TimeScreen').default,
-  // CorrectionForm:  () => require('../features/attendance/screens/CorrectionFormScreen').default,
+  Time: () => require('../features/attendance/screens/TimeScreen').default,
+  CorrectionForm: () => require('../features/attendance/screens/CorrectionFormScreen').default,
+  // OvertimeForm and EarnedLeaveForm STAY COMMENTED OUT, and not because they
+  // are the next thing to build: THERE IS NOTHING FOR THEM TO CALL. No
+  // self-claim overtime endpoint and no earned-leave redeem endpoint exists —
+  // not in api/attendance.api.js, not in the web app's api module. Overtime is
+  // derived from punches and the shift; an earned day is applied for as leave.
+  // The Overtime and Earned Leave tabs say so in words instead of offering a
+  // button to a form that cannot submit (§2: a capability we lack is absent,
+  // not broken). Uncomment them the day those routes land.
   // OvertimeForm:    () => require('../features/attendance/screens/OvertimeFormScreen').default,
   // EarnedLeaveForm: () => require('../features/attendance/screens/EarnedLeaveFormScreen').default,
 
   // ── Phase 5: leave (40-screens/04-leave.md) ──────────────────────────────
-  // Leave:           () => require('../features/leave/screens/LeaveScreen').default,
-  // ApplyLeave:      () => require('../features/leave/screens/ApplyLeaveScreen').default,
-  // Holidays:        () => require('../features/leave/screens/HolidaysScreen').default,
+  // `Leave` and `Holidays` ARE NOT ROUTES. They are sections of My Time, like
+  // the six beside them — a tile that pushed a screen while its neighbours
+  // swapped the body was the one tile people stopped trusting. See
+  // features/attendance/components/LeaveTab.jsx. Applying is still a page,
+  // because a record being WRITTEN is a page (§3).
+  ApplyLeave: () => require('../features/attendance/screens/ApplyLeaveScreen').default,
 
-  // ── Phase 6: pay (40-screens/05-pay.md) ──────────────────────────────────
-  // PayHome:         () => require('../features/pay/screens/PayHomeScreen').default,
-  // Salary:          () => require('../features/pay/screens/SalaryScreen').default,
-  // BankAccount:     () => require('../features/pay/screens/BankAccountScreen').default,
-  // Payslips:        () => require('../features/pay/screens/PayslipsScreen').default,
-  // Claims:          () => require('../features/pay/screens/ClaimsScreen').default,
-  // ClaimForm:       () => require('../features/pay/screens/ClaimFormScreen').default,
-  // Loans:           () => require('../features/pay/screens/LoansScreen').default,
-  // Tax:             () => require('../features/pay/screens/TaxScreen').default,
-  // DeclarationForm: () => require('../features/pay/screens/DeclarationFormScreen').default,
+  // ── Phase 6: pay (00-plan/07-pay-screen-plan.md) ─────────────────────────
+  // Salary, Payslips, Claims, Loans and Tax ARE NOT ROUTES — they are the
+  // eight sections of My Pay, same as Leave and Holidays under My Time. The
+  // three FORMS below stay routes, because a record being WRITTEN is a page.
+  PayHome: () => require('../features/pay/screens/PayScreen').default,
+  // All three forms are built. The file picker that blocked the last two
+  // (07-pay-screen-plan.md §4) is ui/AttachmentPicker.
+  BankAccount:     () => require('../features/pay/screens/BankAccountScreen').default,
+  ClaimForm:       () => require('../features/pay/screens/ClaimFormScreen').default,
+  DeclarationForm: () => require('../features/pay/screens/DeclarationFormScreen').default,
 
   // ── Phase 7: documents (40-screens/06-documents.md) ──────────────────────
-  // DocumentsHome:    () => require('../features/documents/screens/DocumentsHomeScreen').default,
-  // MyDocuments:      () => require('../features/documents/screens/MyDocumentsScreen').default,
-  // UploadDocument:   () => require('../features/documents/screens/UploadDocumentScreen').default,
-  // CompanyDocuments: () => require('../features/documents/screens/CompanyDocumentsScreen').default,
-  // DocumentRequests: () => require('../features/documents/screens/DocumentRequestsScreen').default,
-  // Forms:            () => require('../features/documents/screens/FormsScreen').default,
+  DocumentsHome:  () => require('../features/documents/screens/DocumentsScreen').default,
+  UploadDocument: () => require('../features/documents/screens/UploadDocumentScreen').default,
+
+  // ── Tasks — the web's MY TASKS (#249–#253) ───────────────────────────────
+  // MyTasks is the one screen with its status sections and an Overdue section
+  // (the web's separate "Overdue Tasks" route folded in, the way My Pay folded
+  // its five routes into sections). TaskDetail is a pushed screen, not a sheet,
+  // because opening a task is a WRITE and it is a workspace with a keyboard —
+  // see MyTasksScreen's header.
+  MyTasks:    () => require('../features/tasks/screens/MyTasksScreen').default,
+  TaskDetail: () => require('../features/tasks/screens/TaskDetailScreen').default,
+
+  // ── My Registered Devices (web MyDevicesPage) ────────────────────────────
+  // A pushed stack screen, not a tab: it shows this device and the rest, with
+  // the native back chevron home. One screen, no inner tabs (user, 2026-10-20).
+  Devices: () => require('../features/devices/screens/DevicesScreen').default,
+  // Registering THIS phone as a device_key (2026-10-21) — a form, so a modal route.
+  RegisterDevice: () => require('../features/devices/screens/RegisterDeviceScreen').default,
 
   // ── Phase 8: org and profile (40-screens/07-org-and-profile.md) ──────────
   // More:      () => require('../features/more/screens/MoreScreen').default,
-  // Company:   () => require('../features/org/screens/CompanyScreen').default,
-  // OrgChart:  () => require('../features/org/screens/OrgChartScreen').default,
-  // Directory: () => require('../features/org/screens/DirectoryScreen').default,
-  // Profile:   () => require('../features/profile/screens/ProfileScreen').default,
-  // Settings:  () => require('../features/profile/screens/SettingsScreen').default,
+  // The web's Company section — three pushed stack screens, not tabs (user,
+  // 2026-10-20). Read-only for an employee; editing the company and the org is
+  // HR's, so those controls are absent here, never present-and-403 (§2).
+  Company:   () => require('../features/org/screens/CompanyScreen').default,
+  OrgChart:  () => require('../features/org/screens/OrgChartScreen').default,
+  Directory: () => require('../features/org/screens/DirectoryScreen').default,
+  Profile:   () => require('../features/profile/screens/ProfileScreen').default,
+  Settings:  () => require('../features/settings/screens/SettingsScreen').default,
+  QuickActions: () => require('../features/settings/screens/QuickActionsScreen').default,
 
   // ── First run (no spec — product decision) ───────────────────────────────
   Onboarding: () => require('../features/onboarding/screens/OnboardingScreen').default,
@@ -81,6 +113,7 @@ const MODULES = {
   Login: () => require('../features/auth/screens/LoginScreen').default,
   Otp: () => require('../features/auth/screens/OtpScreen').default,
   ForgotPassword: () => require('../features/auth/screens/ForgotPasswordScreen').default,
+  NewPassword: () => require('../features/auth/screens/NewPasswordScreen').default,
   SelectOrg: () => require('../features/auth/screens/SelectOrgScreen').default,
 };
 
@@ -92,17 +125,23 @@ function WrongWorkspaceFallback() {
   return null; // replaced by the real screen in RootNavigator — see that file
 }
 
+const TAB_ROOT_SCREENS = new Set(['Home', 'Time', 'PayHome', 'DocumentsHome', 'MyTasks']);
+
 /** What an unbuilt route renders: the file to create, and nothing else. */
 function placeholderFor(name) {
+  const isTab = TAB_ROOT_SCREENS.has(name);
   function Placeholder() {
     return (
-      <View style={{ flex: 1, backgroundColor: color.bg, alignItems: 'center', justifyContent: 'center', padding: gutter, gap: space[2] }}>
-        <Text style={text.label}>Not built yet</Text>
-        <Text style={[text.h2, { textAlign: 'center' }]}>{name}</Text>
-        <Text style={[text.small, { textAlign: 'center', maxWidth: 300 }]}>
-          Create the screen, then uncomment `{name}` in navigation/screens.js.
-          Its build spec is in NativeRef/40-screens/.
-        </Text>
+      <View style={{ flex: 1, backgroundColor: color.bg }}>
+        {isTab ? <AppTopBar /> : null}
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: gutter, gap: space[2] }}>
+          <Text style={text.label}>Not built yet</Text>
+          <Text style={[text.h2, { textAlign: 'center' }]}>{name}</Text>
+          <Text style={[text.small, { textAlign: 'center', maxWidth: 300 }]}>
+            Create the screen, then uncomment `{name}` in navigation/screens.js.
+            Its build spec is in NativeRef/40-screens/.
+          </Text>
+        </View>
       </View>
     );
   }
@@ -138,6 +177,13 @@ export function screenFor(name) {
   cache.set(name, resolved);
   return resolved;
 }
+
+/**
+ * Is there a real screen behind this route, or would it render the
+ * Placeholder? A shortcut to an unbuilt form is a button to nowhere, so the
+ * quick-actions catalog asks this before it offers one (CLAUDE.md §6).
+ */
+export const isScreenBuilt = (name) => !!MODULES[name];
 
 /** Called by RootNavigator to register the real WrongWorkspace screen. */
 export function registerScreen(name, component) {

@@ -42,15 +42,27 @@ export const isEmptyValue = (v) =>
    days, so it is NEVER printed. A value that is not a multiple of a half is a
    backend bug; it is snapped to the nearest half instead of leaking a decimal.
 
-   ONE rendering, everywhere, and it spells the half out:
-     0.5 → "1 Half Day"      2   → "2 Days"
-     1   → "1 Day"           2.5 → "2 Days and 1 Half Day"
+   ONE rendering, everywhere, and it writes the half as a fraction:
+     0.5 → "1/2 d"           2   → "2d"
+     1   → "1d"              2.5 → "2d and 1/2 d"
 
    Because the phrase carries its own unit, a tile must NOT put a "days"
    caption beside it — say "left", "paid", "unpaid".
 
-   Eight near-identical local copies of this used to disagree with each other;
-   don't write a ninth. */
+   ── WHY THE FRACTION AND NOT "1 Half Day" (2026-10-18) ──────────────────────
+   This file was ported when the web still spelled the half out. The web
+   changed on 2026-10-13 ("the spelled-out form was three times the width in a
+   table cell") and this copy did not follow, so the two products printed the
+   same leave balance two different ways — exactly the drift the dictionary
+   and the shared formatters exist to prevent. The app is the side with LESS
+   room, so the compact form was never arguable here.
+
+   The source of truth is the web's `src/shared/utils/formatUtils.js`. When it
+   moves, this moves. Eight near-identical local copies of this used to
+   disagree with each other; don't write a ninth.
+
+   The spelled-out form still exists for screen readers — `spokenDayCount`,
+   which reads "two and a half days" rather than the letter "d". */
 
 const halvesOf = (val) => {
   const n = parseFloat(val);
@@ -59,19 +71,23 @@ const halvesOf = (val) => {
 };
 
 /**
- * "1 Half Day" / "1 Day" / "2 Days and 1 Half Day".
- * Pass `lower` mid-sentence, where Title Case would read as a proper noun.
+ * "1/2 d" / "1d" / "2d and 1/2 d".
+ *
+ * `lower` is kept because the form used to be Title Case and a dozen call
+ * sites pass it; there is no longer a capital to lower, so it is a no-op.
+ * Leave it in rather than touching every caller to drop it — the web keeps it
+ * for the same reason, and the two signatures must stay identical.
  */
 export function formatDayCount(val, { fallback = 'N/A', lower = false } = {}) {
   const parsed = halvesOf(val);
   if (!parsed) return fallback;
   const { halves, sign } = parsed;
-  let out = '0 Days';
+  let out = '0d';
   if (halves > 0) {
     const whole = Math.floor(halves / 2);
     const parts = [];
-    if (whole > 0) parts.push(`${sign}${whole} ${whole === 1 ? 'Day' : 'Days'}`);
-    if (halves % 2 === 1) parts.push(`${whole > 0 ? '' : sign}1 Half Day`);
+    if (whole > 0) parts.push(`${sign}${whole}d`);
+    if (halves % 2 === 1) parts.push(`${whole > 0 ? '' : sign}1/2 d`);
     out = parts.join(' and ');
   }
   return lower ? out.toLowerCase() : out;
@@ -152,6 +168,8 @@ const MONTHS_LONG = [
 export const MONTHS_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sept', 'Oct', 'Nov', 'Dec'];
 
 export const WEEKDAYS_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+/** The full names, for the one place a day is a heading rather than a column. */
+export const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 /** "2026-09" → "September 2026". Payroll periods are always YYYY-MM strings. */
 export function formatPeriod(periodMonth) {
@@ -216,7 +234,20 @@ export function spokenMoney(val) {
   return `${formatMoney(val, { withSymbol: false })} rupees`;
 }
 
-export const spokenDayCount = (val) => formatDayCount(val, { lower: true, fallback: 'not known' });
+/* "1/2 d" is read out as "one slash two d". This is the one place the
+   spelled-out form survives, and it is never shown on screen. */
+export function spokenDayCount(val) {
+  const parsed = halvesOf(val);
+  if (!parsed) return 'not known';
+  const { halves, sign } = parsed;
+  if (halves === 0) return 'no days';
+  const whole = Math.floor(halves / 2);
+  const half = halves % 2 === 1;
+  const minus = sign ? 'minus ' : '';
+  if (whole === 0) return `${minus}half a day`;
+  const days = `${whole} ${whole === 1 ? 'day' : 'days'}`;
+  return `${minus}${days}${half ? ' and a half' : ''}`;
+}
 
 /* ─── Small helpers ───────────────────────────────────────────────────────── */
 

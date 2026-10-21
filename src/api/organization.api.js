@@ -33,8 +33,18 @@ export const organizationAPI = {
    */
   getMyProfile: () => request('/organizations/me'),
 
-  /** Update the caller's own editable fields. HR-maintained fields are read-only. */
-  updateMyProfile: (payload) => request('/organizations/me', { method: 'PUT', body: JSON.stringify(payload) }),
+  /**
+   * Update the caller's own editable fields. HR-maintained fields are
+   * read-only and the endpoint 400s on any key outside its whitelist, so send
+   * ONLY WHAT CHANGED (features/profile/profileFields.js builds that diff).
+   *
+   * PATCH, not PUT (corrected 2026-10-17). This read PUT, which the contract
+   * suggested; the web app has been calling PATCH against this same route in
+   * production since September, having verified the whitelist field by field,
+   * and a partial body is PATCH semantics anyway — a PUT carrying three keys
+   * is asking the server to treat them as the whole record.
+   */
+  updateMyProfile: (payload) => request('/organizations/me', { method: 'PATCH', body: JSON.stringify(payload) }),
 
   /** Step 1 of the presigned avatar upload → { upload_url }. */
   requestAvatarUpload: (payload) =>

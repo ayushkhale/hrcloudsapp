@@ -14,6 +14,7 @@
 
 import { useCallback, useRef } from 'react';
 import { hasProblems } from '../lib/formGuard';
+import { haptic } from '../ui/haptics';
 
 /**
  * The form's focus registry.
@@ -60,6 +61,9 @@ export function useFormFocus(scrollRef) {
    */
   const focusFirstProblem = useCallback((problems) => {
     if (!hasProblems(problems)) return false;
+    // The press was stopped: say so in the hand as well as on the screen.
+    // Every form in the app comes through here, so this is the one call.
+    haptic('error');
 
     const found = Object.keys(problems)
       .map((key) => ({ key, ...(entries.current[key] || {}) }))

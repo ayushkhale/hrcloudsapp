@@ -15,6 +15,13 @@ module.exports = {
     // House rule §6: apostrophes in UI text are ’ (U+2019), not '.
     'react/no-unescaped-entities': 'error',
 
+    // 2026-10-21: a bulk edit ate the backslashes in a regex. `//documents…`
+    // became a comment, the next line's `function LeaveDocument` turned into
+    // an expression assigned to the const, and `<LeaveDocument>` threw on
+    // every tap of a leave request. Lint passed. These two would have failed.
+    'react/jsx-no-undef': 'error',
+    'no-control-regex': 'error',
+
     'no-restricted-imports': [
       'error',
       {
@@ -57,7 +64,19 @@ module.exports = {
       //
       // If you are tempted to add a file here, ask whether it should instead be
       // using the primitive — that question is the rule doing its job.
-      files: ['src/ui/*.jsx', 'src/ui/*.js', 'src/api/*.js', 'src/state/session.js'],
+      //   navigation/AppDrawer.jsx  the slide-in menu. The rule bans a raw
+      //                 Modal for DATA — a drawer shows none: it is navigation
+      //                 chrome over the tabs, and RecordSheet (a top sheet with
+      //                 a record's fields in it) is not what it wants to be.
+      //   features/attendance/components/PunchPhotoCapture.jsx  the full-screen
+      //                 clock-in camera preview. It shows a PHOTO edge to edge on
+      //                 black, the way AttachmentViewer does — not a record — and
+      //                 a 75% sheet would crop the very thing being checked.
+      files: [
+        'src/ui/*.jsx', 'src/ui/*.js', 'src/api/*.js', 'src/state/session.js',
+        'src/navigation/AppDrawer.jsx',
+        'src/features/attendance/components/PunchPhotoCapture.jsx',
+      ],
       rules: { 'no-restricted-imports': 'off' },
     },
   ],

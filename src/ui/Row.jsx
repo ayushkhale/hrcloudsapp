@@ -138,21 +138,31 @@ export function ListFooter({
   loading = false,
   noun = 'record',
   onEndReachedHint = true,
+  /**
+   * A "See all" link, a Load more button — the footer of a PREVIEW list that
+   * has no count to state. Passing children used to render nothing at all,
+   * silently, because this component only ever drew its own count line.
+   */
+  children,
   style,
 }) {
   const more = page < totalPages;
   const label = total === 1 ? `1 ${noun}` : `${total} ${noun}s`;
+  // A preview list (Home's recent days) passes children and no total. Drawing
+  // "0 records" under five visible rows would be a lie about the list.
+  const showCount = total > 0 || (loading && more) || !children;
 
   return (
     <View style={[{ paddingVertical: space[5], alignItems: 'center', gap: space[1] }, style]}>
-      {loading && more ? (
-        <Text style={text.caption}>Loading more…</Text>
-      ) : (
-        <Text style={text.caption}>{label}</Text>
-      )}
+      {showCount ? (
+        loading && more
+          ? <Text style={text.caption}>Loading more…</Text>
+          : <Text style={text.caption}>{label}</Text>
+      ) : null}
       {more && !loading && onEndReachedHint ? (
         <Text style={text.caption}>Scroll for more</Text>
       ) : null}
+      {children}
     </View>
   );
 }

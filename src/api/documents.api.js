@@ -59,9 +59,11 @@ export const documentsAPI = {
   myGetViewUrl: (id, params) => request(`${ME}/${seg(id)}/view-url${qs(params)}`),
 
   /**
-   * Step 1 of the upload → { id, upload_url }.
-   * body: { document_type, file_name, content_type, file_size,
-   *         document_number?, is_confidential?, expires_on? }
+   * Step 1 of the upload → { document_id, upload_url, required_headers }.
+   * body: { document_type_id, title, file_name, content_type, size_bytes,
+   *         document_number?, issued_on?, expires_on?, is_confidential? }
+   * — the web's live names (DocumentUploadDialog); the older draft here said
+   * `document_type` / `file_size`, which the server does not read.
    */
   myIssueUpload: (payload) => post(ME, payload),
   /** Step 3. MISS THIS and the document is in storage but not on the record. */

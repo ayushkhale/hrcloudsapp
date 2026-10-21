@@ -1,5 +1,5 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// features/auth/screens/ForgotPasswordScreen.jsx
+// features/auth/screens/ForgotPasswordScreen.jsx — step 1 of 3.
 //
 // Spec: NativeRef/40-screens/01-auth.md § ForgotPassword.
 //
@@ -19,16 +19,21 @@
 // account". It navigates to Otp regardless, and somebody who typed the wrong
 // address simply never receives a code.
 //
-// That is why there is no success state here either. A "check your email"
-// panel on THIS screen would have to be shown for an address that will never
-// get a mail — the next screen says it instead, where it is also the place
-// you type the code.
+// ── THE BUTTON DOES NOT COME BACK FROM LOADING ───────────────────────────────
 //
-// ── TWO STEPS, TWO SCREENS ───────────────────────────────────────────────────
+// `setBusy(false)` is NOT in a `finally`. On success this screen stays mounted
+// for the whole push animation, so clearing the flag there made the spinner
+// stop and the button snap back to "Send the code" for a beat before Otp slid
+// over it — which reads as "it failed, press it again". The flag is cleared
+// only on the paths that keep the person here: a validation stop and a caught
+// error. Leaving it set on the way out is correct; the screen is leaving.
 //
-// The new password is NOT asked for here. It is set by the verify call on the
-// Otp screen — there is no separate reset endpoint. Asking for it before the
-// code arrives means typing it twice when the code never comes.
+// ── THREE STEPS, THREE SCREENS ───────────────────────────────────────────────
+//
+// ForgotPassword → Otp → NewPassword. The code and the new password still go
+// to the server in ONE call (there is no separate reset endpoint); the call
+// simply happens on screen 3, which is where both halves of it are known. See
+// NewPasswordScreen's header for how a stale code is handled.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useCallback, useState } from 'react';
@@ -40,17 +45,17 @@ import { authErrorMessage, isRateLimited, rateLimitSeconds } from '../../../lib/
 import { revealer, submitState } from '../../../lib/formGuard';
 import { icons } from '../../../theme/icons';
 import { color, iconSize, space, text } from '../../../theme/tokens';
-import { Button, Field, InlineAlert, LinkButton, TextField } from '../../../ui';
-import { AuthScreen } from '../components/AuthScreen';
+import { Button, Field, LinkButton, TextField, useToast } from '../../../ui';
+import { AuthScreen, StepDots } from '../components/AuthScreen';
 
 const Mail = icons.mail;
 
 export default function ForgotPasswordScreen({ navigation, route }) {
+  const { showToast } = useToast();
   // Pre-filled from Login, so a reset doesn't begin by retyping an address.
   const [identifier, setIdentifier] = useState(route?.params?.identifier || '');
   const [attempted, setAttempted] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [failure, setFailure] = useState(null);
   const [cooldownUntil, setCooldownUntil] = useState(null);
 
   const focus = useFormFocus();
@@ -59,7 +64,7 @@ export default function ForgotPasswordScreen({ navigation, route }) {
 
   const problems = useCallback(() => {
     const found = {};
-    if (!identifier.trim()) found.identifier = 'Enter your email or phone number.';
+    if (!identifier.trim()) found.identifier = 'Enter your email.';
     return found;
   }, [identifier]);
 
@@ -68,11 +73,12 @@ export default function ForgotPasswordScreen({ navigation, route }) {
 
     if (focus.focusFirstProblem(problems())) {
       setAttempted(true);
+      const prob = problems();
+      if (prob.identifier) showToast(prob.identifier, 'error');
       return;
     }
 
     setBusy(true);
-    setFailure(null);
 
     const trimmed = identifier.trim();
 
@@ -88,46 +94,59 @@ export default function ForgotPasswordScreen({ navigation, route }) {
         requestId: data.requestId || data.request_id || null,
         context: data.context || 'forgot-password',
       });
+      // NO setBusy(false) here — see the header.
     } catch (err) {
       // A rate limit is the only failure worth a different shape of answer —
       // the person is doing the right thing, just too often.
       if (isRateLimited(err)) {
         setCooldownUntil(Date.now() + rateLimitSeconds(err) * 1000);
       }
-      setFailure(authErrorMessage(err, 'Couldn’t send the code. Please try again.'));
-    } finally {
+      const msg = authErrorMessage(err, 'Couldn’t send the code. Please try again.');
+      showToast(msg, 'error');
       setBusy(false);
     }
-  }, [busy, secondsLeft, focus, problems, identifier, navigation]);
+  }, [busy, secondsLeft, focus, problems, identifier, navigation, showToast]);
 
   const submit = submitState({ busy, cooldownUntil });
 
   return (
     <AuthScreen
-      title="Reset your password"
-      subtitle="We’ll send a 6-digit code to the email or phone on your account."
+      title="Forgot password?"
+      subtitle="No worries. Enter your registered email and we’ll send you a 6-digit code to reset your password."
       onBack={() => navigation.goBack()}
-      logo={false}
+      logo
+      logoPaddingBottom={space[2]}
+      footer={
+        <View style={{ gap: space[4] }}>
+          <Button
+            title="Send the code"
+            onPress={send}
+            icon={icons.arrowRight}
+            iconRight
+            loading={busy}
+            fullWidth
+            size="lg"
+            disabled={submit.disabled}
+            disabledReason={
+              secondsLeft > 0 ? `Try again in ${secondsLeft}s.` : submit.disabledReason
+            }
+          />
+          <StepDots step={1} />
+        </View>
+      }
     >
-
-      {failure ? (
-        <InlineAlert tone="rose" style={{ marginBottom: space[4] }}>
-          {failure}
-        </InlineAlert>
-      ) : null}
-
       <Field
-        label="Email or phone"
+        label="Email"
         wide
         error={show(problems().identifier)}
         register={focus.register('identifier')}
       >
         <TextField
           value={identifier}
-          onChangeText={(v) => { setFailure(null); setIdentifier(v); }}
+          onChangeText={(v) => setIdentifier(v ? v.toLowerCase() : v)}
           kind="email"
-          autoComplete="username"
-          placeholder="you@company.com or 9876543210"
+          autoComplete="email"
+          placeholder="you@company.com"
           left={<Mail size={iconSize.md} color={color.textMuted} />}
           editable={!busy}
           returnKeyType="go"
@@ -135,30 +154,14 @@ export default function ForgotPasswordScreen({ navigation, route }) {
         />
       </Field>
 
-      <View style={{ marginTop: space[5] }}>
-        <Button
-          title="Send the code"
-          onPress={send}
-          icon={icons.arrowRight}
-          iconRight
-          loading={busy}
-          fullWidth
-          size="lg"
-          disabled={submit.disabled}
-          disabledReason={
-            secondsLeft > 0 ? `Try again in ${secondsLeft}s.` : submit.disabledReason
-          }
-        />
-      </View>
-
-      <View style={{ alignItems: 'center', marginTop: space[4] }}>
+      <View style={{ alignItems: 'center', marginTop: space[3] }}>
         <LinkButton title="Back to sign in" onPress={() => navigation.goBack()} />
       </View>
 
       <Text
         style={[
           text.caption,
-          { textAlign: 'center', marginTop: space[6], color: color.textMuted },
+          { textAlign: 'center', marginTop: space[3], color: color.textMuted },
         ]}
       >
         If an account exists for that address, the code is on its way.

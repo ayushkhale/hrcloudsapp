@@ -40,6 +40,7 @@ import { color, elevate, gutter, layer, radius, space, text } from '../theme/tok
 import { Button } from './Button';
 import { TextField } from './TextField';
 import { FieldError } from './InlineAlert';
+import { ToastLayer } from './Toast';
 
 /**
  * @param {object} props
@@ -144,6 +145,8 @@ export function ReasonPrompt({
           </Pressable>
         </Pressable>
       </KeyboardAvoidingView>
+      {/* Toasts draw ABOVE this window while it is the top one (ui/Toast.jsx). */}
+      <ToastLayer />
     </Modal>
   );
 }

@@ -19,5 +19,10 @@ import 'react-native-gesture-handler';
 import { AppRegistry } from 'react-native';
 import App from './src/App';
 import { name as appName } from './app.json';
+import { registerPushBackgroundHandler } from './src/features/notifications/push';
+
+// FCM background/quit handler, registered BEFORE React mounts (Firebase's rule).
+// A no-op until the native Firebase module is built in — see push.js.
+registerPushBackgroundHandler();
 
 AppRegistry.registerComponent(appName, () => App);

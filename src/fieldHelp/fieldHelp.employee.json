@@ -213,6 +213,29 @@
         }
       }
     },
+    "attendance.comp_off": {
+      "kind": "list",
+      "description": "Earned leave (comp-off) balance and ledger — My Time › Earned Leave",
+      "workspaces": [
+        "employee"
+      ],
+      "fields": {
+        "available_days": {
+          "hint": "Earned days you can still use, after anything already booked or lapsed.",
+          "askMaya": {
+            "enabled": true,
+            "question": "How is my available earned-leave balance worked out, and how is it different from my normal leave balance?"
+          }
+        },
+        "expires_on": {
+          "hint": "The last day you can use this earned day. After that it lapses and can’t be claimed back.",
+          "askMaya": {
+            "enabled": true,
+            "question": "What is earned leave in HR Clouds, how do I earn a day, and what happens if I don't use it before it expires?"
+          }
+        }
+      }
+    },
     "leaves.balances": {
       "kind": "data",
       "description": "Leave balance cards (/leaves/my-balances) — one ⓘ on the “Leave Balances” heading covers “given so far” (`total_accrued`) on every card",
@@ -498,6 +521,38 @@
           "askMaya": {
             "enabled": true,
             "question": "Who counts as an active member of the organisation in HR Clouds?"
+          }
+        }
+      }
+    },
+    "tasks.discussion": {
+      "kind": "form",
+      "description": "The discussion on one task — My Tasks › a task › Discussion (TaskDiscussion)",
+      "workspaces": [
+        "employee"
+      ],
+      "fields": {
+        "is_progress_update": {
+          "hint": "Marks this update as a step finished, not just a chat. Your reviewer can filter the thread down to these to see progress at a glance.",
+          "askMaya": {
+            "enabled": true,
+            "question": "What does marking a task comment as a milestone do, and when should I use it?"
+          }
+        }
+      }
+    },
+    "attendance.my_devices": {
+      "kind": "screen",
+      "description": "My Registered Devices — the phones/computers you clock in from (DevicesScreen)",
+      "workspaces": [
+        "employee"
+      ],
+      "fields": {
+        "effective_mode": {
+          "hint": "A registered device proves a clock-in came from a phone or computer you hold. Your organisation decides whether one is required, watched, or not asked for.",
+          "askMaya": {
+            "enabled": true,
+            "question": "What is a registered device for clocking in, and what happens if my organisation requires one but I don’t have one set up?"
           }
         }
       }

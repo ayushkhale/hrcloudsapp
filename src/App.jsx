@@ -38,17 +38,27 @@
 // wrong. Both are "people come from ONE place" (CLAUDE.md §7).
 // ─────────────────────────────────────────────────────────────────────────────
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { StatusBar } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import BootSplash from 'react-native-bootsplash';
 import { AuthProvider } from './state/AuthContext';
 import { ToastProvider } from './ui/Toast';
 import { ConfirmProvider } from './ui/ConfirmProvider';
 import { RootNavigator } from './navigation/RootNavigator';
+import { LottieSplash } from './features/splash/LottieSplash';
 import { color } from './theme/tokens';
 
 export default function App() {
+  // The native BootSplash hands straight over to the Lottie animation — no gap,
+  // no flash of the app underneath (features/splash/LottieSplash.jsx).
+  const [splashDone, setSplashDone] = useState(false);
+
+  useEffect(() => {
+    BootSplash.hide({ fade: false }).catch(() => {});
+  }, []);
+
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
@@ -65,6 +75,7 @@ export default function App() {
             </AuthProvider>
           </ConfirmProvider>
         </ToastProvider>
+        {!splashDone ? <LottieSplash onDone={() => setSplashDone(true)} /> : null}
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

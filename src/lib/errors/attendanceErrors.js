@@ -80,10 +80,48 @@ const ATTENDANCE_ERROR_MESSAGES = {
   MANAGER_NOT_FOUND: "That manager could not be found.",
   NOT_FOUND: RECORD_GONE,
 
-  // §3.5 Devices (Phase 8 — surfaced only if device screens are used)
+  // §3.5 Devices (Phase 8 — surfaced only if device screens are used).
+  // These three are about ORGANISATION-OWNED BIOMETRIC TERMINALS (ZKTeco,
+  // Matrix, eSSL wall units keyed by `api_key_hash`), which is a different
+  // system from the employee device trust below. Don't merge the two blocks.
   UNAUTHORIZED_DEVICE: "The device API key is invalid or the device is inactive.",
   MAPPING_NOT_FOUND: "This device employee ID isn't mapped to anyone yet.",
   MAPPING_ALREADY_EXISTS: "This device employee ID is already mapped.",
+
+  /* ── Device trust, on the employee's own phone (2026-10-17) ───────────────
+     md_attendance/8_device_trust_api_analysis.md §Errors. None of these were
+     mapped, so the server's own wording reached the screen — somebody trying
+     to clock in was told "a registered trusted device is required", which
+     names the mechanism and not one thing they can do about it (§6).
+
+     Every one of them is a 403/400/409/422 and NEVER a 401, deliberately: a
+     401 would make the client discard the session and bounce to sign-in, so
+     a device problem must not be mistaken for an expired session. */
+  ATTENDANCE_DEVICE_REQUIRED: "This phone isn't set up for clocking in yet. Open My Registered Devices to add it, or ask HR to.",
+  ATTENDANCE_DEVICE_REVOKED: "This phone's access to clocking in was removed. Ask HR to register it again.",
+  ATTENDANCE_DEVICE_SUSPENDED: "HR has paused clocking in from this phone. Ask them to turn it back on.",
+  DEVICE_VERIFICATION_FAILED: "We couldn't confirm this is the phone that was registered. Try again, and tell HR if it keeps happening.",
+  // Challenge expired, reused, unknown, or issued for another action — all
+  // one code on purpose, so the error can't be used to probe the server.
+  DEVICE_CHALLENGE_INVALID: "That took too long to go through. Try again.",
+  DEVICE_LIMIT_REACHED: "You've registered as many devices as your organisation allows. Remove one in My Registered Devices first.",
+  DEVICE_ALREADY_REGISTERED: "This phone is already registered — you don't need to add it again.",
+  DEVICE_NOT_HARDWARE_BOUND: "This phone stores its passkey in a cloud keychain, which your organisation doesn't accept for clocking in. Ask HR what to use instead.",
+  DEVICE_NOT_FOUND: RECORD_GONE,
+  DEVICE_INVALID_STATE_TRANSITION: "That device can't be changed to that state. Refresh to see where it stands now.",
+  DEVICE_TRUST_MISCONFIGURED: "Device checks aren't set up on the server, so clocking in is blocked. This one is for your IT team.",
+
+  /* The PHONE's side of the same check (features/devices/deviceKey.js).
+     Not server codes: the app raises them in the server's error shape so a
+     punch that couldn't be signed reads through this one map like any other. */
+  DEVICE_UNLOCK_CANCELLED: "Clocking in needs your fingerprint or screen lock. Try again and confirm it.",
+  DEVICE_UNLOCK_LOCKED_OUT: "Too many tries. Unlock your phone with its PIN or pattern, then try again.",
+  DEVICE_UNLOCK_UNAVAILABLE: "Set up a fingerprint or screen lock on this phone to clock in with it.",
+  DEVICE_KEY_RESET: "This phone's security changed (a new fingerprint, say), so it needs registering again. Open My Registered Devices.",
+
+  // Registration's own OTP — a different context from sign-in's, same words.
+  OTP_INVALID: "That code isn't right. Send a new code and try again.",
+  OTP_EXPIRED: "That code has expired. Send a new one.",
 };
 
 // Joi / shape rejections: the server `message` is more specific than any copy we could write.
@@ -127,7 +165,12 @@ export function attendanceErrorMessage(err, fallback = "Something went wrong. Pl
     return "Can't reach the server. Check your internet connection and try again.";
   }
   const message = typeof err?.message === "string" ? err.message : "";
-  if (message && !/^Request failed: \d+$/.test(message)) return message;
+  // `isGenericMessage` is set by api/client.js when `.message` is OURS rather
+  // than the server's. It used to be decided by `/^Request failed: \d+$/`, a
+  // shape the client has never produced ("Request failed (400 Bad Request)"),
+  // so a refusal with an empty body showed that developer string in a red
+  // toast. The regex stays as belt-and-braces for errors built elsewhere.
+  if (message && !err?.isGenericMessage && !/^Request failed\b/.test(message)) return message;
   return fallback;
 }
 

@@ -26,6 +26,14 @@ export function qs(params = {}) {
   Object.entries(params || {}).forEach(([key, value]) => {
     if (value === undefined || value === null || value === '') return;
     if (typeof value === 'number' && Number.isNaN(value)) return;
+    // Arrays repeat the key (`status=open&status=overdue`) — what the API
+    // reads, and what the web's client sends. String(array) would send one
+    // comma-joined value the server matches against nothing.
+    if (Array.isArray(value)) {
+      value.filter((v) => v !== undefined && v !== null && v !== '')
+        .forEach((v) => parts.push(`${encodeURIComponent(key)}=${encodeURIComponent(String(v))}`));
+      return;
+    }
     parts.push(`${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`);
   });
   return parts.length ? `?${parts.join('&')}` : '';
@@ -54,6 +62,13 @@ export const attendanceAPI = {
    *
    * Errors: ALREADY_CLOCKED_IN (409), PREVIOUS_SHIFT_OPEN (409),
    *         PERIOD_LOCKED (403 — not DATE_LOCKED, which never existed).
+   */
+  /**
+   * Also carries the clock-in PHOTO, top-level like the coordinates:
+   * `photo` ("data:image/jpeg;base64,…", ~60–120 KB, location stamped on it)
+   * and `photo_captured_at` (ISO). The backend does not read them yet and
+   * strips them; PunchCard retries without them if they are ever refused.
+   * Spec for the backend: NativeRef/00-plan/08-clock-in-photo.md.
    */
   clockIn: (payload) => post('/attendance/clock-in', payload),
 
@@ -153,6 +168,59 @@ export const attendanceAPI = {
    */
   getMyCompOffs: (params = {}) => request(`/attendance/comp-offs/mine${qs(params)}`),
   getMyCompOffSummary: () => request('/attendance/comp-offs/mine/summary'),
+
+  // ── Device trust & my trusted devices (D1–D7) ──────────────────────────────
+  // What the organisation asks for at punch time, and the devices this person
+  // has registered. Since 2026-10-21 the app REGISTERS this phone too, as a
+  // `device_key` credential — a Keystore key, not the browser's WebAuthn
+  // (features/devices/deviceKey.js) — and signs every enforced punch with it.
+  //
+  // The context read degrades to "off" on a 404/403 (an older server, or the
+  // feature switched off) — attendance then behaves exactly as before. The
+  // caller treats a thrown error as absent, never as a crash.
+
+  /** What the org requires right now: `{ enabled, effective_mode, enforce_from,
+   *  max_active_devices, my_active_device_count, registration_approval, … }`. */
+  getDeviceTrustContext: () => request('/attendance/device-trust/context'),
+
+  /** My registered devices. Never carries `public_key`, `credential_id` or `sign_count`. */
+  getMyTrustedDevices: () => request('/attendance/trusted-devices'),
+
+  /** Rename only — `device_name` is the one owner-editable field. */
+  renameTrustedDevice: (id, payload) =>
+    request(`/attendance/trusted-devices/${seg(id)}`, { method: 'PATCH', body: JSON.stringify(payload) }),
+
+  /**
+   * Shut a device off for good (D7). Self-revoke takes NO reason — the server
+   * writes `user_revoked` itself. Idempotent (revoking a revoked device is a
+   * 200) and IRREVERSIBLE: the same screen lock can never be registered again.
+   */
+  revokeMyTrustedDevice: (id) => post(`/attendance/trusted-devices/${seg(id)}/revoke`),
+
+  /**
+   * D2 — a single-use challenge for one punch. `{ operation, credential_type }`
+   * → `{ required: false }` (nothing to sign), `{ required: true,
+   * registration_required: true }` (no device yet), or a challenge with a
+   * `device_key` block carrying EVERY field the canonical bytes need. Never
+   * cache, reuse or retry one: it dies on first submit, success or failure.
+   * Rate limited 60/h; the two fast paths are free.
+   */
+  getDeviceChallenge: (payload) => post('/attendance/device-trust/challenge', payload),
+
+  /**
+   * D3 — open enrollment. Sends an OTP to the person's email and mints a
+   * registration challenge that dies in ~180s. Rate limited 5/h.
+   * 409 DEVICE_LIMIT_REACHED carries `details.devices[]`: re-call with
+   * `replace_device_id`.
+   */
+  startDeviceRegistration: (payload) => post('/attendance/trusted-devices/registration/start', payload),
+
+  /**
+   * D4 — OTP + the SPKI public key, one transaction. The possession
+   * signature is OPTIONAL for device_key (ATTENDANCE_API_CONTRACT §11.2) and
+   * this app does not send one — see deviceKey.js for why.
+   */
+  completeDeviceRegistration: (payload) => post('/attendance/trusted-devices/registration/complete', payload),
 };
 
 export default attendanceAPI;

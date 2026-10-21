@@ -42,6 +42,7 @@
 import { useCallback } from 'react';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../state/AuthContext';
+import { navigationRef } from './navigationRef';
 
 /**
  * workspace → key → [tabName, screenName].
@@ -54,38 +55,66 @@ export const ROUTES = {
     // Home
     home: ['HomeTab', 'Home'],
     dayLog: ['HomeTab', 'DayLog'],
+    notifications: ['HomeTab', 'Notifications'],
 
-    // Time
-    attendance: ['TimeTab', 'Time'],
-    corrections: ['TimeTab', 'Time'],       // same screen, a TabStrip tab
-    overtime: ['TimeTab', 'Time'],
-    earnedLeave: ['TimeTab', 'Time'],
+    // Time — one screen, and the third element SELECTS ITS SECTION. The web's
+    // MY TIME dropdown has seven entries and they are seven sections of this
+    // one screen, so a drawer row has to arrive with the right one open;
+    // landing on Attendance every time is how the other six became invisible.
+    attendance: ['TimeTab', 'Time', { section: 'attendance' }],
+    workLocations: ['TimeTab', 'Time', { section: 'locations' }],
+    corrections: ['TimeTab', 'Time', { section: 'corrections' }],
+    overtime: ['TimeTab', 'Time', { section: 'overtime' }],
+    flags: ['TimeTab', 'Time', { section: 'flags' }],
+    earnedLeave: ['TimeTab', 'Time', { section: 'earned' }],
 
-    // Leave
-    leaves: ['LeaveTab', 'Leave'],
-    holidays: ['LeaveTab', 'Holidays'],
+    // Tasks — matching web MY TASKS. Overdue is a SECTION of My Tasks, not a
+    // screen of its own (the web's "Overdue Tasks" route folded in), so the
+    // drawer row carries the section the way the My Pay rows do.
+    myTasks: ['HomeTab', 'MyTasks'],
+    overdueTasks: ['HomeTab', 'MyTasks', { section: 'overdue' }],
 
-    // Pay — the web's MY PAY section, key for key
+    // Leave — under Time now, as it is on the web (sidebar MY TIME → My
+    // Leaves). See tabs.employee.js for why it lost its own tab.
+    leaves: ['TimeTab', 'Time', { section: 'leave' }],
+    holidays: ['TimeTab', 'Time', { section: 'holidays' }],
+
+    // Pay — the web's MY PAY section, key for key. Every one of these is a
+    // SECTION of My Pay, not a screen of its own (2026-10-18), so each
+    // carries the section it wants and PayScreen clears the param after
+    // applying it.
     pay: ['PayTab', 'PayHome'],
-    salary: ['PayTab', 'Salary'],
-    payslips: ['PayTab', 'Payslips'],
-    claims: ['PayTab', 'Claims'],
-    loans: ['PayTab', 'Loans'],
-    tax: ['PayTab', 'Tax'],
+    salary: ['PayTab', 'PayHome', { section: 'salary' }],
+    payslips: ['PayTab', 'PayHome', { section: 'payslips' }],
+    bankAccount: ['PayTab', 'PayHome', { section: 'bank' }],
+    claims: ['PayTab', 'PayHome', { section: 'claims' }],
+    benefits: ['PayTab', 'PayHome', { section: 'benefits' }],
+    loans: ['PayTab', 'PayHome', { section: 'loans' }],
+    extras: ['PayTab', 'PayHome', { section: 'extras' }],
+    tax: ['PayTab', 'PayHome', { section: 'tax' }],
 
     // Documents — the web's MY DOCUMENTS section
-    documentsHome: ['MoreTab', 'DocumentsHome'],
-    documents: ['MoreTab', 'MyDocuments'],
-    companyDocuments: ['MoreTab', 'CompanyDocuments'],
-    documentRequests: ['MoreTab', 'DocumentRequests'],
-    forms: ['MoreTab', 'Forms'],
+    // One screen with four sections since 2026-10-20 — the same shape as My
+    // Time and My Pay (features/documents/screens/DocumentsScreen.jsx).
+    documentsHome: ['DocsTab', 'DocumentsHome'],
+    documents: ['DocsTab', 'DocumentsHome', { section: 'personal' }],
+    companyDocuments: ['DocsTab', 'DocumentsHome', { section: 'company' }],
+    documentRequests: ['DocsTab', 'DocumentsHome', { section: 'requests' }],
+    forms: ['DocsTab', 'DocumentsHome', { section: 'forms' }],
 
-    // Company and self
-    company: ['MoreTab', 'Company'],
-    orgChart: ['MoreTab', 'OrgChart'],
-    directory: ['MoreTab', 'Directory'],
-    profile: ['MoreTab', 'Profile'],
-    settings: ['MoreTab', 'Settings'],
+    // Registered devices — the web's MY REGISTERED DEVICES. One pushed screen
+    // here (this device + the rest), not the web's two tabs (user, 2026-10-20).
+    devices: ['HomeTab', 'Devices'],
+    devicesThis: ['HomeTab', 'Devices', { view: 'this' }],
+    devicesAll: ['HomeTab', 'Devices', { view: 'all' }],
+
+    // Company and self — in HomeTab's stack, because the drawer that opens
+    // them is mounted inside HomeScreen (see tabs.employee.js).
+    company: ['HomeTab', 'Company'],
+    orgChart: ['HomeTab', 'OrgChart'],
+    directory: ['HomeTab', 'Directory'],
+    profile: ['HomeTab', 'Profile'],
+    settings: ['HomeTab', 'Settings'],
   },
 };
 
@@ -136,8 +165,16 @@ export function useGo() {
       if (__DEV__) console.log('[routes] go() called with no destination — the link should have been hidden.');
       return;
     }
-    const [tab, screen] = target;
-    navigation.navigate(tab, { screen, params });
+    // A destination may carry its OWN params as a third element — which
+    // section of My Time to open, which tab of the devices page. The caller's
+    // params win, so a row can still override one.
+    const [tab, screen, defaults] = target;
+    const navParams = { screen, params: { ...defaults, ...params } };
+    if (navigationRef.isReady()) {
+      navigationRef.navigate(tab, navParams);
+    } else {
+      navigation.navigate(tab, navParams);
+    }
   }, [navigation]);
 }
 

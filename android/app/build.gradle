@@ -1,6 +1,9 @@
 apply plugin: "com.android.application"
 apply plugin: "org.jetbrains.kotlin.android"
 apply plugin: "com.facebook.react"
+// Firebase: processes app/google-services.json. Must sit after the Android
+// application plugin.
+apply plugin: "com.google.gms.google-services"
 
 // ---------------------------------------------------------------------------
 // react-native-config - compiles .env into the native build (BuildConfig and
@@ -38,10 +41,6 @@ react {
     // cliFile = file("../../node_modules/react-native/cli.js")
 
     /* Variants */
-    //   The list of variants to that are debuggable. For those we're going to
-    //   skip the bundling of the JS bundle and the assets. Default is "debug", "debugOptimized".
-    //   If you add flavors like lite, prod, etc. you'll have to list your debuggableVariants.
-    // debuggableVariants = ["liteDebug", "liteDebugOptimized", "prodDebug", "prodDebugOptimized"]
 
     /* Bundling */
     //   A list containing the node command and its flags. Default is just 'node'.
@@ -135,6 +134,11 @@ android {
 dependencies {
     // The version of react-native is set by the React Native Gradle Plugin
     implementation("com.facebook.react:react-android")
+
+    // BiometricPrompt for the attendance device key (com.hrclouds.devicekey).
+    // The same version react-native-keychain already pulls in, so it costs
+    // nothing extra.
+    implementation("androidx.biometric:biometric:1.1.0")
 
     if (hermesEnabled.toBoolean()) {
         implementation("com.facebook.react:hermes-android")

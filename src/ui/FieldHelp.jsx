@@ -46,6 +46,7 @@
 import React, { useState } from 'react';
 import { Modal, Pressable, Text, View } from 'react-native';
 import { getFieldHelp } from '../fieldHelp/fieldHelpMeta';
+import { askMaya, mayaAvailable } from '../features/maya/mayaBridge';
 import { useAuth } from '../state/AuthContext';
 import { icons } from '../theme/icons';
 import {
@@ -74,6 +75,9 @@ export function FieldHelp({ surface, field, tone = 'default', overlay = false, o
 
   const Info = icons.info;
   const fg = tone === 'onDark' ? color.heroBadgeIcon : color.textMuted;
+  // Every ⓘ reaches Maya through the bridge by default — no screen has to thread
+  // a handler. The link is only offered when Maya can actually take it.
+  const ask = onAskMaya || ((q) => askMaya({ question: q }));
 
   return (
     <>
@@ -106,7 +110,8 @@ export function FieldHelp({ surface, field, tone = 'default', overlay = false, o
         onClose={() => setOpen(false)}
         hint={help.hint}
         question={help.question}
-        onAskMaya={onAskMaya}
+        onAskMaya={ask}
+        canAsk={mayaAvailable()}
       />
     </>
   );
@@ -125,7 +130,7 @@ export function FieldHelp({ surface, field, tone = 'default', overlay = false, o
  * app's anchored popover needed four fallback positions and still clipped
  * inside a dialog.
  */
-function HelpPopover({ visible, onClose, hint, question, onAskMaya }) {
+function HelpPopover({ visible, onClose, hint, question, onAskMaya, canAsk = true }) {
   const Maya = icons.maya;
 
   return (
@@ -165,7 +170,7 @@ function HelpPopover({ visible, onClose, hint, question, onAskMaya }) {
           <Text accessibilityRole="header" style={text.label}>What this means</Text>
           <Text style={[text.body, { color: color.textBody }]}>{hint}</Text>
 
-          {question ? (
+          {question && canAsk ? (
             <View style={{ gap: space[2], borderTopWidth: 1, borderTopColor: color.borderSubtle, paddingTop: space[3] }}>
               {/* The question is STATIC and conceptual — never a name, an
                   amount or an id (CLAUDE.md §10). It is shown before it is

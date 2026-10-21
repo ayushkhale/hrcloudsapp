@@ -11,26 +11,39 @@
 // A sixth means the grouping is wrong. The web employee sidebar has five
 // sections and 24 screens; they map onto five tabs as below.
 //
-// ── WHY LEAVE IS ITS OWN TAB ─────────────────────────────────────────────────
+// ── THE ORDER, AND WHY HOME IS IN THE MIDDLE (2026-10-17) ────────────────────
 //
-// On the web it sits under MY TIME. It is the SECOND MOST-USED employee action
-// after punching, and burying it a level costs a tap every single time —
-// whereas everything else under MY TIME is checked occasionally, not used
-// daily.
+//   Time · Pay · HOME · Docs · Tasks
 //
-// The SCREEN is identical to the web screen, so §2 parity holds: only its
-// reachability improves. This is the one deliberate divergence from the sidebar
-// grouping and it is recorded here so nobody "fixes" it back.
+// Home is the third of five because the centre slot is the one a thumb
+// reaches without moving the hand, and Home is where the punch button is.
+// The two most-opened sections sit on either side of it; the two that are
+// read rather than used sit outside them.
 //
-// ── WHY PayTab OPENS ON A MENU ───────────────────────────────────────────────
+// This replaced Home · Time · Leave · Pay · More. What changed and why:
 //
-// Five pay screens with no natural default. Payslips is the most-used, but
-// opening straight into it hides the other four behind a strip the person has
-// to notice. A short menu of five cards, each with a one-line summary from the
-// data ("September · ₹87,432"), is faster to scan and self-documenting.
+//   • LEAVE lost its tab and moved INSIDE My Time, which is where the web
+//     sidebar keeps it (MY TIME → My Leaves). It had a tab while there was a
+//     slot going spare; Docs and Tasks are whole sections of the web menu and
+//     outrank one screen.
+//   • MORE is gone. A tab whose job is "everything else" is a menu with a tab
+//     bar slot, and this app already has a real menu — AppDrawer, which lists
+//     every section of the web sidebar. Its screens moved into HomeTab's
+//     stack, because that is where the drawer is mounted.
+//   • DOCS and TASKS are the web's MY DOCUMENTS and MY TASKS sections, each
+//     of which was previously reachable only through the drawer.
 //
-// Time, by contrast, DOES have a natural default (Attendance), so it opens
-// there with a TabStrip for the rest.
+// ── WHY PayTab IS ONE SCREEN, LIKE TimeTab (2026-10-18) ─────────────────────
+//
+// It used to be a menu of five cards that each pushed a screen. Five routes
+// is five native headers and five back presses for figures people read
+// AGAINST each other — what reached the bank, what is still owed, tax so far.
+// My Pay now has the same shape as My Time: one root, a grid of eight
+// sections, the body swapping underneath. See
+// 00-plan/07-pay-screen-plan.md for the decision, and PayScreen.jsx's header
+// for the mapping from the web's sidebar.
+//
+// Payslips is the natural default, the way Attendance is for Time.
 //
 // ── THE TITLE RULE ───────────────────────────────────────────────────────────
 //
@@ -53,11 +66,27 @@ export const EMPLOYEE_TABS = [
   {
     name: 'HomeTab',
     label: 'Home',
-    icon: 'dashboard',
+    icon: 'home',
     screens: [
-      // No native header: PageHeader IS the header on this one screen.
       { name: 'Home', title: 'Home', headerShown: false },
-      { name: 'DayLog', title: 'That day' },
+      { name: 'DayLog', title: 'Attendance Log' },
+      { name: 'Notifications', title: 'Notifications' },
+      { name: 'NotificationDetail', title: 'Notification' },
+      { name: 'Profile', title: 'My Profile' },
+      { name: 'Settings', title: 'Settings' },
+      { name: 'QuickActions', title: 'Quick actions' },
+      { name: 'Company', title: 'Company Profile' },
+      { name: 'OrgChart', title: 'Org Chart' },
+      { name: 'Directory', title: 'Directory' },
+      { name: 'Devices', title: 'My Registered Devices' },
+      { name: 'RegisterDevice', title: 'Register this phone', presentation: 'modal' },
+      // Overdue is a SECTION of My Tasks, not a route — the same shape as My
+      // Pay's sections (routes.js `overdueTasks` carries { section: 'overdue' }).
+      // A PUSHED screen with the native header and a back button (user,
+      // 2026-10-20) — it is not a tab, so it must not wear the tab roots'
+      // greeting bar, and the tab bar hides under it (AppTabs).
+      { name: 'MyTasks', title: 'My Tasks' },
+      { name: 'TaskDetail', title: 'Task' },
     ],
   },
   {
@@ -65,24 +94,12 @@ export const EMPLOYEE_TABS = [
     label: 'Time',
     icon: 'clock',
     screens: [
-      // One screen with a TabStrip: Attendance · Corrections · Overtime ·
-      // Flags · Earned Leave. Five stack screens would mean five headers and
-      // five back presses for things people compare against each other.
-      { name: 'Time', title: 'My Time' },
-      { name: 'DayLog', title: 'That day' },
+      { name: 'Time', title: 'My Time', headerShown: false },
+      { name: 'DayLog', title: 'Attendance Log' },
       { name: 'CorrectionForm', title: 'Request a correction', presentation: 'modal' },
+      { name: 'ApplyLeave', title: 'Apply for leave', presentation: 'modal' },
       { name: 'OvertimeForm', title: 'Claim overtime', presentation: 'modal' },
       { name: 'EarnedLeaveForm', title: 'Use earned leave', presentation: 'modal' },
-    ],
-  },
-  {
-    name: 'LeaveTab',
-    label: 'Leave',
-    icon: 'calendar',
-    screens: [
-      { name: 'Leave', title: 'My Leave' },
-      { name: 'ApplyLeave', title: 'Apply for leave', presentation: 'modal' },
-      { name: 'Holidays', title: 'Holidays' },
     ],
   },
   {
@@ -90,41 +107,23 @@ export const EMPLOYEE_TABS = [
     label: 'Pay',
     icon: 'rupee',
     screens: [
-      { name: 'PayHome', title: 'My Pay' },
-      { name: 'Salary', title: 'My Salary' },
+      { name: 'PayHome', title: 'My Pay', headerShown: false },
       { name: 'BankAccount', title: 'Bank account', presentation: 'modal' },
-      { name: 'Payslips', title: 'Payslips' },
-      { name: 'Claims', title: 'Claims & Benefits' },
       { name: 'ClaimForm', title: 'Make a claim', presentation: 'modal' },
-      { name: 'Loans', title: 'Loans & Advances' },
-      { name: 'Tax', title: 'Tax & Investments' },
       { name: 'DeclarationForm', title: 'Declare an investment', presentation: 'modal' },
     ],
   },
   {
-    name: 'MoreTab',
-    label: 'More',
-    icon: 'menu',
-    // The ONLY tab with a badge, and only for things needing the person's
-    // ACTION: company documents awaiting acknowledgement, and document
-    // requests HR has made of them.
-    //
-    // NOT for their own pending corrections or leave. Those are waiting on
-    // somebody else, and a badge there nags about something they cannot act on.
+    name: 'DocsTab',
+    label: 'Docs',
+    icon: 'folder',
     badge: 'inbox',
     screens: [
-      { name: 'More', title: 'More' },
-      { name: 'DocumentsHome', title: 'My Documents' },
-      { name: 'MyDocuments', title: 'My Documents' },
+      { name: 'DocumentsHome', title: 'My Documents', headerShown: false },
+      // Personal, Company, Requests and Forms are SECTIONS of My Documents,
+      // like the sections of My Time and My Pay. Only the upload form is a
+      // route, because a record being WRITTEN is a page.
       { name: 'UploadDocument', title: 'Upload a document', presentation: 'modal' },
-      { name: 'CompanyDocuments', title: 'Company Documents' },
-      { name: 'DocumentRequests', title: 'Document Requests' },
-      { name: 'Forms', title: 'Forms & Templates' },
-      { name: 'Company', title: 'Company Profile' },
-      { name: 'OrgChart', title: 'Org Chart' },
-      { name: 'Directory', title: 'Directory' },
-      { name: 'Profile', title: 'My Profile' },
-      { name: 'Settings', title: 'Settings' },
     ],
   },
 ];

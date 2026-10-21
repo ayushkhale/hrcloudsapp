@@ -15,14 +15,17 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useState } from 'react';
-import { FlatList, Modal, Pressable, Switch, Text, View } from 'react-native';
+import { Pressable, Switch, Text, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { BottomSheetFlatList } from '@gorhom/bottom-sheet';
 import { icons } from '../theme/icons';
 import {
-  color, elevate, gutter, iconSize, radius, space, text,
+  color, gutter, iconSize, space, text,
 } from '../theme/tokens';
 import { PickerBox } from './TextField';
 import { EmptyState } from './EmptyState';
+import { haptic } from './haptics';
+import { SheetShell } from './SheetShell';
 
 /**
  * @param {object} props
@@ -57,7 +60,7 @@ export function Select({
         disabled={disabled}
         registerFocus={registerFocus}
         accessibilityLabel={selected ? `${title}: ${selected.label}` : placeholder}
-        icon={icons.chevronDown}
+        // No leading chevron: PickerBox draws the trailing one (2026-10-20).
         style={style}
       />
 
@@ -75,6 +78,7 @@ export function Select({
               accessibilityState={{ selected: isSelected, disabled: !!opt.disabled }}
               disabled={opt.disabled}
               onPress={() => {
+                haptic('selection');
                 onChange(opt.value);
                 setOpen(false);
               }}
@@ -107,6 +111,10 @@ export function Select({
 /**
  * The sheet the pickers share. Exported because PersonSelect and the work-mode
  * picker use the same frame — one sheet shape for every choice in the app.
+ *
+ * It drags and springs like every other sheet (ui/SheetShell.jsx). The list is
+ * a BottomSheetFlatList, not a FlatList: that is what makes a downward pull at
+ * the top of a long list of options close the picker instead of fighting it.
  */
 export function OptionSheet({
   visible,
@@ -117,23 +125,26 @@ export function OptionSheet({
   header,
   emptyMessage = 'Nothing to choose from.',
   keyOf = (item, i) => String(item?.value ?? item?.id ?? i),
+  rowHeight = 58,
 }) {
   const insets = useSafeAreaInsets();
+  const { height: windowHeight } = useWindowDimensions();
   const Close = icons.close;
 
+  // FIT THE OPTIONS (2026-10-20): three choices opened a 75% panel of blank.
+  // The list is virtualised and cannot measure itself, so the detent is worked
+  // out from the row count — grab + title row + rows + a search header if
+  // there is one + the safe area and some air — and capped at the 75% ceiling.
+  const count = Math.max(1, data.length);
+  const wanted = 22 + 60 + (header ? 64 : 0) + count * rowHeight + insets.bottom + space[5];
+  const detent = Math.round(Math.min(windowHeight * 0.75, Math.max(wanted, 220)));
+
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose} statusBarTranslucent>
-      <View style={{ flex: 1, justifyContent: 'flex-end' }}>
-        <Pressable accessibilityLabel="Close" onPress={onClose} style={{ flex: 1, backgroundColor: color.backdrop }} />
-        <View
-          style={[{
-            maxHeight: '75%',
-            backgroundColor: color.surface,
-            borderTopLeftRadius: radius.xl,
-            borderTopRightRadius: radius.xl,
-            overflow: 'hidden',
-          }, elevate('lg')]}
-        >
+    <SheetShell visible={visible} onClose={onClose} snap={detent} background={color.surface}>
+      {/* `close` springs it down and then reports back, so the ✕ matches a drag
+          rather than snapping the panel off the screen. */}
+      {({ close }) => (
+        <>
           <View
             style={{
               flexDirection: 'row',
@@ -145,24 +156,35 @@ export function OptionSheet({
             }}
           >
             <Text accessibilityRole="header" style={[text.h3, { flex: 1 }]}>{title}</Text>
-            <Pressable accessibilityRole="button" accessibilityLabel="Close" onPress={onClose} hitSlop={12}>
-              {Close ? <Close size={iconSize.md} color={color.textSecondary} /> : null}
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Close"
+              onPress={close}
+              hitSlop={12}
+              style={({ pressed }) => ({
+                width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center',
+                backgroundColor: pressed ? color.brandChipBg : color.surfaceSubtle,
+              })}
+            >
+              {Close ? <Close size={iconSize.sm} color={color.textSecondary} /> : null}
             </Pressable>
           </View>
 
           {header}
 
-          <FlatList
+          <BottomSheetFlatList
+            style={{ flex: 1 }}
             data={data}
             keyExtractor={keyOf}
             renderItem={({ item }) => renderRow(item)}
             keyboardShouldPersistTaps="handled"
             ListEmptyComponent={<EmptyState title="Nothing here" message={emptyMessage} />}
             contentContainerStyle={{ paddingBottom: insets.bottom + space[4] }}
+            overScrollMode="never"
           />
-        </View>
-      </View>
-    </Modal>
+        </>
+      )}
+    </SheetShell>
   );
 }
 
@@ -179,7 +201,7 @@ export function Toggle({ label, caption, value, onValueChange, disabled = false,
       accessibilityState={{ checked: !!value, disabled }}
       accessibilityLabel={label}
       disabled={disabled}
-      onPress={() => onValueChange(!value)}
+      onPress={() => { haptic('selection'); onValueChange(!value); }}
       style={({ pressed }) => [{
         flexDirection: 'row',
         alignItems: 'center',
@@ -196,7 +218,7 @@ export function Toggle({ label, caption, value, onValueChange, disabled = false,
       </View>
       <Switch
         value={!!value}
-        onValueChange={onValueChange}
+        onValueChange={(v) => { haptic('selection'); onValueChange(v); }}
         disabled={disabled}
         // Android needs both; iOS uses trackColor.true only when on.
         trackColor={{ false: color.border, true: color.brandSoftBorder }}

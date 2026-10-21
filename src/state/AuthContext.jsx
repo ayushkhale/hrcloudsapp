@@ -19,6 +19,9 @@ import { authAPI, onSessionExpired, isTokenExpired, tokenExpiresAt } from '../ap
 import {
   clearSession, isEmployeeApp, loadSession, saveSession, sessionFromToken, workspaceForRole,
 } from './session';
+// The imperative toast, straight from the module rather than the `ui` barrel:
+// the auth layer must not pull in every screen component to say one sentence.
+import { showToast } from '../ui/Toast';
 
 const AuthContext = createContext(null);
 
@@ -46,7 +49,10 @@ export function AuthProvider({ children }) {
   const [selection, setSelection] = useState(null); // { token, organizations[] }
 
   const mounted = useRef(true);
-  useEffect(() => () => { mounted.current = false; }, []);
+  useEffect(() => {
+    mounted.current = true;
+    return () => { mounted.current = false; };
+  }, []);
 
   /**
    * Fetch the profile and merge it into `user`. THIS IS WHAT SUPPLIES THE NAME.
@@ -99,33 +105,67 @@ export function AuthProvider({ children }) {
   }, [hydrateProfile]);
 
   const endSession = useCallback(async ({ expired = false } = {}) => {
-    await clearSession();
-    if (!mounted.current) return;
+    // Immediately reset in-memory auth state so navigation updates immediately
+    setIsAuthenticated(false);
     setUser(null);
     setRole(null);
     setOrgId(null);
     setTokenExp(null);
-    setIsAuthenticated(false);
     setSelection(null);
     setSessionExpired(expired);
+
+    // Safely clear persistent session data in background
+    try {
+      await clearSession();
+    } catch (err) {
+      // THIS IS NOT A SILENT FAILURE (2026-10-17). It used to be a __DEV__
+      // console.warn, which means that in a release build somebody taps Sign
+      // out, the screen returns to Login — and their tokens are still in the
+      // keychain on a device they may have just handed to somebody else. The
+      // in-memory session IS gone, so the wording says exactly that much and
+      // no more, and it goes through the house toast like every other error.
+      if (__DEV__) console.warn('Failed to cleanly clear session:', err);
+      showToast('Signed out, but we couldn’t clear the saved sign-in on this device.', 'error');
+    }
   }, []);
 
   /* ── Launch hydration ─────────────────────────────────────────────────────
      The splash stays up until this finishes, so a returning user never sees
      the Login screen flash for 200ms — which reads as having been signed out. */
   useEffect(() => {
+    let done = false;
+    const safetyTimer = setTimeout(() => {
+      if (!done) {
+        done = true;
+        setIsLoading(false);
+      }
+    }, 2000);
+
     (async () => {
-      const stored = await loadSession();
-      if (stored?.accessToken) {
-        if (isTokenExpired(stored.accessToken)) {
-          await clearSession();
-          if (mounted.current) setSessionExpired(true);
-        } else {
-          applyToken(stored.accessToken);
+      try {
+        const stored = await loadSession();
+        if (stored?.accessToken) {
+          if (isTokenExpired(stored.accessToken)) {
+            await clearSession();
+            setSessionExpired(true);
+          } else {
+            applyToken(stored.accessToken);
+          }
+        }
+      } catch (err) {
+        if (__DEV__) console.warn('Launch hydration error:', err);
+      } finally {
+        if (!done) {
+          done = true;
+          clearTimeout(safetyTimer);
+          setIsLoading(false);
         }
       }
-      if (mounted.current) setIsLoading(false);
     })();
+
+    return () => {
+      clearTimeout(safetyTimer);
+    };
   }, [applyToken]);
 
   /* ── Expiry: the timer, plus a foreground re-check ─────────────────────── */
@@ -201,7 +241,17 @@ export function AuthProvider({ children }) {
       return { ok: false, refused: session?.role || 'unknown' };
     }
 
-    await saveSession(auth.accessToken, auth.refreshToken);
+    // Best-effort: the session is live either way, and a Keystore that would
+    // not take it is a “you’ll have to sign in again next time”, not a failed
+    // sign-in (state/session.js). Saying so once beats letting somebody
+    // discover it every morning.
+    const remembered = await saveSession(auth.accessToken, auth.refreshToken);
+    if (!remembered) {
+      showToast(
+        'Signed in. This device can’t save your sign-in, so you’ll need to do it again next time.',
+        'info',
+      );
+    }
     setSessionExpired(false);
     setSelection(null);
     setUser({ ...auth.user, ...session.user });
@@ -254,11 +304,15 @@ export function AuthProvider({ children }) {
     chooseOrganization,
     switchOrganization,
     logout,
+    // Re-read /organizations/me and merge it into `user`. The Profile screen
+    // calls it after a save, so the Home greeting and the drawer's name show
+    // the new display name without a restart.
+    refreshProfile: hydrateProfile,
     clearRefusal: () => setRefusedRole(null),
     acknowledgeExpiry: () => setSessionExpired(false),
   }), [
     user, role, orgId, isAuthenticated, isLoading, sessionExpired, refusedRole, selection,
-    login, loginWithGoogle, chooseOrganization, switchOrganization, logout,
+    login, loginWithGoogle, chooseOrganization, switchOrganization, logout, hydrateProfile,
   ]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

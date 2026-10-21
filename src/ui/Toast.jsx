@@ -25,30 +25,98 @@
 //   succeeded or failed — something that happened because of a press, where
 //   the screen itself already shows the result.
 //
+// • A TOAST MUST REACH ABOVE A SHEET (2026-10-21: "if the bottom sheet is open
+//   the toast doesn't show up"). Every sheet, form and prompt is its own native
+//   <Modal> — a separate window drawn ABOVE the app's root view, where this
+//   provider renders. So a toast fired from inside a sheet (a failed save, a
+//   copied link) was drawn underneath it, invisible. Each modal now mounts a
+//   <ToastLayer /> inside its own window; the provider keeps them as a stack
+//   and only the TOPMOST draws the toast. A new modal you add must mount one
+//   too, or toasts vanish behind it again.
+//
 // • `accessibilityLiveRegion` is what makes TalkBack read it without the
 //   person hunting for it. An error is assertive (it interrupts); a success is
 //   polite (it waits its turn).
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Keyboard, Platform, Pressable, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useReducedMotion } from '../hooks/useReducedMotion';
 import { microTiming } from '../theme/motion';
 import { icons } from '../theme/icons';
-import { color, elevate, gutter, iconSize, layer, radius, space, text, toneOf } from '../theme/tokens';
+import { font, radius, space } from '../theme/tokens';
+import { haptic } from './haptics';
 
-const DURATIONS = { success: 4000, info: 4000, error: 6000 };
-const TONES = { success: 'emerald', error: 'rose', info: 'blue' };
+const DURATIONS = { success: 3500, info: 3500, error: 4500 };
 const GLYPHS = { success: 'ok', error: 'warn', info: 'info' };
+const TOAST_THEMES = {
+  success: {
+    bg: '#faf5ff',
+    border: '#ddd6fe',
+    iconBg: '#ede9fe',
+    iconBorder: '#c4b5fd',
+    iconColor: '#7c3aed',
+    textColor: '#4c1d95',
+    shadow: '#7c3aed',
+  },
+  info: {
+    bg: '#faf5ff',
+    border: '#ddd6fe',
+    iconBg: '#ede9fe',
+    iconBorder: '#c4b5fd',
+    iconColor: '#7c3aed',
+    textColor: '#4c1d95',
+    shadow: '#7c3aed',
+  },
+  error: {
+    bg: '#fdf4ff',
+    border: '#f5d0fe',
+    iconBg: '#ffe4e6',
+    iconBorder: '#fecdd3',
+    iconColor: '#e11d48',
+    textColor: '#701a75',
+    shadow: '#c026d3',
+  },
+};
 
 const ToastContext = createContext(null);
+
+let globalToastRef = null;
+
+export const Toast = {
+  show: (message, kind = 'info') => {
+    if (globalToastRef) {
+      globalToastRef.showToast(message, kind);
+    } else if (__DEV__) {
+      console.warn('[Toast] Toast.show called before ToastProvider was mounted.');
+    }
+  },
+  error: (message) => Toast.show(message, 'error'),
+  success: (message) => Toast.show(message, 'success'),
+  info: (message) => Toast.show(message, 'info'),
+  hide: () => {
+    globalToastRef?.hideToast();
+  },
+};
+
+export const showToast = (message, kind = 'info') => Toast.show(message, kind);
+
+/* The window stack. 'root' is the provider itself; each open modal pushes a
+   layer and the last one pushed is the one that draws. */
+const LayerContext = createContext(null);
+const ROOT = 'root';
+let layerSeq = 0;
 
 export function ToastProvider({ children }) {
   const [toast, setToast] = useState(null); // { message, kind, id }
   const timer = useRef(null);
   const counter = useRef(0);
+  const [layers, setLayers] = useState([ROOT]);
+  const top = layers[layers.length - 1];
+  const register = useCallback((id) => setLayers((l) => [...l, id]), []);
+  const unregister = useCallback((id) => setLayers((l) => l.filter((x) => x !== id)), []);
 
   const hide = useCallback(() => {
     if (timer.current) clearTimeout(timer.current);
@@ -56,29 +124,88 @@ export function ToastProvider({ children }) {
     setToast(null);
   }, []);
 
-  const showToast = useCallback((message, kind = 'info') => {
+  const triggerToast = useCallback((message, kind = 'info') => {
     if (!message) return;
     if (timer.current) clearTimeout(timer.current);
     counter.current += 1;
-    setToast({ message: String(message), kind: TONES[kind] ? kind : 'info', id: counter.current });
-    timer.current = setTimeout(() => setToast(null), DURATIONS[kind] || DURATIONS.info);
+    const safeKind = GLYPHS[kind] ? kind : 'info';
+    // Every write in the app reports its outcome here, so this one line is
+    // the success / failure haptic for all of them (ui/haptics.js). An info
+    // toast is not an outcome and stays silent.
+    if (safeKind === 'success') haptic('success');
+    else if (safeKind === 'error') haptic('error');
+    setToast({ message: String(message), kind: safeKind, id: counter.current });
+    timer.current = setTimeout(() => setToast(null), DURATIONS[safeKind] || DURATIONS.info);
   }, []);
+
+  useEffect(() => {
+    globalToastRef = { showToast: triggerToast, hideToast: hide };
+    return () => {
+      if (globalToastRef?.showToast === triggerToast) {
+        globalToastRef = null;
+      }
+    };
+  }, [triggerToast, hide]);
 
   useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
 
+  const layerValue = React.useMemo(
+    () => ({ toast, hide, top, register, unregister }),
+    [toast, hide, top, register, unregister],
+  );
+
   return (
-    <ToastContext.Provider value={{ showToast, hideToast: hide }}>
-      {children}
-      {toast ? <ToastView key={toast.id} toast={toast} onPress={hide} /> : null}
+    <ToastContext.Provider value={{ showToast: triggerToast, hideToast: hide }}>
+      <LayerContext.Provider value={layerValue}>
+        {children}
+        {toast && top === ROOT ? <ToastView key={toast.id} toast={toast} onPress={hide} /> : null}
+      </LayerContext.Provider>
     </ToastContext.Provider>
   );
+}
+
+/**
+ * Mount INSIDE every native Modal (sheet, form, prompt, viewer), as its last
+ * child. While that modal is the topmost window, the toast is drawn here —
+ * above the modal — instead of in the root view underneath it. See the header.
+ */
+export function ToastLayer() {
+  const ctx = useContext(LayerContext);
+  const id = useRef(null);
+  if (id.current == null) { layerSeq += 1; id.current = `layer-${layerSeq}`; }
+  const register = ctx?.register;
+  const unregister = ctx?.unregister;
+  useEffect(() => {
+    if (!register) return undefined;
+    const mine = id.current;
+    register(mine);
+    return () => unregister(mine);
+  }, [register, unregister]);
+  if (!ctx?.toast || ctx.top !== id.current) return null;
+  return <ToastView key={ctx.toast.id} toast={ctx.toast} onPress={ctx.hide} />;
 }
 
 function ToastView({ toast, onPress }) {
   const insets = useSafeAreaInsets();
   const reduced = useReducedMotion();
-  const y = useSharedValue(-24);
+  const y = useSharedValue(16);
   const opacity = useSharedValue(0);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+
+  useEffect(() => {
+    const showSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      (e) => setKeyboardHeight(e.endCoordinates.height)
+    );
+    const hideSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      () => setKeyboardHeight(0)
+    );
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   useEffect(() => {
     y.value = withTiming(0, microTiming(reduced));
@@ -90,9 +217,13 @@ function ToastView({ toast, onPress }) {
     transform: [{ translateY: y.value }],
   }));
 
-  const t = toneOf(TONES[toast.kind]);
   const Glyph = icons[GLYPHS[toast.kind]];
+  const theme = TOAST_THEMES[toast.kind] || TOAST_THEMES.info;
   const isError = toast.kind === 'error';
+
+  const bottomPosition = keyboardHeight > 0
+    ? keyboardHeight + space[3]
+    : Math.max(insets.bottom + space[6], space[8]);
 
   return (
     <Animated.View
@@ -100,10 +231,12 @@ function ToastView({ toast, onPress }) {
       style={[
         {
           position: 'absolute',
-          top: insets.top + space[2],
-          left: gutter,
-          right: gutter,
-          zIndex: layer.toast,
+          bottom: bottomPosition,
+          left: 0,
+          right: 0,
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 99999,
         },
         animated,
       ]}
@@ -114,19 +247,51 @@ function ToastView({ toast, onPress }) {
         accessibilityLabel={toast.message}
         accessibilityHint="Tap to dismiss"
         onPress={onPress}
-        style={[{
+        style={{
           flexDirection: 'row',
-          alignItems: 'flex-start',
-          gap: space[2],
-          padding: space[3],
-          borderRadius: radius.md,
-          borderWidth: 1,
-          backgroundColor: t.bg,
-          borderColor: t.border,
-        }, elevate('md')]}
+          alignItems: 'center',
+          gap: space[2] + 2,
+          paddingLeft: space[3],
+          paddingRight: space[4],
+          paddingVertical: space[2] + 2,
+          borderRadius: radius.full,
+          backgroundColor: theme.bg,
+          borderWidth: 1.5,
+          borderColor: theme.border,
+          maxWidth: '92%',
+          shadowColor: theme.shadow,
+          shadowOffset: { width: 0, height: 6 },
+          shadowOpacity: 0.18,
+          shadowRadius: 14,
+          elevation: 8,
+        }}
       >
-        {Glyph ? <Glyph size={iconSize.md} color={t.fg} /> : null}
-        <Text style={[text.small, { flex: 1, color: t.fg }]}>{toast.message}</Text>
+        <View
+          style={{
+            width: 26,
+            height: 26,
+            borderRadius: 13,
+            backgroundColor: theme.iconBg,
+            borderWidth: 1,
+            borderColor: theme.iconBorder,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          {Glyph ? <Glyph size={14} color={theme.iconColor} /> : null}
+        </View>
+        <Text
+          style={{
+            fontFamily: font.semibold,
+            fontSize: 13.5,
+            lineHeight: 18,
+            color: theme.textColor,
+            flexShrink: 1,
+          }}
+          numberOfLines={3}
+        >
+          {toast.message}
+        </Text>
       </Pressable>
     </Animated.View>
   );
@@ -134,12 +299,12 @@ function ToastView({ toast, onPress }) {
 
 export function useToast() {
   const ctx = useContext(ToastContext);
-  // A no-op rather than a throw: a toast is never the point of a screen, and a
-  // missing provider must not take the screen down with it. The dev warning
-  // says what to fix.
   if (!ctx) {
-    if (__DEV__) console.warn('[Toast] useToast() outside <ToastProvider> — nothing will be shown.');
-    return { showToast: () => {}, hideToast: () => {} };
+    if (__DEV__) console.warn('[Toast] useToast() outside <ToastProvider> — fallback to global Toast.');
+    return {
+      showToast: (msg, kind) => Toast.show(msg, kind),
+      hideToast: () => Toast.hide(),
+    };
   }
   return ctx;
 }

@@ -147,12 +147,27 @@ async function safeParseBody(response) {
 }
 
 function shapeError(response, data) {
+  const serverMessage = typeof data?.message === 'string' ? data.message.trim() : '';
   const message =
-    data?.message ||
+    serverMessage ||
     `Request failed (${response.status}${response.statusText ? ` ${response.statusText}` : ''})`;
   const error = new Error(message);
   error.status = response.status;
   error.data = data;
+  /* ── `isGenericMessage` — WHY A FLAG AND NOT A STRING TEST (2026-10-18) ───
+     The error mappers have to know whether `.message` came from the server or
+     from the line above, because the last thing they do before giving up is
+     show `.message`. They used to decide that with
+     `/^Request failed: \d+$/` — a shape this function has never produced. It
+     writes "Request failed (400 Bad Request)", with parentheses and a status
+     text, so the guard never matched and the developer string was shown to
+     the person instead of the screen's own copy.
+
+     That is the "clock out isn't showing the real error" report: a clock-out
+     refused with an empty or non-JSON body put "Request failed (400 Bad
+     Request)" in a red toast. A flag set where the fact is known cannot drift
+     out of step with a message written somewhere else. */
+  error.isGenericMessage = !serverMessage;
   // `Retry-After` is the one response HEADER a caller acts on: a 429 from a
   // rate-limited write says here how long to wait. Read once, centrally, so no
   // api module reaches for the raw Response. The body normally carries the same

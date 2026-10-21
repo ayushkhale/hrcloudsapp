@@ -102,6 +102,30 @@ export const COMP_OFF_FILTERS = [
   { value: "cancelled", label: "Rejected / cancelled" },
 ];
 
+// ── Leave requests (leaves module) ───────────────────────────────────────────
+// `cancellation_pending` is the one people do not expect: cancelling a leave
+// that has ALREADY STARTED does not cancel it, it asks a manager to. The
+// backend decides that by DATE, not by status (api/leave.api.js), so the word
+// on the badge is the only place somebody learns which happened.
+//
+// `terminated_cancelled` is written by the exit process, never by a person.
+export const LEAVE_STATUS = {
+  pending: { label: "Pending", tone: "amber" },
+  approved: { label: "Approved", tone: "emerald" },
+  rejected: { label: "Rejected", tone: "rose" },
+  cancelled: { label: "Cancelled", tone: "slate" },
+  cancellation_pending: { label: "Cancellation requested", short: "Cancelling", tone: "purple" },
+  terminated_cancelled: { label: "Cancelled on exit", short: "Cancelled on exit", tone: "slate" },
+};
+export const LEAVE_FILTERS = [
+  { value: "all", label: "All" },
+  { value: "pending", label: "Pending" },
+  { value: "approved", label: "Approved" },
+  { value: "cancellation_pending", label: "Cancelling" },
+  { value: "rejected", label: "Rejected" },
+  { value: "cancelled", label: "Cancelled" },
+];
+
 // ── Overtime requests ────────────────────────────────────────────────────────
 export const OVERTIME_STATUS = {
   pending: { label: "Pending", tone: "amber" },
@@ -212,6 +236,116 @@ export const PUNCH_TYPE_LABELS = {
   break_end: "Break ended",
 };
 
+/* ── Payroll (2026-10-18, for My Pay) ────────────────────────────────────────
+   These went HERE and not into features/pay, because a second status registry
+   is how the web ended up with eight badges that disagreed. One map per kind,
+   one `statusMeta`, one `StatusBadge`.
+
+   The labels are the person's words, not payroll's: a claim is not "processed"
+   to the person who raised it, it is "Paid". The tones are the house four —
+   amber waiting, emerald settled, rose refused, slate over. */
+
+// A loan or a salary advance.
+export const LOAN_STATUS = {
+  pending: { label: "Waiting for approval", short: "Waiting", tone: "amber" },
+  active: { label: "Being repaid", short: "Repaying", tone: "purple" },
+  closed: { label: "Fully repaid", short: "Repaid", tone: "emerald" },
+  rejected: { label: "Rejected", tone: "rose" },
+  cancelled: { label: "Cancelled", tone: "slate" },
+};
+
+// One row of a repayment schedule.
+export const INSTALMENT_STATUS = {
+  pending: { label: "Due", tone: "amber" },
+  scheduled: { label: "Due", tone: "amber" },
+  recovered: { label: "Paid", tone: "emerald" },
+  paid: { label: "Paid", tone: "emerald" },
+  waived: { label: "Waived", tone: "slate" },
+  skipped: { label: "Skipped", tone: "slate" },
+};
+
+// A reimbursement claim. `draft` is a claim the person started and never sent;
+// it is the only status they can still edit.
+export const CLAIM_STATUS = {
+  draft: { label: "Not sent yet", short: "Draft", tone: "slate" },
+  submitted: { label: "Waiting for approval", short: "Waiting", tone: "amber" },
+  pending: { label: "Waiting for approval", short: "Waiting", tone: "amber" },
+  approved: { label: "Approved", tone: "emerald" },
+  rejected: { label: "Rejected", tone: "rose" },
+  cancelled: { label: "Cancelled", tone: "slate" },
+  // "Processed" is the API's word for "it went out with your pay".
+  processed: { label: "Paid with your salary", short: "Paid", tone: "purple" },
+  paid: { label: "Paid with your salary", short: "Paid", tone: "purple" },
+};
+
+// A benefit enrolment. `cancelled` is read-only on both sides (D-35).
+export const ENROLMENT_STATUS = {
+  active: { label: "Covered", tone: "emerald" },
+  ended: { label: "Ended", tone: "slate" },
+  cancelled: { label: "Cancelled", tone: "slate" },
+};
+
+// A bonus or an adjustment — My Pay calls the pair "Extras".
+export const EXTRA_STATUS = {
+  pending: { label: "Waiting for approval", short: "Waiting", tone: "amber" },
+  approved: { label: "Approved", tone: "emerald" },
+  applied: { label: "Paid with your salary", short: "Paid", tone: "purple" },
+  paid: { label: "Paid with your salary", short: "Paid", tone: "purple" },
+  rejected: { label: "Rejected", tone: "rose" },
+  cancelled: { label: "Cancelled", tone: "slate" },
+};
+
+// A tax declaration for the financial year.
+export const DECLARATION_STATUS = {
+  draft: { label: "Not sent yet", short: "Draft", tone: "slate" },
+  submitted: { label: "Waiting to be checked", short: "Waiting", tone: "amber" },
+  pending: { label: "Waiting to be checked", short: "Waiting", tone: "amber" },
+  under_review: { label: "HR is checking it", short: "Checking", tone: "amber" },
+  partially_verified: { label: "Partly accepted", short: "Partly", tone: "purple" },
+  verified: { label: "Accepted", tone: "emerald" },
+  approved: { label: "Accepted", tone: "emerald" },
+  rejected: { label: "Rejected", tone: "rose" },
+};
+
+
+/* ── Tasks (for My Tasks) ─────────────────────────────────────────────────────
+   Ported from the web's shared/tasks/taskMeta.js TASK_STATUS — labels VERBATIM,
+   so a task reads the same word in both products (CLAUDE.md §10). The tone keys
+   are the web's too and already render purple here; only `rose` stays red, and
+   nothing on these screens is rose — a missed deadline is carried by the
+   OVERDUE chip the cards draw themselves, not by the status.
+
+   "in_review" is the one that needed care: to the assignee it means "waiting on
+   your reviewer", to the reviewer "waiting on you", so the neutral "Waiting for
+   review" is used and the screen says who acts. */
+export const TASK_STATUS = {
+  pending: { label: 'Not started', tone: 'slate' },
+  in_progress: { label: 'Being worked on', short: 'In progress', tone: 'blue' },
+  in_review: { label: 'Waiting for review', short: 'In review', tone: 'amber' },
+  reopened: { label: 'Changes requested', short: 'Changes', tone: 'orange' },
+  completed: { label: 'Done', tone: 'emerald' },
+  cancelled: { label: 'Cancelled', tone: 'slate' },
+};
+
+/* ── Trusted devices (for My Registered Devices) ──────────────────────────────
+   Ported from the web's attendance/enums.js DEVICE_STATUS — labels and tones
+   VERBATIM (CLAUDE.md §10). `pending` waits on HR and CANNOT clock in; `revoked`
+   is terminal. The sentences people read underneath the badge live in
+   features/devices/deviceMeta.js (`deviceStatusNote`). */
+export const DEVICE_STATUS = {
+  pending: { label: 'Waiting for HR', tone: 'amber' },
+  active: { label: 'Ready', tone: 'emerald' },
+  suspended: { label: 'Blocked for now', tone: 'orange' },
+  revoked: { label: 'Shut off', tone: 'rose' },
+};
+
+// The salary account. Every save resets it to unverified (anti-fraud), so
+// "waiting" is the normal state right after an edit, not a problem.
+export const BANK_STATUS = {
+  verified: { label: "Verified", tone: "emerald" },
+  unverified: { label: "Waiting for HR to verify", short: "Not verified", tone: "amber" },
+};
+
 // JavaScript `Date#getDay()` convention: 0 = Sunday … 6 = Saturday (audit C8).
 export const WEEKDAYS = [
   { value: 0, short: "Sun", label: "Sunday" },
@@ -223,13 +357,86 @@ export const WEEKDAYS = [
   { value: 6, short: "Sat", label: "Saturday" },
 ];
 
+/* ── Documents (2026-10-20, for My Documents) ────────────────────────────────
+   Ported from the web's documents/documentMeta.js, orgDocumentMeta.js,
+   complianceMeta.js and requestMeta.js — labels VERBATIM, so a document reads
+   the same in both products (CLAUDE.md §10). Only the tones moved: the web's
+   "orange" is amber here, and an OVERDUE deadline is amber (fuchsia), not rose —
+   rose is for refusals and errors (40-screens/06-documents.md, Traps). */
+
+// An employee document — the server's `display_status`, plus the UI's own
+// `expiring_soon` (docMeta.displayStatus).
+export const DOCUMENT_STATUS = {
+  pending_upload: { label: "Upload not finished", short: "Not finished", tone: "slate" },
+  pending_verification: { label: "In review", tone: "amber" },
+  available: { label: "Verified", tone: "emerald" },
+  expiring_soon: { label: "Expiring soon", tone: "amber" },
+  expired: { label: "Expired", tone: "rose" },
+  rejected: { label: "Rejected", tone: "rose" },
+  superseded: { label: "Older version", tone: "slate" },
+  quarantined: { label: "Quarantined", tone: "rose" },
+  archived: { label: "Archived", tone: "slate" },
+  deleted: { label: "Deleted", tone: "slate" },
+  not_uploaded: { label: "Not uploaded", tone: "slate" },
+};
+
+// What TODAY makes of a company document addressed to me (#70 compliance_state).
+export const COMPLIANCE_STATUS = {
+  completed: { label: "Done", tone: "emerald" },
+  pending: { label: "Waiting", tone: "blue" },
+  overdue: { label: "Overdue", tone: "amber" },
+  waived: { label: "Excused", tone: "purple" },
+};
+
+// My recipient record on a company document, for one that asks nothing of me.
+export const RECIPIENT_STATUS = {
+  pending: { label: "Not opened yet", short: "Not opened", tone: "slate" },
+  viewed: { label: "Opened", tone: "blue" },
+  acknowledged: { label: "Acknowledged", tone: "emerald" },
+  signed: { label: "Signed", tone: "emerald" },
+  waived: { label: "Excused", tone: "purple" },
+};
+
+// A document HR or my manager asked me for.
+export const DOCUMENT_REQUEST_STATUS = {
+  open: { label: "Waiting", tone: "amber" },
+  overdue: { label: "Overdue", tone: "amber" },
+  fulfilled: { label: "Done", tone: "emerald" },
+  cancelled: { label: "Cancelled", tone: "slate" },
+};
+
+// One row of my required-documents checklist (#98).
+export const CHECKLIST_STATUS = {
+  satisfied: { label: "On file", tone: "emerald" },
+  expiring: { label: "Expiring soon", tone: "amber" },
+  expired: { label: "Expired", tone: "rose" },
+  pending_upload: { label: "Upload not finished", short: "Not finished", tone: "slate" },
+  requested: { label: "Asked for", tone: "amber" },
+  missing: { label: "Not provided", tone: "slate" },
+};
+
 const STATUS_MAPS = {
+  document: DOCUMENT_STATUS,
+  compliance: COMPLIANCE_STATUS,
+  recipient: RECIPIENT_STATUS,
+  docRequest: DOCUMENT_REQUEST_STATUS,
+  checklist: CHECKLIST_STATUS,
   record: RECORD_STATUS,
   regularization: REGULARIZATION_STATUS,
+  leave: LEAVE_STATUS,
   compoff: COMP_OFF_STATUS,
   overtime: OVERTIME_STATUS,
   anomaly: ANOMALY_STATUS,
   severity: SEVERITY,
+  loan: LOAN_STATUS,
+  instalment: INSTALMENT_STATUS,
+  claim: CLAIM_STATUS,
+  enrolment: ENROLMENT_STATUS,
+  extra: EXTRA_STATUS,
+  declaration: DECLARATION_STATUS,
+  bank: BANK_STATUS,
+  task: TASK_STATUS,
+  device: DEVICE_STATUS,
 };
 
 /** Resolve `{label, tone}` for a status of a given kind, with a safe fallback. */

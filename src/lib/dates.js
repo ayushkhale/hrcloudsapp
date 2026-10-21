@@ -24,7 +24,7 @@
 // fall back to the device zone in a try/catch.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { MONTHS_SHORT, WEEKDAYS_SHORT } from './format';
+import { MONTHS_SHORT, WEEKDAYS, WEEKDAYS_SHORT } from './format';
 
 const MONTHS_LONG = [
   'January', 'February', 'March', 'April', 'May', 'June',
@@ -149,6 +149,13 @@ export function fmtDate(value, fallback = 'N/A') {
   const d = toDate(value);
   if (!d) return fallback;
   return `${d.getDate()} ${MONTHS_SHORT[d.getMonth()]} ${d.getFullYear()}`;
+}
+
+/** "Friday" — the day on its own, beside a greeting. */
+export function fmtWeekday(value, fallback = '') {
+  const d = toDate(value);
+  if (!d) return fallback;
+  return WEEKDAYS[d.getDay()];
 }
 
 /** "Sat, 15 Aug" */

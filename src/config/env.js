@@ -40,6 +40,13 @@ export const ENV = {
   // and the ⓘ shows no Ask Maya link. Absent, not broken.
   DOCMIND_API_KEY: clean(Config.DOCMIND_API_KEY),
   DOCMIND_API_URL: cleanUrl(Config.DOCMIND_API_URL, 'https://api.codewithrishi.fun/api/public'),
+  // The DocMind key is RESTRICTED TO WEBSITES: a request without an Origin
+  // header is refused (403 ORIGIN_REQUIRED) and so was every question this app
+  // ever asked (2026-10-21). A browser sends Origin by itself; an app has to
+  // say which allowed site it speaks for. The default lives HERE, not only in
+  // .env, because react-native-config is compiled into the native build and a
+  // new .env key needs a rebuild — a JS default works on a Metro reload.
+  DOCMIND_ORIGIN: cleanUrl(Config.DOCMIND_ORIGIN, 'https://hrclouds.in'),
 
   // Build identity, for the Settings screen and crash reports.
   APP_VERSION: clean(Config.APP_VERSION, '1.0.0'),

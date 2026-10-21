@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "503029004053",
+    "project_id": "hr-clouds",
+    "storage_bucket": "hr-clouds.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:503029004053:android:d78c2aec14ddd289b99b1c",
+        "android_client_info": {
+          "package_name": "com.hrclouds"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "503029004053-a40buq6p7rf5b8k8dju9jrb2j93459vm.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD7F8fjzQdp7T7hphIAF4liWJ0F9WT30cM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "503029004053-a40buq6p7rf5b8k8dju9jrb2j93459vm.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

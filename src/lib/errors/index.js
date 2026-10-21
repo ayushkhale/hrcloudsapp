@@ -26,6 +26,7 @@ import { leaveErrorMessage } from './leaveErrors';
 import { payrollErrorMessage, payrollErrorCode, isPayrollRouteMissing } from './payrollErrors';
 import { documentErrorMessage, documentErrorCode, isFeatureNotDeployed } from './documentErrors';
 import { authErrorMessage, authErrorCode } from './authErrors';
+import { taskErrorMessage, taskErrorCode, isTaskFeatureDisabled } from './taskErrors';
 
 const MAPPERS = {
   attendance: attendanceErrorMessage,
@@ -33,6 +34,8 @@ const MAPPERS = {
   payroll: payrollErrorMessage,
   documents: documentErrorMessage,
   organization: attendanceErrorMessage, // same `code` key, same shared copy
+  // Tasks use the `errorCode` key, like payroll and documents.
+  tasks: taskErrorMessage,
   // Auth inverts the 401 rule — on `/auth/*` a 401 is a wrong password, not a
   // dead session. The auth SCREENS call authErrorMessage directly (the domain
   // is never a prop there); this entry is only for a generic caller.
@@ -61,6 +64,7 @@ export function errorMessage(err, domain = 'attendance', fallback = DEFAULT_FALL
 export function errorCode(err, domain = 'attendance') {
   if (domain === 'payroll') return payrollErrorCode(err);
   if (domain === 'documents') return documentErrorCode(err);
+  if (domain === 'tasks') return taskErrorCode(err);
   if (domain === 'auth') return authErrorCode(err);
   return attendanceErrorCode(err);
 }
@@ -105,6 +109,7 @@ export function isUnavailableFeature(err, domain = 'attendance') {
   if (isFeatureDisabled(err)) return true;
   if (domain === 'payroll' && isPayrollRouteMissing(err)) return true;
   if (domain === 'documents' && isFeatureNotDeployed(err)) return true;
+  if (domain === 'tasks' && isTaskFeatureDisabled(err)) return true;
   // A 404 with no body from anywhere else is the same thing: the route isn't
   // there. A 404 WITH a body is a real "not found" and keeps its own copy.
   return err.status === 404 && !err.data;

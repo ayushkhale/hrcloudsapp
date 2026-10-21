@@ -59,9 +59,10 @@
 
 import React, { useEffect, useRef } from 'react';
 import { Text, View } from 'react-native';
-import { NavigationContainer, useNavigationContainerRef } from '@react-navigation/native';
+import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import BootSplash from 'react-native-bootsplash';
+import { navigationRef } from './navigationRef';
 import { useOnboarding } from '../features/onboarding/useOnboarding';
 import { useAuth } from '../state/AuthContext';
 import { wrongWorkspaceCopy } from '../state/session';
@@ -185,6 +186,14 @@ function AuthStack({ needsOnboarding = false, onOnboardingDone }) {
         component={screenFor('ForgotPassword')}
         options={{ title: 'Reset your password' }}
       />
+      {/* Step 3 of the reset. It is a separate route, not a section of Otp,
+          because the code screen has to be somewhere to go BACK to when the
+          server rejects the code — see NewPasswordScreen's header. */}
+      <Auth.Screen
+        name="NewPassword"
+        component={screenFor('NewPassword')}
+        options={{ title: 'Create new password' }}
+      />
       <Auth.Screen
         name="SelectOrg"
         component={screenFor('SelectOrg')}
@@ -235,7 +244,6 @@ export function RootNavigator() {
   // The splash waits for this too. Without it the tour would replace an
   // already-visible Login screen a frame after launch.
   const { checking, needsOnboarding, markSeen } = useOnboarding();
-  const navigationRef = useNavigationContainerRef();
   const splashHidden = useRef(false);
 
   // Deep links wait for a session rather than being dropped — see linking.js.
@@ -258,6 +266,21 @@ export function RootNavigator() {
     splashHidden.current = true;
     BootSplash.hide({ fade: true }).catch(() => {});
   };
+
+  // As soon as loading/checking finishes, hide the bootsplash
+  useEffect(() => {
+    if (!isLoading && !checking) {
+      hideSplash();
+    }
+  }, [isLoading, checking]);
+
+  // Failsafe: hide splash after max 2.5s so the app is never stuck on launch
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      hideSplash();
+    }, 2500);
+    return () => clearTimeout(timer);
+  }, []);
 
   if (isLoading || checking) {
     // Deliberately nothing. The native splash is still covering the window,

@@ -26,10 +26,65 @@
 import ReactNativeBlobUtil from 'react-native-blob-util';
 import FileViewer from 'react-native-file-viewer';
 import Share from 'react-native-share';
-import { Platform } from 'react-native';
+import { Linking, Platform } from 'react-native';
 import { API_BASE_URL, getToken } from './client';
 
 const TIMEOUT_MS = 110000;
+
+/* ── "NO APP ASSOCIATED WITH THIS MIME TYPE" (2026-10-20) ─────────────────────
+   Android's viewer chooses the app from the FILE EXTENSION. Files were named
+   from the caller's title ("Offer Letter", "receipt"), so many had none — or
+   the wrong one (an image saved as .pdf) — and the OS answered that nothing
+   could open them. Every opened file now gets the extension its real
+   Content-Type says, and when the phone genuinely has no app for it (an
+   emulator has no PDF viewer) the file still opens: a signed link in the
+   browser, an authenticated download through the share sheet. */
+const EXT_OF_TYPE = {
+  'application/pdf': 'pdf',
+  'image/jpeg': 'jpg',
+  'image/jpg': 'jpg',
+  'image/png': 'png',
+  'image/webp': 'webp',
+  'image/heic': 'heic',
+  'text/plain': 'txt',
+  'text/csv': 'csv',
+  'application/zip': 'zip',
+  'application/msword': 'doc',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx',
+  'application/vnd.ms-excel': 'xls',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'xlsx',
+};
+
+const baseType = (ct) => String(ct || '').split(';')[0].trim().toLowerCase();
+
+/** Rename `path` so its extension matches `contentType`. Returns the new path. */
+async function withRightExtension(path, contentType) {
+  const ext = EXT_OF_TYPE[baseType(contentType)];
+  if (!ext) return path;
+  const current = (/\.([a-z0-9]{2,5})$/i.exec(path) || [])[1];
+  if (current && current.toLowerCase() === ext) return path;
+  const next = current ? path.replace(/\.[a-z0-9]{2,5}$/i, `.${ext}`) : `${path}.${ext}`;
+  await ReactNativeBlobUtil.fs.unlink(next).catch(() => {});
+  try {
+    await ReactNativeBlobUtil.fs.mv(path, next);
+    return next;
+  } catch {
+    return path;
+  }
+}
+
+const noViewerApp = (err) => /no app|activity not found|no activity|unable to find/i.test(String(err?.message || err));
+
+/** Open a local file in the OS viewer; with no app for it, the share sheet. */
+async function openLocal(path, contentType, displayName) {
+  try {
+    await FileViewer.open(path, { showOpenWithDialog: true, displayName });
+  } catch (err) {
+    if (!noViewerApp(err)) throw err;
+    const url = Platform.OS === 'android' ? `file://${path}` : path;
+    await Share.open({ url, type: baseType(contentType) || 'application/octet-stream', failOnCancel: false });
+  }
+}
 
 /** Arrays repeat the key (`component_code=A&component_code=B`). */
 function buildQuery(params) {
@@ -178,7 +233,9 @@ export async function downloadFile(endpoint, options = {}) {
 
   if (open) {
     // showOpenWithDialog lets Android offer every PDF app rather than guessing.
-    await FileViewer.open(result.path, { showOpenWithDialog: true, displayName: result.filename });
+    const path = await withRightExtension(result.path, result.contentType);
+    await openLocal(path, result.contentType, result.filename);
+    return { ...result, path };
   }
   return result;
 }
@@ -219,12 +276,22 @@ export const fetchFileToCache = (endpoint, options = {}) => fetchBinary(endpoint
  * MISS STEP 3 and the file exists in storage but not on the record — which
  * looks, to everyone, like the upload silently did nothing.
  */
-export async function uploadToPresignedUrl(uploadUrl, localPath, contentType) {
+export async function uploadToPresignedUrl(uploadUrl, localPath, contentType, requiredHeaders) {
+  // `required_headers` from step 1 are echoed back, EXCEPT Content-Length
+  // (the native layer derives it from the file) and Content-Type (set once,
+  // from the value declared in step 1). Same rule as the web's putToSignedUrl.
+  const headers = { 'Content-Type': contentType };
+  if (requiredHeaders && typeof requiredHeaders === 'object') {
+    Object.entries(requiredHeaders).forEach(([key, value]) => {
+      if (/^content-(length|type)$/i.test(key)) return;
+      headers[key] = value;
+    });
+  }
   const res = await ReactNativeBlobUtil.fetch(
     'PUT',
     uploadUrl,
-    { 'Content-Type': contentType },
-    ReactNativeBlobUtil.wrap(localPath.replace('file://', '')),
+    headers,
+    ReactNativeBlobUtil.wrap(decodeURI(localPath.replace('file://', ''))),
   );
   const status = res.info().status;
   if (status < 200 || status >= 300) {
@@ -235,7 +302,56 @@ export async function uploadToPresignedUrl(uploadUrl, localPath, contentType) {
   return true;
 }
 
+/**
+ * Open a file behind a PRESIGNED storage URL — a claim receipt or a tax proof,
+ * whose `view-url` route answers with `{ view_url }` rather than the bytes.
+ *
+ * NO Bearer token: the URL carries its own signature, and an Authorization
+ * header on a signed S3 request is refused. Fetch the URL at the moment of use
+ * (it lives about five minutes) and never keep it.
+ */
+export async function openSignedUrl(url, { filename, open = true } = {}) {
+  await ReactNativeBlobUtil.fs.mkdir(DOWNLOAD_DIR).catch(() => {});
+  const path = `${DOWNLOAD_DIR}/${safeName(filename || `file-${Date.now()}`)}`;
+  let res;
+  try {
+    res = await ReactNativeBlobUtil.config({ path, timeout: TIMEOUT_MS, fileCache: false }).fetch('GET', url);
+  } catch (err) {
+    const error = new Error('The file took too long to open. Please try again.');
+    error.status = 408;
+    error.cause = err;
+    throw error;
+  }
+  const status = res.info().status;
+  if (status < 200 || status >= 300) {
+    await ReactNativeBlobUtil.fs.unlink(path).catch(() => {});
+    const error = new Error('This file couldn’t be opened. It may have been removed.');
+    error.status = status;
+    throw error;
+  }
+  const contentType = headerOf(res.info().headers, 'Content-Type');
+  const finalPath = await withRightExtension(path, contentType);
+  if (open) {
+    try {
+      await FileViewer.open(finalPath, { showOpenWithDialog: true, displayName: filename });
+    } catch (err) {
+      // No app on the phone for this type: the signed link opens in the
+      // browser, which renders a PDF or an image itself. A browser is not a
+      // webview (house rule 11.4) — it is the OS handing the file elsewhere.
+      if (!noViewerApp(err)) throw err;
+      await Linking.openURL(url);
+    }
+  }
+  return { path: finalPath, contentType };
+}
+
 /** Called on sign-out. A cached payslip outliving the session is a real leak. */
 export async function clearDownloadCache() {
-  await ReactNativeBlobUtil.fs.unlink(DOWNLOAD_DIR).catch(() => {});
+  try {
+    if (ReactNativeBlobUtil?.fs?.unlink && DOWNLOAD_DIR) {
+      await ReactNativeBlobUtil.fs.unlink(DOWNLOAD_DIR).catch(() => {});
+    }
+  } catch {
+    // Non-fatal on sign out
+  }
 }

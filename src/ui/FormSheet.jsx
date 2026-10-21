@@ -54,6 +54,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { icons } from '../theme/icons';
 import { color, gutter, space, text } from '../theme/tokens';
 import { IconButton } from './Button';
+import { ToastLayer } from './Toast';
 
 /**
  * @param {object} props
@@ -89,6 +90,11 @@ export function FormSheet({
       onRequestClose={onClose}
     >
       <KeyboardAvoidingView
+        // THE CANVAS, not white (2026-10-20). A form is a PAGE, and the
+        // reference forms are white field slabs on the app's wash — which is
+        // what makes each field read as a thing to fill rather than a line on
+        // a sheet. The header and the pinned footer sit on the same wash. A
+        // record being READ (RecordSheet) stays white; this is not one.
         style={{ flex: 1, backgroundColor: color.bg }}
         // iOS needs the padding; Android's windowSoftInputMode="adjustResize"
         // in AndroidManifest already handles it, and doing both double-shifts
@@ -103,17 +109,15 @@ export function FormSheet({
             gap: space[2],
             paddingHorizontal: gutter,
             paddingTop: Platform.OS === 'ios' ? space[3] : insets.top + space[3],
-            paddingBottom: space[3],
-            backgroundColor: color.surface,
-            borderBottomWidth: 1,
-            borderBottomColor: color.borderSubtle,
+            paddingBottom: space[2],
+            backgroundColor: color.bg,
           }}
         >
           <View style={{ flex: 1, gap: 2 }}>
-            <Text accessibilityRole="header" style={text.h2}>{title}</Text>
+            <Text accessibilityRole="header" style={[text.h2, { fontSize: 20, lineHeight: 26, color: color.ink }]}>{title}</Text>
             {subtitle ? <Text style={text.small}>{subtitle}</Text> : null}
           </View>
-          <IconButton icon={Close} accessibilityLabel="Close without saving" onPress={onClose} />
+          <IconButton round tone="ink" icon={Close} accessibilityLabel="Close without saving" onPress={onClose} />
         </View>
 
         {/* ── Body ─────────────────────────────────────────────────────── */}
@@ -142,7 +146,7 @@ export function FormSheet({
               paddingHorizontal: gutter,
               paddingTop: space[3],
               paddingBottom: space[3] + insets.bottom,
-              backgroundColor: color.surface,
+              backgroundColor: color.bg,
               borderTopWidth: 1,
               borderTopColor: color.borderSubtle,
             }}
@@ -151,6 +155,8 @@ export function FormSheet({
           </View>
         ) : null}
       </KeyboardAvoidingView>
+      {/* Toasts draw ABOVE this window while it is the top one (ui/Toast.jsx). */}
+      <ToastLayer />
     </Modal>
   );
 }

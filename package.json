@@ -16,11 +16,16 @@
     "verify:bundle": "react-native bundle --platform android --dev true --entry-file index.js --bundle-output /tmp/verify.jsbundle --assets-dest /tmp/verify-assets"
   },
   "dependencies": {
+    "@gorhom/bottom-sheet": "5.2.14",
     "@react-native-async-storage/async-storage": "^3.1.1",
     "@react-native-community/datetimepicker": "^9.2.1",
+    "@react-native-documents/picker": "12.0.2",
+    "@react-native-firebase/app": "^21.6.1",
+    "@react-native-firebase/messaging": "^21.6.1",
     "@react-navigation/bottom-tabs": "^7.21.0",
     "@react-navigation/native": "^7.5.1",
     "@react-navigation/native-stack": "^7.21.0",
+    "lottie-react-native": "^7.5.0",
     "react": "19.2.3",
     "react-native": "0.87.1",
     "react-native-blob-util": "^0.25.1",
@@ -29,7 +34,9 @@
     "react-native-file-viewer": "^2.1.5",
     "react-native-geolocation-service": "^5.3.1",
     "react-native-gesture-handler": "^3.3.0",
+    "react-native-haptic-feedback": "^3.0.0",
     "react-native-heroicons": "^4.0.0",
+    "react-native-image-picker": "8.2.1",
     "react-native-keychain": "^10.0.0",
     "react-native-linear-gradient": "^2.8.3",
     "react-native-permissions": "^5.6.2",
@@ -38,6 +45,7 @@
     "react-native-screens": "^4.30.0",
     "react-native-share": "^12.3.1",
     "react-native-svg": "^15.15.5",
+    "react-native-view-shot": "6.0.1",
     "react-native-worklets": "^0.13.0"
   },
   "devDependencies": {

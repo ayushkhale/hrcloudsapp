@@ -50,6 +50,8 @@ import { FieldError } from './InlineAlert';
  */
 export function Field({
   label,
+  labelStyle,
+  labelRight,
   help,
   error,
   hint,
@@ -73,13 +75,25 @@ export function Field({
       onLayout={register?.onLayout}
       style={[{ gap: 6, flexGrow: 1, flexBasis: wide ? '100%' : '44%' }, style]}
     >
-      {/* Label row: Text and FieldHelp as SIBLINGS. See the header. */}
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
-        <Text style={[text.label, { flexShrink: 1 }]}>
-          {label}
-          {required ? <Text style={{ color: color.danger.fg }}> *</Text> : null}
-        </Text>
-        {help ? <FieldHelp {...help} /> : null}
+      {/* Label row: Text and FieldHelp as SIBLINGS. Supports labelRight for inline actions */}
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: labelRight ? 'space-between' : 'flex-start',
+          gap: 2,
+        }}
+      >
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
+          {typeof label === 'string' ? (
+            <Text style={[text.label, labelStyle, { flexShrink: 1 }]}>
+              {label}
+              {required ? <Text style={{ color: color.danger.fg }}> *</Text> : null}
+            </Text>
+          ) : label}
+          {help ? <FieldHelp {...help} /> : null}
+        </View>
+        {labelRight}
       </View>
 
       {control}
@@ -112,7 +126,7 @@ function ReadOnlyValue({ value }) {
   return (
     <View
       style={{
-        minHeight: 44,
+        minHeight: 50,
         justifyContent: 'center',
         paddingHorizontal: space[3],
         backgroundColor: color.surfaceSubtle,

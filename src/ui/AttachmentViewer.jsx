@@ -40,6 +40,7 @@ import { icons } from '../theme/icons';
 import { color, gutter, layer, space, text } from '../theme/tokens';
 import { Button, IconButton } from './Button';
 import { ErrorState } from './ErrorState';
+import { ToastLayer } from './Toast';
 
 const isImageType = (type, name) => {
   const t = String(type || '').toLowerCase();
@@ -158,6 +159,8 @@ export function AttachmentViewer({
           <Pressable onPress={onClose} style={{ flex: 1 }} />
         )}
       </View>
+      {/* Toasts draw ABOVE this window while it is the top one (ui/Toast.jsx). */}
+      <ToastLayer />
     </Modal>
   );
 }

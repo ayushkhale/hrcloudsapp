@@ -14,8 +14,8 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React from 'react';
-import { View } from 'react-native';
-import { color, elevate, radius, space } from '../theme/tokens';
+import { Text, View } from 'react-native';
+import { color, elevate, radius, space, text } from '../theme/tokens';
 
 /**
  * @param {object} props
@@ -48,8 +48,21 @@ export function Card({ children, tone = 'default', padded = true, style, ...rest
 /**
  * A card's own heading row — the 11px uppercase label plus optional right-hand
  * content (a MonthStepper, a "See all" link, an ⓘ).
+ *
+ * EVERY CALLER PASSES A BARE STRING — `<CardHeader>Recent days</CardHeader>` —
+ * because that is the obvious thing to write. A string child dropped straight
+ * into a <View> is the "Text strings must be rendered within a <Text>
+ * component" red screen, so the wrap happens HERE rather than being a rule
+ * every call site has to remember. A ready-made element still passes through
+ * untouched, which is what lets a header carry a Pill or an icon row.
+ *
+ * `variant="title"` is the bigger 18px heading the Home sections use
+ * ("Upcoming", "Announcements"); the default stays the 11px uppercase label.
  */
-export function CardHeader({ children, right, style }) {
+export function CardHeader({ children, right, variant = 'label', style }) {
+  const bare = typeof children === 'string' || typeof children === 'number';
+  const titleStyle = variant === 'title' ? text.h2 : text.label;
+
   return (
     <View
       style={[{
@@ -60,7 +73,7 @@ export function CardHeader({ children, right, style }) {
         marginBottom: space[3],
       }, style]}
     >
-      {children}
+      {bare ? <Text style={titleStyle}>{children}</Text> : children}
       {right}
     </View>
   );

@@ -21,6 +21,7 @@ import { Text, View } from 'react-native';
 import { isFutureMonth, monthLabel, monthLabelShort, shiftMonth } from '../lib/dates';
 import { icons } from '../theme/icons';
 import { IconButton } from './Button';
+import { haptic } from './haptics';
 import { color, space, text } from '../theme/tokens';
 
 /**
@@ -44,15 +45,22 @@ export function MonthStepper({ year, month, onChange, short = false, style }) {
       accessibilityLabel={`Showing ${monthLabel(year, month)}`}
       style={[{ flexDirection: 'row', alignItems: 'center', gap: space[1] }, style]}
     >
+      {/* Round white discs (2026-10-20), the reference date steppers. */}
       <IconButton
+        round
+        tone="ink"
+        size={18}
         icon={icons.chevronLeft}
         accessibilityLabel={`Previous month, ${monthLabel(prev.year, prev.month)}`}
-        onPress={() => onChange(prev)}
+        onPress={() => { haptic('selection'); onChange(prev); }}
       />
-      <Text style={[text.bodyStrong, { minWidth: short ? 72 : 118, textAlign: 'center' }]}>
+      <Text style={[text.bodyStrong, { minWidth: short ? 72 : 118, textAlign: 'center', color: color.ink }]}>
         {label}
       </Text>
       <IconButton
+        round
+        tone="ink"
+        size={18}
         icon={icons.chevronRight}
         accessibilityLabel={
           nextBlocked
@@ -61,7 +69,7 @@ export function MonthStepper({ year, month, onChange, short = false, style }) {
         }
         accessibilityState={{ disabled: nextBlocked }}
         disabled={nextBlocked}
-        onPress={nextBlocked ? undefined : () => onChange(next)}
+        onPress={nextBlocked ? undefined : () => { haptic('selection'); onChange(next); }}
         style={nextBlocked ? { opacity: 0.35 } : null}
       />
     </View>

@@ -3,6 +3,14 @@
 
   <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
   <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+  <!-- Background location: punch from field work with the app not in front.
+       Requested at runtime SEPARATELY and only after fine/coarse is granted
+       (Android 10+ rule). -->
+  <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
+  <!-- Push notifications (FCM). POST_NOTIFICATIONS is the Android 13+ runtime
+       permission; the rest let a notification wake the device. -->
+  <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+  <uses-permission android:name="android.permission.WAKE_LOCK" />
 
   <application
     android:name=".MainApplication"

@@ -32,11 +32,18 @@ import { radius, space, text, toneOf } from '../theme/tokens';
  * @param {string} props.status  the raw API value — pass it through unchanged
  * @param {boolean} [props.long] the longer label where there is room for it
  * @param {boolean} [props.dense] 10px, for inside a dense row
+ * @param {string} [props.label] OVERRIDES THE WORD, never the tone. There is
+ *   exactly one caller: an open break on the punch card, which the web card
+ *   also draws as `status="late"` wearing the words "On break". A break is not
+ *   a record status, so there is nothing in lib/enums.js to name it — and rule
+ *   3 is about the COLOUR, which still comes from `status`. If you reach for
+ *   this to rename a status the API does send, fix the entry in enums.js
+ *   instead: that is the file the whole app reads.
  */
-export function StatusBadge({ kind = 'record', status, long = false, dense = false, style }) {
+export function StatusBadge({ kind = 'record', status, long = false, dense = false, label: labelOverride, style }) {
   const meta = statusMeta(kind, status);
   const t = toneOf(meta.tone);
-  const label = long ? meta.longLabel : meta.label;
+  const label = labelOverride || (long ? meta.longLabel : meta.label);
 
   return (
     <View
@@ -49,13 +56,13 @@ export function StatusBadge({ kind = 'record', status, long = false, dense = fal
         alignItems: 'center',
         alignSelf: 'flex-start',
         gap: 5,
-        paddingLeft: space[2],
-        paddingRight: space[2] + 1,
-        paddingVertical: dense ? 2 : 3,
+        paddingLeft: space[2] + 1,
+        paddingRight: space[2] + 3,
+        paddingVertical: dense ? 3 : 4,
         borderRadius: radius.full,
-        borderWidth: 1,
+        // Fill, no hairline (2026-10-20): the reference pills, and §1's "fill
+        // or border, not both". The 50-shade fill holds AA behind its own fg.
         backgroundColor: t.bg,
-        borderColor: t.border,
       }, style]}
     >
       <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: t.dot }} />

@@ -29,6 +29,7 @@
 import React, { useEffect, useRef } from 'react';
 import { Pressable, Text, TextInput, View } from 'react-native';
 import { color, iconSize, radius, space, text } from '../theme/tokens';
+import { icons } from '../theme/icons';
 
 const KINDS = {
   text: { autoCapitalize: 'sentences' },
@@ -70,6 +71,14 @@ export function TextField({
   const kindProps = KINDS[kind] || KINDS.text;
   const nearLimit = maxLength && typeof value === 'string' && value.length > maxLength * 0.9;
 
+  const handleChangeText = (val) => {
+    if (kind === 'email') {
+      onChangeText?.(val ? val.toLowerCase() : val);
+    } else {
+      onChangeText?.(val);
+    }
+  };
+
   return (
     <View style={{ gap: 4 }}>
       <View
@@ -77,8 +86,10 @@ export function TextField({
           flexDirection: 'row',
           alignItems: multiline ? 'flex-start' : 'center',
           gap: space[2],
-          minHeight: multiline ? 96 : 44,
-          paddingHorizontal: space[3],
+          // 50pt and a 14pt radius since 2026-10-20: the reference fields are
+          // roomy, rounded white slabs, and a 44pt box read as a web input.
+          minHeight: multiline ? 104 : 50,
+          paddingHorizontal: space[4],
           paddingVertical: multiline ? space[3] : 0,
           backgroundColor: editable ? color.surface : color.surfaceSubtle,
           borderWidth: 1,
@@ -91,7 +102,7 @@ export function TextField({
         <TextInput
           ref={ref}
           value={value == null ? '' : String(value)}
-          onChangeText={onChangeText}
+          onChangeText={handleChangeText}
           placeholder={placeholder}
           placeholderTextColor={color.textMuted}
           editable={editable}
@@ -145,6 +156,7 @@ export function PickerBox({
   }, [registerFocus, onPress, disabled]);
 
   const empty = value === null || value === undefined || value === '';
+  const Chevron = icons.chevronDown;
 
   return (
     <Pressable
@@ -157,21 +169,24 @@ export function PickerBox({
         flexDirection: 'row',
         alignItems: 'center',
         gap: space[2],
-        minHeight: 44,
-        paddingHorizontal: space[3],
+        minHeight: 50,
+        paddingHorizontal: space[4],
         backgroundColor: disabled ? color.surfaceSubtle : pressed ? color.brandSoftBg : color.surface,
         borderWidth: 1,
         borderColor: invalid ? color.danger.dot : color.border,
         borderRadius: radius.md,
       }, style]}
     >
-      {Icon ? <Icon size={iconSize.sm} color={color.textSecondary} /> : null}
+      {Icon ? <Icon size={iconSize.md - 2} color={color.brandChipFg} /> : null}
       <Text
         numberOfLines={1}
-        style={[text.body, { flex: 1, color: empty ? color.textMuted : color.textBody }]}
+        style={[text.body, { flex: 1, color: empty ? color.textMuted : color.textPrimary }]}
       >
         {empty ? placeholder : value}
       </Text>
+      {/* The chevron says "this opens a list", the reference pickers' cue —
+          a PickerBox otherwise looks exactly like a text box you can type in. */}
+      {Chevron && !disabled ? <Chevron size={iconSize.sm} color={color.textMuted} /> : null}
     </Pressable>
   );
 }

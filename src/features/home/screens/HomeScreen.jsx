@@ -2,75 +2,100 @@
 // features/home/screens/HomeScreen.jsx — the screen 95% of people open the app
 // for. Spec: NativeRef/40-screens/02-home-and-punch.md.
 //
-// LAYOUT (top → bottom): the purple hero (greeting · first name · date · a
-// logout button, and a holiday chip when one is near), then the PunchCard — the
-// whole point of the screen, above the fold always — then the month snapshot,
-// the daily-hours chart, and the recent-days preview.
+// LAYOUT (top → bottom), four things and nothing else:
 //
-// WHY THE HERO HAS NO NATIVE HEADER: this is the one screen with headerShown:
-// false (tabs.employee.js), because the PageHeader IS the header. That is also
-// why the sign-out control lives here — there is no header bar to hang it on,
-// and the hero's top-right is where the reference app puts its account actions.
+//   1. the top bar — the menu, the greeting beside it, the bell and the avatar
+//   2. the punch card, above the fold, always
+//   3. "My month"      — the headline numbers over the daily-hours bars
+//   4. "Attendance mix" — how the month's days went
+//
+// ── WHY IT IS ONLY FOUR THINGS (2026-10-17) ──────────────────────────────────
+//
+// This screen is the phone version of the WEB EMPLOYEE DASHBOARD, and that
+// page is exactly this: the punch card beside My month, then recent days
+// beside the attendance mix. Home had grown four cards the web dashboard
+// doesn't have — quick actions, upcoming, announcements, a 2×2 month snapshot
+// — and a daily-hours chart that duplicated what My month already draws. The
+// result was a scroll nobody reached the bottom of, and two different answers
+// to "how is my month going?" on one screen.
+//
+// So: quick actions are gone (every one of them is a tab away), upcoming and
+// announcements are gone, and MonthlySnapshot + DailyHoursChart are REPLACED
+// by MyMonthCard, which is the same numbers and the same bars in the web's own
+// arrangement. Recent days is the one web row left out: on a phone, tapping a
+// bar in My month opens that day's log, which is what the table was for.
+//
+// The components those cards lived in are still in features/home/components —
+// unreferenced, not deleted, because Upcoming and Announcements are wanted
+// again the day there is a screen with room for them.
+//
+// ── NO CARDS, NO SHADOWS, ONE GUTTER (2026-10-17) ────────────────────────────
+//
+// The three sections were white cards with a border and a shadow on a slate-50
+// wash. Stacked, that is three frames around content that needed none, and
+// every frame cost 16pt of padding ON TOP of the screen's own 16pt gutter —
+// so the content sat 32pt in from the edge of a 360pt phone and the charts
+// paid for it.
+//
+// So the screen is WHITE and the sections are flat: a heading and its content,
+// aligned to the one gutter, separated by space rather than by edges. The only
+// fills left are the soft slate tiles on the punch card, which is the one
+// place a fill is doing a job (grouping a label with its number).
+//
+// `color.bg` (slate-50) is still right for a screen of LISTS, where white rows
+// need something to sit on. This screen has no list. If a later screen keeps
+// its cards, that is fine — what must not happen is cards and flat sections on
+// the SAME screen.
+//
+// ── THE DATE IS NOT ON THIS SCREEN ANY MORE ──────────────────────────────────
+//
+// The greeting used to face a weekday-and-date block across the top. The date
+// is on the lock screen, in the status bar, and inside every card that needs
+// one; a third copy bought a whole row of chrome. The greeting now sits beside
+// the hamburger on the top bar's own line and costs nothing.
 //
 // DATA: today + shift + contract come from useTodayAttendance (never call
 // getToday yourself — the hook owns the tokens, the midnight re-arm and the
-// foreground refresh). The month tiles, the chart, the recent rows and the
-// holiday chip are each their OWN request, each failing independently (§5):
-// one dead call hides its own card and nothing else. There is NO poller (T-H5).
+// foreground refresh). The month is ONE call shared by both cards
+// (useMonthGraph) — see that file for why it isn't two.
 //
-// DayLog is a SHEET, not a route (§ DayLog): tapping a recent row or a bar opens
-// DayLogSheet as local state, so this screen stays mounted behind it.
+// DayLog is a ROUTE (2026-10-21): tapping a bar pushes DayLogScreen with
+// `{ date }`. It used to be a sheet over this screen; a whole day of punches
+// didn't fit one and couldn't be scrolled, so it became a page.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
+import React, { useCallback, useEffect, useState } from 'react';
+import { RefreshControl, ScrollView, View } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { attendanceAPI } from '../../../api';
-import { useAuth } from '../../../state/AuthContext';
 import { useTodayAttendance } from '../../../hooks/useTodayAttendance';
-import { useAttendanceChanged, ATTENDANCE_EVENTS } from '../../../lib/events';
 import { unwrap } from '../../../lib/normalize';
-import { fmtClockMinutes, fmtDate, fmtDateShort, greetingFor, todayYMD } from '../../../lib/dates';
-import { humanize } from '../../../lib/enums';
-import { color, gutter, iconSize, radius, space, text } from '../../../theme/tokens';
-import { icons } from '../../../theme/icons';
-import {
-  Card, CardHeader, ErrorState, HeroChip, LinkButton, ListFooter,
-  PageHeader, Row, Skeleton, StatusBadge,
-} from '../../../ui';
+import { color, gutter, space } from '../../../theme/tokens';
+import { ErrorState, SkeletonBlock } from '../../../ui';
+import { AppTopBar } from '../../../navigation/AppTopBar';
 import { PunchCard } from '../../attendance/components/PunchCard';
-import { DayLogSheet } from '../../attendance/components/DayLogSheet';
-import { MonthlySnapshot } from '../components/MonthlySnapshot';
-import { DailyHoursChart } from '../components/DailyHoursChart';
+import { useMonthGraph } from '../useMonthGraph';
+import { MyMonthCard } from '../components/MyMonthCard';
+import { AttendanceMixCard } from '../components/AttendanceMixCard';
 
-const num = (v) => (v === null || v === undefined || v === '' || Number.isNaN(Number(v)) ? null : Number(v));
-const first = (o, ...keys) => { for (const k of keys) { const v = o?.[k]; if (v !== undefined && v !== null) return v; } return null; };
-
-const firstNameOf = (user) =>
-  user?.first_name || user?.firstName || (user?.name ? String(user.name).trim().split(/\s+/)[0] : '') || null;
-
-const daysUntil = (ymd) => {
-  const t = Date.parse(`${ymd}T00:00:00`);
-  if (Number.isNaN(t)) return Infinity;
-  return Math.ceil((t - Date.now()) / 86400000);
-};
-
-export default function HomeScreen({ navigation }) {
+export default function HomeScreen() {
   const insets = useSafeAreaInsets();
-  const { user, logout } = useAuth();
   const { today, shift, loading, error, refresh } = useTodayAttendance();
 
   const [contract, setContract] = useState(null);
-  const [holiday, setHoliday] = useState(null);
-  const [recent, setRecent] = useState({ loading: true, failed: false, rows: [] });
-  const [selectedDate, setSelectedDate] = useState(null);
+  const navigation = useNavigation();
+  const openDay = useCallback((ymd) => navigation.navigate('DayLog', { date: ymd }), [navigation]);
   const [refreshing, setRefreshing] = useState(false);
-  // Bumped by pull-to-refresh so the month cards (which key off the month) also
-  // refetch; punch events already refresh `today` through the hook.
+  // Bumped by pull-to-refresh so the month cards (which key off the month)
+  // also refetch; punch events already refresh `today` through the hook.
   const [reloadKey, setReloadKey] = useState(0);
 
   const now = new Date();
   const [period, setPeriod] = useState({ year: now.getFullYear(), month: now.getMonth() + 1 });
+
+  // ONE read for both month cards — see useMonthGraph for why.
+  const graph = useMonthGraph(period.year, period.month, reloadKey);
 
   // Field assignments — the ONLY source of work mode and office names (§3).
   useEffect(() => {
@@ -80,37 +105,6 @@ export default function HomeScreen({ navigation }) {
       .catch(() => { if (!cancelled) setContract(null); });
     return () => { cancelled = true; };
   }, [reloadKey]);
-
-  // Next holiday, for the hero chip — shown only when it's within 30 days.
-  useEffect(() => {
-    let cancelled = false;
-    attendanceAPI.getUpcomingHolidays()
-      .then((res) => {
-        if (cancelled) return;
-        const data = unwrap(res);
-        const list = Array.isArray(data) ? data : (data?.holidays || data?.upcoming || []);
-        setHoliday(list[0] || null);
-      })
-      .catch(() => { if (!cancelled) setHoliday(null); });
-    return () => { cancelled = true; };
-  }, [reloadKey]);
-
-  // Recent days preview (§4). Refetched on any punch so it never goes stale.
-  const loadRecent = useCallback(() => {
-    let cancelled = false;
-    setRecent((s) => ({ ...s, loading: true, failed: false }));
-    attendanceAPI.getHistory({ limit: 5 })
-      .then((res) => {
-        if (cancelled) return;
-        const data = unwrap(res);
-        const rows = Array.isArray(data) ? data : (data?.records || data?.history || data?.days || []);
-        setRecent({ loading: false, failed: false, rows: rows.slice(0, 5) });
-      })
-      .catch(() => { if (!cancelled) setRecent({ loading: false, failed: true, rows: [] }); });
-    return () => { cancelled = true; };
-  }, []);
-  useEffect(() => loadRecent(), [loadRecent, reloadKey]);
-  useAttendanceChanged([ATTENDANCE_EVENTS.PUNCH], loadRecent);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -122,157 +116,63 @@ export default function HomeScreen({ navigation }) {
     }
   }, [refresh]);
 
-  const onLogout = useCallback(() => {
-    // A confirm, because a stray tap top-right shouldn't end the session — but
-    // kept simple (no async provider dependency) so the hero stays self-contained.
-    logout();
-  }, [logout]);
-
-  const greeting = greetingFor();
-  const firstName = firstNameOf(user) || 'Loading…';
-  const dateLine = fmtDate(today?.date || todayYMD(), '');
-
-  const holidayChip = useMemo(() => {
-    const date = first(holiday, 'date', 'holiday_date', 'day');
-    if (!date || daysUntil(date) < 0 || daysUntil(date) > 30) return null;
-    const name = first(holiday, 'name', 'holiday_name', 'title') || 'Holiday';
-    return { name, date };
-  }, [holiday]);
-
-  const logoutButton = (
-    <Pressable
-      onPress={onLogout}
-      accessibilityRole="button"
-      accessibilityLabel="Sign out"
-      hitSlop={10}
-      style={({ pressed }) => ({
-        width: 40,
-        height: 40,
-        borderRadius: radius.full,
-        backgroundColor: color.heroBadgeBg,
-        borderWidth: 1,
-        borderColor: color.heroBadgeBorder,
-        alignItems: 'center',
-        justifyContent: 'center',
-        opacity: pressed ? 0.6 : 1,
-      })}
-    >
-      {icons.logout ? <icons.logout size={iconSize.md} color={color.textOnBrand} /> : (
-        <Text style={[text.smallStrong, { color: color.textOnBrand }]}>Exit</Text>
-      )}
-    </Pressable>
-  );
-
   return (
-    <View style={{ flex: 1, backgroundColor: color.bg }}>
+    <View style={{ flex: 1, backgroundColor: color.surface }}>
+      <AppTopBar />
+
       <ScrollView
         contentContainerStyle={{
-          paddingTop: insets.top + space[2],
+          paddingTop: space[4],
           paddingHorizontal: gutter,
           paddingBottom: insets.bottom + space[10],
-          gap: space[4],
+          // With no card edges left, space IS the separator — which is why it
+          // is 32 between sections and not the 16 a stack of cards needed.
+          gap: space[8],
         }}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={color.brand} colors={[color.brand]} />
         }
       >
-        <PageHeader
-          badgeText={greeting}
-          title={firstName}
-          subtitle={dateLine}
-          right={logoutButton}
-        />
-
-        {holidayChip ? (
-          <Pressable
-            onPress={() => navigation?.getParent?.()?.navigate('LeaveTab', { screen: 'Holidays' })}
-            accessibilityRole="button"
-            accessibilityLabel={`Upcoming holiday: ${holidayChip.name} on ${fmtDateShort(holidayChip.date, '')}`}
-            style={{ alignSelf: 'flex-start' }}
-          >
-            <HeroChip icon={icons.calendar} style={{ backgroundColor: color.brandSoftBg, borderColor: color.brandSoftBorder }}>
-              <Text style={[text.smallStrong, { color: color.brand }]}>
-                {`${holidayChip.name} · ${fmtDateShort(holidayChip.date, '')}`}
-              </Text>
-            </HeroChip>
-          </Pressable>
-        ) : null}
-
-        {/* The punch card — above the fold, always (§4). Error here replaces the
-            card only; the month below still renders (§5). */}
+        {/* The punch card — above the fold, always (§4). An error here replaces
+            the card only; the month cards below still render (§5). */}
         {loading && !today ? (
-          <Skeleton type="card" />
+          <View style={{ gap: space[4] }}>
+            <SkeletonBlock height={22} width="35%" />
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[4] }}>
+              <SkeletonBlock width={104} height={104} radius={52} />
+              <View style={{ flex: 1, gap: space[2] }}>
+                <SkeletonBlock height={50} />
+                <SkeletonBlock height={50} />
+              </View>
+            </View>
+            <SkeletonBlock height={48} />
+          </View>
         ) : error && !today ? (
-          <Card>
-            <ErrorState error={error} domain="attendance" onRetry={refresh} fallback="We couldn’t load today." />
-          </Card>
+          <ErrorState error={error} domain="attendance" onRetry={refresh} fallback="We couldn’t load today." />
         ) : today ? (
-          <PunchCard today={today} shift={shift} contract={contract} refresh={refresh} />
+          <PunchCard
+            today={today}
+            shift={shift}
+            contract={contract}
+            refresh={refresh}
+          />
         ) : null}
 
-        <MonthlySnapshot
-          year={period.year}
-          month={period.month}
-          onChange={setPeriod}
-          reloadKey={reloadKey}
+        {/* Both read the one `graph`, so they can never disagree about the
+            month and the stepper in My month's header moves them together. */}
+        <MyMonthCard
+          graph={graph}
+          period={period}
+          onChangePeriod={setPeriod}
+          onDayPress={openDay}
+          // The org's weekly offs live on this wrapper. Without them
+          // graph-data's blanket "absent" paints every Sunday red.
+          shift={shift}
         />
 
-        <DailyHoursChart
-          year={period.year}
-          month={period.month}
-          onBarPress={setSelectedDate}
-          reloadKey={reloadKey}
-        />
-
-        {/* Recent days (§4). Independent failure hides it. */}
-        {recent.failed ? null : (
-          <Card padded={false}>
-            <View style={{ paddingHorizontal: space[4], paddingTop: space[4] }}>
-              <CardHeader>Recent days</CardHeader>
-            </View>
-            {recent.loading ? (
-              <View style={{ padding: space[4] }}><Skeleton type="rows" rows={4} avatar={false} /></View>
-            ) : recent.rows.length === 0 ? (
-              <Text style={[text.small, { color: color.textMuted, padding: space[4] }]}>
-                No days recorded yet.
-              </Text>
-            ) : (
-              <>
-                {recent.rows.map((r, i) => {
-                  const date = first(r, 'date', 'attendance_date', 'day');
-                  const mins = num(first(r, 'worked_minutes', 'effective_minutes'));
-                  const worked = mins != null
-                    ? fmtClockMinutes(mins, { short: true }, '')
-                    : (num(first(r, 'worked_hours', 'total_hours')) != null
-                      ? fmtClockMinutes(Math.round(num(first(r, 'worked_hours', 'total_hours')) * 60), { short: true }, '')
-                      : '');
-                  return (
-                    <Row
-                      key={date || i}
-                      title={fmtDateShort(date, 'That day')}
-                      subtitle={r?.status ? humanize(r.status) : undefined}
-                      left={r?.status ? <StatusBadge kind="record" status={r.status} dense /> : undefined}
-                      value={worked || undefined}
-                      onPress={date ? () => setSelectedDate(date) : undefined}
-                    />
-                  );
-                })}
-                <ListFooter>
-                  <LinkButton
-                    title="See all my time"
-                    onPress={() => navigation?.getParent?.()?.navigate('TimeTab', { screen: 'Time' })}
-                  />
-                </ListFooter>
-              </>
-            )}
-          </Card>
-        )}
+        <AttendanceMixCard graph={graph} period={period} shift={shift} />
       </ScrollView>
 
-      {/* DayLog — local state, never a route, so this screen stays mounted. */}
-      {selectedDate ? (
-        <DayLogSheet date={selectedDate} onClose={() => setSelectedDate(null)} />
-      ) : null}
     </View>
   );
 }

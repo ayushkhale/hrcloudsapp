@@ -4,23 +4,17 @@
 // Three slides, once per device. `useOnboarding` owns whether it is shown;
 // this file owns only what it looks like.
 //
-// ── THE ART IS BUILT, NOT DRAWN ──────────────────────────────────────────────
+// ── ONBOARDING ARTWORK ────────────────────────────────────────────────────────
 //
-// Each slide's illustration is a small mock of the screen it describes,
-// assembled from the real design tokens rather than shipped as a PNG. Three
-// reasons: it is sharp at every density, it weighs nothing, and — the one that
-// matters — it cannot go stale the way a screenshot of a screen we have not
-// built yet immediately would.
-//
-// They are placeholders for real artwork. To swap one, replace a SLIDE's `art`
-// with <Image source={…} /> and delete nothing else; the layout already
-// reserves the space and centres whatever it is given.
+// Each slide's illustration is loaded from src/assets/screens/onboarding/:
+// onboarding1.png, onboarding2.png, onboarding3.png.
+// All three share a 3:2 aspect ratio and are rendered inside a centered,
+// fixed-height container so alignment and text baselines remain rock-steady
+// during swipe transitions.
 //
 // ── THE ART IS INVISIBLE TO SCREEN READERS ───────────────────────────────────
 //
-// The mock cards contain words ("Checked in", "12 days remaining") that are
-// decoration, not information — read aloud in sequence they are noise between
-// the heading and the button. Each slide's heading and body carry the meaning,
+// The illustrations are decorative; heading and body carry the full meaning,
 // so the art block is hidden on both platforms.
 //
 // ── NO SWIPE-TO-DISMISS, NO BACK ─────────────────────────────────────────────
@@ -33,6 +27,7 @@
 import React, { useCallback, useRef, useState } from 'react';
 import {
   FlatList,
+  Image,
   Pressable,
   Text,
   View,
@@ -41,81 +36,14 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { icons } from '../../../theme/icons';
 import { color, iconSize, radius, space, text } from '../../../theme/tokens';
-import { Button } from '../../../ui';
 import { AuthBackdrop, BrandMark } from '../../auth/components/AuthScreen';
 
-const Clock = icons.clock;
-const Calendar = icons.calendar;
-const Rupee = icons.rupee;
-const Document = icons.document;
-const Check = icons.check;
 const ArrowRight = icons.arrowRight;
 
-/* ── The pieces the mock cards are made of ─────────────────────────────────── */
-
-function MockCard({ children, dark = false, style }) {
-  return (
-    <View
-      style={[{
-        backgroundColor: dark ? color.textPrimary : color.surface,
-        borderRadius: radius.lg,
-        paddingVertical: space[4],
-        paddingHorizontal: space[4],
-        borderWidth: dark ? 0 : 1,
-        borderColor: color.border,
-        // A soft lift, so the cards read as floating over the wash rather
-        // than as boxes drawn on it.
-        shadowColor: '#0f172a',
-        shadowOpacity: dark ? 0.22 : 0.06,
-        shadowRadius: 18,
-        shadowOffset: { width: 0, height: 8 },
-        elevation: dark ? 6 : 2,
-      }, style]}
-    >
-      {children}
-    </View>
-  );
-}
-
-function MockTile({ icon: Glyph, label }) {
-  return (
-    <View
-      style={{
-        flex: 1,
-        backgroundColor: color.surface,
-        borderRadius: radius.md,
-        borderWidth: 1,
-        borderColor: color.border,
-        paddingVertical: space[3],
-        alignItems: 'center',
-        gap: space[1],
-      }}
-    >
-      <Glyph size={iconSize.md} color={color.brand} />
-      <Text style={text.caption}>{label}</Text>
-    </View>
-  );
-}
-
-/** The circular badge that fronts each mock card. */
-function Badge({ icon: Glyph, on = 'brand' }) {
-  const bg = on === 'brand' ? color.brand : color.brandSoftBg;
-  const fg = on === 'brand' ? color.textOnBrand : color.brand;
-  return (
-    <View
-      style={{
-        width: 38,
-        height: 38,
-        borderRadius: radius.full,
-        backgroundColor: bg,
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}
-    >
-      <Glyph size={iconSize.md} color={fg} />
-    </View>
-  );
-}
+// Onboarding illustrations for the three tour slides (all 3:2 ratio)
+const ONBOARDING_1 = require('../../../assets/screens/onboarding/onboarding1.png');
+const ONBOARDING_2 = require('../../../assets/screens/onboarding/onboarding2.png');
+const ONBOARDING_3 = require('../../../assets/screens/onboarding/onboarding3.png');
 
 /* ── The three slides ──────────────────────────────────────────────────────── */
 
@@ -124,95 +52,39 @@ const SLIDES = [
     key: 'attendance',
     title: 'Your workday,\nin your pocket',
     body: 'Punch in from your phone, watch today’s hours add up, and see where every minute went.',
+    image: ONBOARDING_1,
     art: (
-      <View style={{ gap: space[3] }}>
-        <MockCard dark>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[3] }}>
-            <Badge icon={Clock} />
-            <View>
-              <Text style={[text.caption, { color: color.surface, opacity: 0.7 }]}>
-                Today’s attendance
-              </Text>
-              <Text style={[text.h2, { color: color.surface }]}>09:00 AM</Text>
-            </View>
-          </View>
-        </MockCard>
-
-        <View style={{ flexDirection: 'row', gap: space[3] }}>
-          <MockCard style={{ flex: 1 }}>
-            <Text style={text.caption}>This week</Text>
-            <Text style={text.h2}>38h 20m</Text>
-          </MockCard>
-          <MockCard style={{ flex: 1 }}>
-            <Text style={text.caption}>Status</Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[1] }}>
-              <Check size={iconSize.sm} color={color.brand} />
-              <Text style={[text.h3, { color: color.brand }]}>Checked in</Text>
-            </View>
-          </MockCard>
-        </View>
-      </View>
+      <Image
+        source={ONBOARDING_1}
+        style={{ width: '100%', height: 220 }}
+        resizeMode="contain"
+      />
     ),
   },
   {
     key: 'leave',
     title: 'Leave, without\nthe paperwork',
     body: 'Check your balance before you ask, apply in a few taps, and follow the approval without chasing anyone.',
+    image: ONBOARDING_2,
     art: (
-      <View style={{ gap: space[3] }}>
-        <MockCard>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[3] }}>
-            <Badge icon={Calendar} on="soft" />
-            <View style={{ flex: 1 }}>
-              <Text style={text.caption}>Leave balance</Text>
-              <Text style={text.h2}>12 days remaining</Text>
-            </View>
-          </View>
-        </MockCard>
-
-        <MockCard dark>
-          <Text style={[text.caption, { color: color.surface, opacity: 0.7 }]}>
-            Casual leave · 14–15 Mar
-          </Text>
-          <View
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: space[1],
-              marginTop: space[1],
-            }}
-          >
-            <Check size={iconSize.sm} color={color.surface} />
-            <Text style={[text.h3, { color: color.surface }]}>Approved</Text>
-          </View>
-        </MockCard>
-      </View>
+      <Image
+        source={ONBOARDING_2}
+        style={{ width: '100%', height: 220 }}
+        resizeMode="contain"
+      />
     ),
   },
   {
     key: 'pay',
     title: 'Payslips and\npapers, sorted',
     body: 'Every payslip, claim and document in one place — ready to download the moment you need it.',
+    image: ONBOARDING_3,
     art: (
-      <View style={{ gap: space[3] }}>
-        <MockCard dark>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[3] }}>
-            <Badge icon={Rupee} />
-            <View style={{ flex: 1 }}>
-              <Text style={[text.caption, { color: color.surface, opacity: 0.7 }]}>
-                Payslip · March
-              </Text>
-              <Text style={[text.h2, { color: color.surface }]}>Ready to download</Text>
-            </View>
-          </View>
-        </MockCard>
-
-        <View style={{ flexDirection: 'row', gap: space[3] }}>
-          <MockTile icon={Document} label="Documents" />
-          <MockTile icon={Rupee} label="Claims" />
-          <MockTile icon={Calendar} label="Tax" />
-        </View>
-      </View>
+      <Image
+        source={ONBOARDING_3}
+        style={{ width: '100%', height: 220 }}
+        resizeMode="contain"
+      />
     ),
   },
 ];
@@ -298,7 +170,7 @@ export default function OnboardingScreen({ navigation, route }) {
           justifyContent: 'space-between',
         }}
       >
-        <BrandMark width={116} />
+        <BrandMark width={64} />
         <Pressable
           onPress={finish}
           accessibilityRole="button"
@@ -332,7 +204,12 @@ export default function OnboardingScreen({ navigation, route }) {
             <View
               accessibilityElementsHidden
               importantForAccessibility="no-hide-descendants"
-              style={{ marginBottom: space[10] }}
+              style={{
+                height: 220,
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginBottom: space[10],
+              }}
             >
               {item.art}
             </View>
@@ -367,7 +244,26 @@ export default function OnboardingScreen({ navigation, route }) {
         <Dots count={SLIDES.length} active={index} />
 
         {isLast ? (
-          <Button title="Get started" onPress={finish} size="lg" icon={ArrowRight} iconRight />
+          <Pressable
+            onPress={finish}
+            accessibilityRole="button"
+            accessibilityLabel="Get started"
+            style={({ pressed }) => ({
+              height: 56,
+              borderRadius: radius.full,
+              paddingHorizontal: space[6],
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: pressed ? color.brandPressed : color.brand,
+              gap: space[2],
+            })}
+          >
+            <Text style={[text.bodyStrong, { color: color.textOnBrand, fontSize: 16 }]}>
+              Get started
+            </Text>
+            <ArrowRight size={iconSize.lg} color={color.textOnBrand} />
+          </Pressable>
         ) : (
           <Pressable
             onPress={next}

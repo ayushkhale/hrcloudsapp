@@ -78,8 +78,32 @@ export const icons = {
   calendar: s('CalendarIcon', 'CalendarDaysIcon'),
   /** Clock in / clock out. */
   punch: s('FingerPrintIcon'),
+  /** The arrow INTO the day — a clock-in on the day timeline. */
+  clockIn: s('ArrowRightEndOnRectangleIcon', 'ArrowRightOnRectangleIcon', 'LoginIcon'),
+  /** The arrow OUT of the day — a clock-out on the day timeline. */
+  clockOut: s('ArrowLeftStartOnRectangleIcon', 'ArrowLeftOnRectangleIcon', 'LogoutIcon'),
+  /** A break starting. */
+  pause: s('PauseIcon'),
+  /** A break ending — back on the clock. */
+  play: s('PlayIcon'),
+  /** An attendance flag. FlagIcon IS present in Heroicons v2 (verified against
+      the installed package, 2026-10-17), so Flags no longer borrows `warn`. */
+  flag: s('FlagIcon'),
   location: s('LocationMarkerIcon', 'MapPinIcon'),
   overtime: s('LightningBoltIcon', 'BoltIcon'),
+  /** Leave — a day away from work. NOT `calendar`: that one is the attendance
+      month, and the two sit side by side in My Time's strip. */
+  leave: s('SunIcon'),
+  // A public holiday. NOT `calendar`: that is the attendance days tile, and
+  // two tiles side by side wearing one glyph is how a menu stops being read.
+  holiday: s('StarIcon'),
+  star: s('StarIcon'),
+  sun: s('SunIcon'),
+  moon: s('MoonIcon'),
+  paint: s('PaintBrushIcon'),
+  gift: s('GiftIcon'),
+  fire: s('FireIcon'),
+  sparkles: s('SparklesIcon'),
   /** Earned Leave (comp-off). Never say "comp-off" in the UI — §6. */
   earnedLeave: s('GiftIcon'),
 
@@ -99,14 +123,30 @@ export const icons = {
   clipboard: s('ClipboardListIcon', 'ClipboardDocumentListIcon'),
   clipboardCheck: s('ClipboardCheckIcon', 'ClipboardDocumentCheckIcon'),
   attachment: s('PaperClipIcon'),
+  /** Receipt and proof pickers — the three ways a file gets in (ui/AttachmentPicker). */
+  camera: s('CameraIcon'),
+  photo: s('PhotographIcon', 'PhotoIcon'),
+  /** The salary account. Bank tile in My Pay and the BankAccount form. */
+  bank: s('LibraryIcon', 'BuildingLibraryIcon'),
   upload: s('UploadIcon', 'ArrowUpTrayIcon'),
   download: s('CloudDownloadIcon', 'ArrowDownTrayIcon'),
   downloadDoc: s('DocumentDownloadIcon', 'ArrowDownTrayIcon'),
   /** ONLY inside a sheet. Never on a row — house rule §3. */
   view: s('EyeIcon'),
+  eyeSlash: s('EyeSlashIcon', 'EyeOffIcon'),
 
   // ── People and org ────────────────────────────────────────────────────────
   profile: s('UserCircleIcon'),
+  /** One person — a name field, as opposed to an account (`profile`). */
+  user: s('UserIcon'),
+  /** An employee code or a government id. */
+  idCard: s('IdentificationIcon'),
+  /** Date of birth. */
+  cake: s('CakeIcon'),
+  /** Blood group and the other human details. */
+  heart: s('HeartIcon'),
+  /** A home address, as opposed to a work location. */
+  home: s('HomeIcon'),
   people: s('UserGroupIcon', 'UsersIcon'),
   orgChart: s('ShareIcon'),
   office: s('OfficeBuildingIcon', 'BuildingOfficeIcon'),
@@ -126,6 +166,7 @@ export const icons = {
   search: s('SearchIcon', 'MagnifyingGlassIcon'),
   refresh: s('RefreshIcon', 'ArrowPathIcon'),
   add: s('PlusIcon'),
+  minus: s('MinusIcon'),
   edit: s('PencilAltIcon', 'PencilSquareIcon'),
   delete: s('TrashIcon'),
   settings: s('CogIcon', 'Cog6ToothIcon'),
@@ -133,14 +174,32 @@ export const icons = {
   switch: s('SwitchHorizontalIcon', 'ArrowsRightLeftIcon'),
   external: s('ExternalLinkIcon', 'ArrowTopRightOnSquareIcon'),
   menu: s('DotsVerticalIcon', 'EllipsisVerticalIcon'),
+  dots: s('DotsHorizontalIcon', 'EllipsisHorizontalIcon'),
+  /** The drawer's hamburger. NOT `menu` — that one is the row overflow '⋮'. */
+  bars: s('MenuIcon', 'Bars3Icon'),
+  /** Notifications. An inbox tray is for documents awaiting action, not alerts. */
+  bell: s('BellIcon'),
+  megaphone: s('SpeakerphoneIcon', 'MegaphoneIcon'),
+  /** The task discussion thread. A conversation, not a notice (that is `bell`). */
+  chat: s('ChatAlt2Icon', 'ChatBubbleLeftRightIcon', 'ChatAltIcon', 'ChatBubbleLeftEllipsisIcon'),
+  /** The automated system note in a task thread — "sent back", "handed over". */
+  cog: s('CogIcon', 'Cog6ToothIcon'),
 
-  // ── Contact ───────────────────────────────────────────────────────────────
+  // ── Contact & Devices ─────────────────────────────────────────────────────
   mail: s('MailIcon', 'EnvelopeIcon'),
   phone: s('PhoneIcon'),
+  device: s('DeviceMobileIcon', 'DevicePhoneMobileIcon', 'PhoneIcon'),
+  /** A registered computer/browser device (My Registered Devices). */
+  computer: s('DesktopComputerIcon', 'ComputerDesktopIcon'),
+  collection: s('CollectionIcon', 'RectangleStackIcon', 'FolderIcon'),
   globe: s('GlobeAltIcon'),
 
   // ── Ask Maya ──────────────────────────────────────────────────────────────
   maya: s('SparklesIcon'),
+  /** Send a chat message to Maya. */
+  send: s('PaperAirplaneIcon'),
+  /** Stop Maya mid-answer. */
+  stop: s('StopIcon'),
 };
 
 /**
@@ -153,6 +212,7 @@ export const icons = {
  * read as merely "a different colour" rather than selected.
  */
 export const tabIcons = {
+  home: { active: icons.home, inactive: o('HomeIcon') },
   dashboard: { active: icons.dashboard, inactive: o('ViewGridIcon', 'Squares2X2Icon') },
   clock: { active: icons.clock, inactive: o('ClockIcon') },
   calendar: { active: icons.calendar, inactive: o('CalendarIcon', 'CalendarDaysIcon') },
@@ -161,6 +221,11 @@ export const tabIcons = {
     inactive: o('CurrencyRupeeIcon', 'CurrencyDollarIcon', 'BanknotesIcon'),
   },
   menu: { active: icons.menu, inactive: o('DotsVerticalIcon', 'EllipsisVerticalIcon') },
+  folder: { active: icons.folder, inactive: o('FolderOpenIcon', 'FolderIcon') },
+  clipboardCheck: {
+    active: icons.clipboardCheck,
+    inactive: o('ClipboardCheckIcon', 'ClipboardDocumentCheckIcon'),
+  },
 };
 
 /* ─── Dev-only report ─────────────────────────────────────────────────────────

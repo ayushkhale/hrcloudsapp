@@ -34,10 +34,9 @@ import { icons } from '../../../theme/icons';
 import { color, iconSize, radius, space, text } from '../../../theme/tokens';
 import { Screen } from '../../../ui';
 
-// The colour wordmark from hrclouds.in. 1024×343 ≈ 2.986:1 — every BrandMark
-// box keeps that ratio so the letterhead never stretches.
-const LOGO = require('../../../assets/brand/logocolored.png');
-const LOGO_RATIO = 1024 / 343;
+// The brand logo from src/assets/brand/logo2.png. 256×176 ≈ 1.455:1
+const LOGO = require('../../../assets/brand/logo2.png');
+const LOGO_RATIO = 256 / 176;
 
 /* ── The wash ──────────────────────────────────────────────────────────────
    Three purple blobs under a Gaussian blur — the frosted-glass look the web
@@ -107,7 +106,7 @@ export function AuthBackdrop() {
 /** The brand wordmark at a fixed aspect ratio so it never stretches — shared by
     the auth header and the onboarding top bar, so there is one logo in one
     place. */
-export function BrandMark({ width = 150, style }) {
+export function BrandMark({ width = 80, style }) {
   return (
     <Image
       source={LOGO}
@@ -161,6 +160,7 @@ export function AuthScreen({
   subtitle,
   onBack,
   logo = true,
+  logoPaddingBottom = space[6],
   footer,
   legal,
   scroll = true,
@@ -175,7 +175,7 @@ export function AuthScreen({
         keyboard
         background="transparent"
         footer={footer}
-        contentStyle={{ paddingBottom: space[10] }}
+        contentStyle={{ paddingTop: space[2], paddingBottom: space[10] }}
       >
         {onBack ? (
           <View style={{ marginTop: space[2], marginBottom: space[4] }}>
@@ -184,14 +184,15 @@ export function AuthScreen({
         ) : null}
 
         {logo ? (
-          // Left-aligned, not centred: it reads as a letterhead rather than a
-          // splash, and it lines up with the heading under it.
-          <BrandMark width={150} style={{ marginTop: onBack ? 0 : space[6] }} />
+          // Exact same size (64) and placement as OnboardingScreen for visual consistency
+          <View style={{ marginTop: onBack ? 0 : 0, paddingBottom: logoPaddingBottom }}>
+            <BrandMark width={64} />
+          </View>
         ) : null}
 
         <Text
           accessibilityRole="header"
-          style={[text.display, { marginTop: space[6] }]}
+          style={[text.display, { marginTop: space[2] }]}
         >
           {title}
         </Text>
@@ -210,11 +211,45 @@ export function AuthScreen({
   );
 }
 
-/** The terms line the web shows under every auth form. */
+/* ── The step dots ────────────────────────────────────────────────────────
+   Three screens make one password reset, and without a progress mark the
+   middle one looks like a dead end — people back out of it. The dots say
+   "two more taps", which is the only thing anybody wants to know there.
+
+   Decoration with a text equivalent: the dots themselves are hidden from
+   screen readers and the "Step 2 of 3" label carries the meaning, because
+   three unlabelled circles announce as nothing at all. */
+export function StepDots({ step = 1, total = 3, style }) {
+  return (
+    <View
+      accessibilityRole="text"
+      accessibilityLabel={`Step ${step} of ${total}`}
+      style={[{ flexDirection: 'row', justifyContent: 'center', gap: space[2] }, style]}
+    >
+      {Array.from({ length: total }).map((_, i) => (
+        <View
+          key={i}
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+          style={{
+            width: i === step - 1 ? 22 : 10,
+            height: 6,
+            borderRadius: 3,
+            backgroundColor: i === step - 1 ? color.brand : color.border,
+          }}
+        />
+      ))}
+    </View>
+  );
+}
+
+/** The terms line matching the screenshot */
 export function AuthLegal() {
   return (
-    <Text style={[text.caption, { textAlign: 'center', color: color.textMuted, lineHeight: 17 }]}>
-      By continuing you agree to <Text style={{ color: color.textPrimary }}>Terms of Service</Text> and <Text style={{ color: color.textPrimary }}>Privacy Policy</Text>.
+    <Text style={[text.caption, { textAlign: 'center', color: color.textMuted, lineHeight: 18 }]}>
+      By signing in, you agree to our{' '}
+      <Text style={{ color: color.brand, fontWeight: '500' }}>Terms of Service</Text> and{' '}
+      <Text style={{ color: color.brand, fontWeight: '500' }}>Privacy Policy</Text>.
     </Text>
   );
 }

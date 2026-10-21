@@ -118,20 +118,49 @@ export function sessionFromToken(token) {
 
 const SERVICE = 'in.hrclouds.employee.session';
 
+/**
+ * Hold the session, and remember it.
+ *
+ * TWO STEPS, AND THE SECOND ONE MAY FAIL WITHOUT COSTING THE FIRST
+ * (2026-10-18). This used to write the Keychain and only then call
+ * `setToken`, with no catch: on a device where the Keystore is unavailable -
+ * an emulator without secure hardware, a phone with no screen lock, a
+ * manufacturer build that refuses the service - `setGenericPassword` throws,
+ * the token is never set in memory, `startSession` rejects, and SOMEBODY WHO
+ * TYPED THE RIGHT PASSWORD IS NOT SIGNED IN. The real failure is "we can't
+ * remember this for next time", which is not a reason to refuse the session
+ * in front of them.
+ *
+ * So the in-memory token goes first and the persistence is best-effort. The
+ * return value says whether it stuck, and the caller tells the person when it
+ * did not - because "you'll have to sign in again next launch" is something
+ * they need to hear once, not discover every morning.
+ *
+ * @returns {Promise<boolean>} true when the session will survive a restart.
+ */
 export async function saveSession(accessToken, refreshToken) {
-  if (!accessToken) return;
-  await Keychain.setGenericPassword(
-    'hrclouds',
-    JSON.stringify({ accessToken, refreshToken: refreshToken || null }),
-    {
-      service: SERVICE,
-      // The session must survive a reboot, so the token is not bound to a
-      // biometric unlock here. The optional app lock (phase 8) is a separate,
-      // explicit feature — don't conflate the two.
-      accessible: Keychain.ACCESSIBLE.AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY,
-    },
-  );
+  if (!accessToken) return false;
+
+  // First, so the session is live whatever the Keystore does.
   setToken(accessToken);
+
+  try {
+    await Keychain.setGenericPassword(
+      'hrclouds',
+      JSON.stringify({ accessToken, refreshToken: refreshToken || null }),
+      {
+        service: SERVICE,
+        // The session must survive a reboot, so the token is not bound to a
+        // biometric unlock here. The optional app lock (phase 8) is a
+        // separate, explicit feature - don't conflate the two.
+        accessible: Keychain.ACCESSIBLE.AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY,
+      },
+    );
+    return true;
+  } catch (err) {
+    if (__DEV__) console.warn('Keychain write failed; session is memory-only:', err);
+    return false;
+  }
 }
 
 /** Read the stored session and prime the in-memory token cache. */
@@ -157,11 +186,27 @@ export async function loadSession() {
  */
 export async function clearSession() {
   clearToken();
-  await Keychain.resetGenericPassword({ service: SERVICE }).catch(() => {});
-  await AsyncStorage.multiRemove([
-    'hrclouds_attendance_work_mode',
-    'hrclouds_last_tab',
-  ]).catch(() => {});
-  clearDirectoryCache();
-  await clearDownloadCache().catch(() => {});
+  try {
+    await Keychain.resetGenericPassword({ service: SERVICE });
+  } catch (err) {
+    if (__DEV__) console.warn('Keychain reset error:', err);
+  }
+  try {
+    await AsyncStorage.multiRemove([
+      'hrclouds_attendance_work_mode',
+      'hrclouds_last_tab',
+    ]);
+  } catch (err) {
+    if (__DEV__) console.warn('AsyncStorage multiRemove error:', err);
+  }
+  try {
+    clearDirectoryCache();
+  } catch (err) {
+    if (__DEV__) console.warn('clearDirectoryCache error:', err);
+  }
+  try {
+    await clearDownloadCache();
+  } catch (err) {
+    if (__DEV__) console.warn('clearDownloadCache error:', err);
+  }
 }

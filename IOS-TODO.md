@@ -55,6 +55,14 @@ the list below is honest.
 - [ ] **Biometrics** (phase 8) — `NSFaceIDUsageDescription` is **not yet in
       `Info.plist`**; add it with the app-lock work. `FaceID` is already in the
       Podfile handler list.
+- [ ] **Attendance device key** (2026-10-21) — Android has `HRDeviceKey`
+      (`android/…/devicekey/DeviceKeyModule.kt`): a non-exportable P-256 key,
+      SPKI export, SHA256withECDSA behind BiometricPrompt. iOS needs the same
+      five methods (`isSupported · hasKey · createKey · deleteKey · sign`) over
+      the Secure Enclave (`kSecAttrTokenIDSecureEnclave`, `.biometryCurrentSet`,
+      `SecKeyCreateSignature(.ecdsaSignatureMessageX962SHA256)` — DER, use as
+      is). Until then `deviceKey.js` reports the phone unsupported and the
+      register button is absent. Needs `NSFaceIDUsageDescription` too.
 - [ ] A small iPhone (SE) and a notched iPhone in the phase gate, per
       `NativeRef/00-plan/06-definition-of-done.md`.
 

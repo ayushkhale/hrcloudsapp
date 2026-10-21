@@ -79,7 +79,7 @@ export function DailyHoursChart({ year, month, onBarPress, reloadKey }) {
 
   return (
     <Card>
-      <CardHeader>Daily hours</CardHeader>
+      <CardHeader variant="title">Daily hours</CardHeader>
       {loading ? (
         <Skeleton type="chart" />
       ) : (

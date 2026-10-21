@@ -80,3 +80,6 @@ yarn-error.log
 .env.development
 .env.production
 .env.local
+
+# Built APKs — release artifacts, not source (98 MB; GitHub caps files at 100 MB).
+apk-builds/

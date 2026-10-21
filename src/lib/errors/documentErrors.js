@@ -262,7 +262,9 @@ export function documentErrorMessage(err, fallback = "Something went wrong. Plea
     return "Can't reach the server. Check your internet connection and try again.";
   }
   const message = typeof err?.message === "string" ? err.message : "";
-  if (message && !/^Request failed: \d+$/.test(message)) return message;
+  // See attendanceErrors.js — `isGenericMessage` comes from api/client.js and
+  // the old regex never matched what the client actually writes.
+  if (message && !err?.isGenericMessage && !/^Request failed\b/.test(message)) return message;
   return fallback;
 }
 

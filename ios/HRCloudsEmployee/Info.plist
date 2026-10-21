@@ -33,6 +33,10 @@
 		<key>NSAllowsLocalNetworking</key>
 		<true/>
 	</dict>
+	<key>NSCameraUsageDescription</key>
+	<string>HR Clouds uses the camera to photograph a receipt or a tax proof you are attaching.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>HR Clouds opens your photos so you can attach a receipt or a tax proof.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>HR Clouds records where you clocked in, so your attendance can be verified against your work location.</string>
 	<key>UILaunchStoryboardName</key>

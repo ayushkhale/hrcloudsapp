@@ -26,12 +26,13 @@
 
 import React, { useState } from 'react';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { Modal, Platform, Pressable, View } from 'react-native';
+import { Platform, View } from 'react-native';
 import { fmtClockTime, parseYMDLocal, toLocalYMD, fmtDate } from '../lib/dates';
 import { icons } from '../theme/icons';
-import { color, elevate, gutter, radius, space } from '../theme/tokens';
+import { color, gutter, space } from '../theme/tokens';
 import { Button } from './Button';
 import { PickerBox } from './TextField';
+import { SheetShell } from './SheetShell';
 
 /** "HH:mm" → a throwaway Date for the picker. Today's date, their clock time. */
 function dateFromHHMM(hhmm) {
@@ -115,30 +116,26 @@ export function TimeField({
  * dismiss it. So on iOS it gets a small sheet with a Done button.
  *
  * This asymmetry is the whole reason this wrapper exists. Don't "unify" it.
+ *
+ * On iOS the sheet is the house one (ui/SheetShell.jsx) and so it drags and
+ * springs like the rest. It is the one sheet with NO detent: it hugs the
+ * spinner and the Done button, which is what it always did, and the library
+ * sizes it from its content rather than from a percentage.
  */
 function PickerHost({ open, onClose, children }) {
   if (!open) return null;
   if (Platform.OS !== 'ios') return children;
 
   return (
-    <Modal visible transparent animationType="slide" onRequestClose={onClose} statusBarTranslucent>
-      <View style={{ flex: 1, justifyContent: 'flex-end' }}>
-        <Pressable accessibilityLabel="Close" onPress={onClose} style={{ flex: 1, backgroundColor: color.backdrop }} />
-        <View
-          style={[{
-            backgroundColor: color.surface,
-            borderTopLeftRadius: radius.xl,
-            borderTopRightRadius: radius.xl,
-            paddingHorizontal: gutter,
-            paddingTop: space[2],
-            paddingBottom: space[4],
-          }, elevate('lg')]}
-        >
+    <SheetShell visible onClose={onClose} background={color.surface}>
+      {({ close }) => (
+        <View style={{ paddingHorizontal: gutter, paddingTop: space[2], paddingBottom: space[4] }}>
           {children}
-          <Button title="Done" variant="primary" onPress={onClose} fullWidth />
+          {/* `close`, so Done glides away like a drag does. */}
+          <Button title="Done" variant="primary" onPress={close} fullWidth />
         </View>
-      </View>
-    </Modal>
+      )}
+    </SheetShell>
   );
 }
 
@@ -195,6 +192,31 @@ export function DateField({
         />
       </PickerHost>
     </>
+  );
+}
+
+/**
+ * The date picker on its own, for a control that isn't a form field — the
+ * date pill on DayLogScreen. Same picker, same platform split, same
+ * toLocalYMD rule as DateField; the caller owns the button that opens it.
+ */
+export function DatePicker({ open, value, onChange, onClose, min, max }) {
+  const handle = (event, picked) => {
+    if (Platform.OS === 'android') onClose();
+    if (event?.type === 'dismissed' || !picked) return;
+    onChange(toLocalYMD(picked));
+  };
+  return (
+    <PickerHost open={open} onClose={onClose}>
+      <DateTimePicker
+        value={value ? parseYMDLocal(value) : new Date()}
+        mode="date"
+        display={Platform.OS === 'ios' ? 'spinner' : 'calendar'}
+        minimumDate={min ? parseYMDLocal(min) : undefined}
+        maximumDate={max ? parseYMDLocal(max) : undefined}
+        onChange={handle}
+      />
+    </PickerHost>
   );
 }
 

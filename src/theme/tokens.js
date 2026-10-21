@@ -52,13 +52,30 @@ export const palette = {
 /* ─── Semantic roles — use THESE, not the ramps ───────────────────────────── */
 
 export const color = {
-  // surfaces
-  bg: palette.slate[50], // the app background. Never pure white
+  /* ── THE CANVAS (2026-10-20 UI pass) ─────────────────────────────────────
+     The background used to be slate-50 — a cold grey that made every white
+     card look like a form on a desk. It is now a lavender wash: still almost
+     white, never pure white, but warm enough that the white cards on it read
+     as soft objects rather than boxes. `canvasTop` is the faint purple glow a
+     tab root fades in from (ui/Screen's `CanvasGlow`). Purple only — the
+     reference shots were yellow; the brand is not. */
+  bg: '#F7F5FC', // the app background. Never pure white
+  canvasTop: '#EFE7FD', // purple-100 at ~70%, the glow at the top of a root
   surface: palette.white,
-  surfaceSubtle: '#f8fafc', // slate-50 — section headers, read-only fields
-  border: palette.slate[200],
-  borderSubtle: palette.slate[100],
-  backdrop: 'rgba(15,23,42,0.4)', // sheet / modal scrim
+  surfaceSubtle: '#F8F6FC', // section headers, read-only fields, chips
+  border: '#E6E1F0', // a lavender slate-200: the input and divider edge
+  borderSubtle: '#EFEBF6', // the card hairline
+  backdrop: 'rgba(24,14,44,0.45)', // sheet / modal scrim, an aubergine dim
+
+  /* ── INK — the primary action (2026-10-20) ───────────────────────────────
+     A near-black aubergine. The one main action on a screen is a solid INK
+     pill, which reads as THE button on any surface — white, lavender, or the
+     soft hero gradient — where a purple-600 fill sat at the same weight as
+     every purple chip around it. It is still the brand: a purple so dark it
+     is read as black, the same move the reference shots make with theirs. */
+  ink: '#22143A',
+  inkPressed: '#3A2758',
+  inkSoft: 'rgba(34,20,58,0.06)',
 
   // text
   textPrimary: palette.slate[900],
@@ -76,6 +93,15 @@ export const color = {
   brandSoftBg: palette.purple[50],
   brandSoftFg: palette.purple[700],
   brandSoftBorder: palette.purple[200],
+  /* An ICON CHIP at rest (2026-10-18). `brandSoftBg` is purple-50 — at 40pt
+     on a slate-50 background it is indistinguishable from white, which is why
+     the section strip and the tile grids read as grey boxes with grey glyphs
+     however purple the palette is. A chip needs purple-100 behind a
+     purple-600 glyph to be seen as purple at arm's length. The SELECTED chip
+     is solid `brand` with a white glyph — the one place in a list where a
+     filled purple square is allowed, because exactly one is ever filled. */
+  brandChipBg: palette.purple[100],
+  brandChipFg: palette.purple[600],
   // the press feedback that replaces web's hover:bg-purple-50/40
   pressTint: 'rgba(250,245,255,0.6)',
 
@@ -88,13 +114,27 @@ export const color = {
   heroBadgeBg: 'rgba(255,255,255,0.10)',
   heroBadgeBorder: 'rgba(255,255,255,0.20)',
 
-  // semantic tones — bg / fg / border for a badge, plus the dot
-  success: { bg: palette.violet[50], fg: palette.violet[700], border: palette.violet[200], dot: palette.violet[500] },
-  pending: { bg: palette.fuchsia[50], fg: palette.fuchsia[700], border: palette.fuchsia[200], dot: palette.fuchsia[500] },
-  info: { bg: palette.indigo[50], fg: palette.indigo[800], border: palette.indigo[200], dot: palette.indigo[500] },
-  brandTone: { bg: palette.purple[50], fg: palette.purple[700], border: palette.purple[200], dot: palette.purple[500] },
-  danger: { bg: palette.rose[50], fg: palette.rose[700], border: palette.rose[200], dot: palette.rose[500] },
-  neutral: { bg: palette.slate[50], fg: palette.slate[600], border: palette.slate[200], dot: palette.slate[300] },
+  /* The SOFT hero — the state card at the top of a tab root (ui/HeroCard).
+     Light, not dark: the dark violet block above a list read as a banner ad,
+     and its "All caught up" was a shout about nothing. Three stops, top-left
+     to bottom-right, purple-100 into white. Dark text sits on it. */
+  heroSoftFrom: '#EADDFE',
+  heroSoftVia: '#F3ECFE',
+  heroSoftTo: '#FBF9FF',
+  heroSoftBorder: '#E4D6FB',
+
+  /* Semantic tones — bg / fg / border for a badge, plus the dot.
+
+     `chip` (2026-10-18) is the SAME tone one step stronger, for a 38-42pt
+     icon square. The 50 shade is correct behind 10px badge text and invisible
+     behind an icon at that size, which is how a palette this purple ended up
+     looking grey. Use `bg` for a badge or a block, `chip` for an icon tile. */
+  success: { bg: palette.violet[50], chip: palette.violet[100], fg: palette.violet[700], border: palette.violet[200], dot: palette.violet[500] },
+  pending: { bg: palette.fuchsia[50], chip: palette.fuchsia[100], fg: palette.fuchsia[700], border: palette.fuchsia[200], dot: palette.fuchsia[500] },
+  info: { bg: palette.indigo[50], chip: palette.indigo[100], fg: palette.indigo[800], border: palette.indigo[200], dot: palette.indigo[500] },
+  brandTone: { bg: palette.purple[50], chip: palette.purple[100], fg: palette.purple[700], border: palette.purple[200], dot: palette.purple[500] },
+  danger: { bg: palette.rose[50], chip: palette.rose[100], fg: palette.rose[700], border: palette.rose[200], dot: palette.rose[500] },
+  neutral: { bg: palette.slate[50], chip: palette.slate[100], fg: palette.slate[600], border: palette.slate[200], dot: palette.slate[300] },
 };
 
 /* ─── Tone keys ───────────────────────────────────────────────────────────────
@@ -110,9 +150,9 @@ export const tone = {
   purple: color.brandTone,
   rose: color.danger,
   slate: color.neutral,
-  indigo: { bg: palette.indigo[100], fg: palette.indigo[800], border: palette.indigo[300], dot: palette.indigo[700] },
-  orange: { bg: palette.fuchsia[100], fg: palette.fuchsia[800], border: palette.fuchsia[300], dot: palette.fuchsia[700] },
-  sky: { bg: palette.white, fg: palette.indigo[600], border: palette.indigo[300], dot: palette.indigo[300] },
+  indigo: { bg: palette.indigo[100], chip: palette.indigo[100], fg: palette.indigo[800], border: palette.indigo[300], dot: palette.indigo[700] },
+  orange: { bg: palette.fuchsia[100], chip: palette.fuchsia[100], fg: palette.fuchsia[800], border: palette.fuchsia[300], dot: palette.fuchsia[700] },
+  sky: { bg: palette.white, chip: palette.indigo[50], fg: palette.indigo[600], border: palette.indigo[300], dot: palette.indigo[300] },
 };
 
 export const toneOf = (key) => tone[key] || tone.slate;
@@ -132,6 +172,29 @@ export const chart = {
   ],
   hoursBar: '#7C3AED', // violet-600
   trend: { present: '#7C3AED', on_leave: '#A78BFA', absent: '#C026D3' },
+
+  /* One fill per day chip (lib/dayStatus.js `DAY_CHIPS`), for the daily bars
+     on Home's "My month".
+
+     WHY THIS EXISTS AND `calendarHeat` DOESN'T COVER IT: the heat ramp is for
+     a filled calendar CELL with text on top, so it is dark and high-contrast.
+     A 11pt bar on a white plot needs the opposite — mid-weight fills that can
+     sit beside each other and still be told apart at thumbnail size. Same nine
+     keys, so a day can never be one colour in the chart and another in a grid.
+
+     `edge` is the bar's 1px outline: the pale ones (holiday, weekly off, no
+     data) are invisible on white without it. */
+  day: {
+    present: { fill: '#7C3AED', edge: '#6D28D9' }, // violet-600 / 700
+    late: { fill: '#c084fc', edge: '#a855f7' }, // purple-400 / 500
+    half_day: { fill: '#c4b5fd', edge: '#a78bfa' }, // violet-300 / 400
+    on_leave: { fill: '#e879f9', edge: '#d946ef' }, // fuchsia-400 / 500
+    absent: { fill: '#fb7185', edge: '#f43f5e' }, // rose-400 / 500
+    holiday: { fill: '#a5b4fc', edge: '#818cf8' }, // indigo-300 / 400
+    weekly_off: { fill: '#cbd5e1', edge: '#94a3b8' }, // slate-300 / 400
+    no_data: { fill: '#e2e8f0', edge: '#cbd5e1' }, // slate-200 / 300
+    upcoming: { fill: '#f1f5f9', edge: '#e2e8f0' }, // slate-100 / 200
+  },
   grid: palette.slate[100],
   axisTick: { color: palette.slate[400], fontSize: 10, fontWeight: '600' },
 };
@@ -155,6 +218,9 @@ export const calendarHeat = {
 };
 
 export const heatOf = (chipKey) => calendarHeat[chipKey] || calendarHeat.upcoming;
+
+/** The bar fill + outline for a day chip — `chart.day`, never undefined. */
+export const dayBarOf = (chipKey) => chart.day[chipKey] || chart.day.no_data;
 
 /* ─── Type ────────────────────────────────────────────────────────────────────
    PostScript names, not file names. Verify these on a device before building
@@ -216,8 +282,10 @@ export const gutter = space[4]; // 16 — the screen side gutter, everywhere
 export const radius = {
   sm: 8, // pills, small chips           (web rounded-lg)
   md: 12, // inputs, read-only fields     (web rounded-xl)
-  lg: 16, // cards, sections, sheets      (web rounded-2xl)
-  xl: 24, // hero header, big cards       (web rounded-3xl)
+  // 18 / 26 since the 2026-10-20 UI pass: a card on a phone reads softer one
+  // step rounder than the web's rounded-2xl, and it matches the pills.
+  lg: 18, // cards, sections, sheets
+  xl: 26, // hero cards, big cards
   full: 999,
 };
 
@@ -248,11 +316,13 @@ export const iconSize = {
 
 const shadow = {
   xs: {
-    ios: { shadowColor: '#0f172a', shadowOpacity: 0.04, shadowRadius: 2, shadowOffset: { width: 0, height: 1 } },
+    ios: { shadowColor: '#2E1065', shadowOpacity: 0.045, shadowRadius: 8, shadowOffset: { width: 0, height: 2 } },
     android: { elevation: 1 },
   },
+  // Wider and fainter, tinted aubergine rather than slate: the lift of a
+  // soft object, not the drop shadow of a box (2026-10-20).
   sm: {
-    ios: { shadowColor: '#0f172a', shadowOpacity: 0.06, shadowRadius: 6, shadowOffset: { width: 0, height: 2 } },
+    ios: { shadowColor: '#2E1065', shadowOpacity: 0.06, shadowRadius: 14, shadowOffset: { width: 0, height: 4 } },
     android: { elevation: 2 },
   },
   md: {
@@ -266,6 +336,38 @@ const shadow = {
 };
 
 export const elevate = (key = 'sm') => Platform.select(shadow[key] || shadow.sm);
+
+/* ─── The lift under a bottom sheet — NOT `elevate('lg')` (2026-10-17) ────────
+   ANDROID CANNOT ROUND TWO CORNERS AND CAST A SHADOW AT THE SAME TIME, and
+   that is still the whole reason this exists.
+
+   A sheet is `borderTopLeftRadius` + `borderTopRightRadius` and square at the
+   bottom, where it runs off the screen. Android builds a shadow from the
+   view's OUTLINE, and `ViewOutlineProvider` only understands ONE radius for
+   all four corners — so a view with mixed radii falls back to a RECTANGULAR
+   outline. The sheet is then clipped round while its elevation shadow is
+   drawn square, and the square corners show through the backdrop as a hard
+   edge sitting just outside the rounded ones. That is the "extra unrounded
+   corner": not a missing radius, a shadow that didn't get the memo.
+
+   So the shadow is iOS-only, where it follows the rounded path correctly. On
+   Android a sheet needs no lift anyway: it sits on a dimmed backdrop, which
+   separates it from the screen far more strongly than 16dp of elevation.
+
+   MOVING TO @gorhom/bottom-sheet DID NOT RETIRE THIS. The library ships no
+   shadow of its own — its default background is a background colour and a
+   radius, nothing else — so the lift is still ours to supply, and supplying
+   it with `elevate('lg')` would bring the square corners straight back.
+
+   ONE CALL SITE NOW: ui/SheetShell.jsx, on the library's `backgroundComponent`
+   — the absolutely-positioned layer behind the content, which is the only one
+   that can cast a shadow at all. The clipping layer above it sets
+   `overflow: 'hidden'`, and on iOS that is `masksToBounds`, which would eat
+   the shadow. Two layers, one each.
+
+   Use this for ANY panel with a rounded top and a square bottom. `elevate()`
+   stays correct for cards, which are rounded on all four corners. */
+export const elevateSheet = () => Platform.select({ ios: shadow.lg.ios, default: null });
 
 /* ─── Layering ────────────────────────────────────────────────────────────────
    Mirrors the web z-scale so the rules in CLAUDE.md §3 still read true.

@@ -25,6 +25,7 @@
 import React, { useEffect, useRef } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { color, radius, space, text } from '../theme/tokens';
+import { haptic } from './haptics';
 
 /**
  * @param {object} props
@@ -65,18 +66,25 @@ export function FilterTabs({ options = [], value, onChange, help, style }) {
                 accessibilityRole="tab"
                 accessibilityState={{ selected }}
                 onLayout={(e) => { offsets.current[opt.value] = e.nativeEvent.layout.x; }}
-                onPress={() => onChange(opt.value)}
+                onPress={() => {
+                  if (!selected) haptic('selection');
+                  onChange(opt.value);
+                }}
+                // The selected segment is INK (2026-10-20): a dark pill among
+                // white ones, the reference shots' segmented control. Purple
+                // stays for the section tile above it, so the two "where am
+                // I" answers on a screen never compete in the same colour.
                 style={({ pressed }) => ({
-                  paddingHorizontal: space[3],
+                  paddingHorizontal: space[4],
                   paddingVertical: 8,
                   borderRadius: radius.full,
                   borderWidth: 1,
-                  minHeight: 36,
+                  minHeight: 38,
                   justifyContent: 'center',
                   backgroundColor: selected
-                    ? color.brand
+                    ? color.ink
                     : pressed ? color.brandSoftBg : color.surface,
-                  borderColor: selected ? color.brand : color.border,
+                  borderColor: selected ? color.ink : color.borderSubtle,
                 })}
               >
                 <Text

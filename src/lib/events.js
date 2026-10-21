@@ -50,6 +50,15 @@ export const ATTENDANCE_EVENTS = Object.freeze({
   // clears without a reload (CLAUDE.md §7).
   ACKNOWLEDGEMENT: "acknowledgement",
   DOCUMENT_REQUEST: "document_request",
+  // My Pay: the salary account was saved, so the Bank card and the Home
+  // nudge re-read it. Not an inbox kind — nobody else is waiting on it.
+  BANK_ACCOUNT: "bank_account",
+  // My Documents: a document of mine was uploaded, replaced or deleted.
+  DOCUMENT: "document",
+  // My Registered Devices: a trusted device was renamed or shut off. Not an
+  // inbox kind for an employee — they have no device queue — but a device of
+  // their own that was waiting for HR leaves that queue when they shut it off.
+  DEVICE: "device",
 });
 
 /**

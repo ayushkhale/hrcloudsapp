@@ -90,6 +90,10 @@ const FINE = Platform.select({
   android: PERMISSIONS.ANDROID.ACCESS_FINE_LOCATION,
 });
 const COARSE = Platform.OS === 'android' ? PERMISSIONS.ANDROID.ACCESS_COARSE_LOCATION : null;
+// "Allow all the time" — so a field punch still carries a location with the app
+// in the background (user, 2026-10-20). Android 10+ only; iOS WHEN_IN_USE is
+// upgraded to Always through its own system prompt, not requested here.
+const BACKGROUND = Platform.OS === 'android' ? PERMISSIONS.ANDROID.ACCESS_BACKGROUND_LOCATION : null;
 
 function mapResult(result) {
   if (result === RESULTS.GRANTED || result === RESULTS.LIMITED) return GEO_STATUS.GRANTED;
@@ -131,7 +135,24 @@ export async function requestLocationPermission() {
   if (result !== GEO_STATUS.GRANTED && COARSE && (await check(COARSE)) === RESULTS.GRANTED) {
     return GEO_STATUS.COARSE_ONLY;
   }
+  // Once foreground location is granted, ask for background too — Android 10+
+  // REQUIRES it as a separate request after the foreground grant, never before.
+  // Best-effort: background is an enhancement, so a denial doesn't change the
+  // foreground result the punch flow depends on.
+  if (result === GEO_STATUS.GRANTED) { requestBackgroundLocation().catch(() => {}); }
   return result;
+}
+
+/**
+ * Ask for "Allow all the time" (Android 10+). Must be called AFTER foreground
+ * location is already granted, or Android refuses it outright. A no-op on iOS
+ * and on older Android, where background follows the foreground grant.
+ */
+export async function requestBackgroundLocation() {
+  if (!BACKGROUND) return GEO_STATUS.UNSUPPORTED;
+  const already = mapResult(await check(BACKGROUND));
+  if (already === GEO_STATUS.GRANTED || already === GEO_STATUS.BLOCKED) return already;
+  return mapResult(await request(BACKGROUND));
 }
 
 /** Open the OS settings page for this app — the only exit from BLOCKED. */
@@ -273,4 +294,49 @@ export function locationPayload(fix) {
   const out = { latitude: c.latitude, longitude: c.longitude };
   if (Object.keys(metadata).length) out.metadata = metadata;
   return out;
+}
+
+/* ─── Reverse geocoding ──────────────────────────────────────────────────── */
+
+/**
+ * Best-effort reverse geocode — turn lat/lng into a human-readable address.
+ *
+ * Uses OpenStreetMap Nominatim (free, no API key). The result is a SHORT
+ * address string like "Sector 62, Noida, Uttar Pradesh" suitable for a photo
+ * stamp or a one-line display. NEVER rejects — returns `null` on any failure
+ * so the caller can fall back to raw coordinates without a try/catch.
+ *
+ * This is fire-and-forget: it must NEVER block a punch. The stamp shows
+ * coordinates immediately and the address replaces them when it arrives.
+ */
+export async function reverseGeocode(latitude, longitude) {
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return null;
+  try {
+    const url =
+      `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json&addressdetails=1&zoom=18`;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 5000);
+    const res = await fetch(url, {
+      headers: {
+        'User-Agent': 'HRCloudsEmployee/1.0',
+        'Accept-Language': 'en',
+      },
+      signal: controller.signal,
+    });
+    clearTimeout(timer);
+    if (!res.ok) return null;
+    const data = await res.json();
+    // Build a short, readable address from the structured parts.
+    const a = data?.address;
+    if (!a) return data?.display_name || null;
+    const parts = [
+      a.road || a.pedestrian || a.neighbourhood || a.hamlet,
+      a.suburb || a.village || a.town,
+      a.city || a.city_district || a.county,
+      a.state,
+    ].filter(Boolean);
+    return parts.length ? parts.join(', ') : data?.display_name || null;
+  } catch {
+    return null;
+  }
 }
