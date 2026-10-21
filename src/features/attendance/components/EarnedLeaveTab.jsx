@@ -211,10 +211,13 @@ export function EarnedLeaveTab() {
               onPress={() => setSelected({ record, workedOn: workedDate(record), credit, expiry, soon })}
               accessibilityLabel={`this ${TERM.toLowerCase()} day`}
               title={`Worked ${fmtDateShort(workedDate(record), 'an off day')}`}
-              value={credit != null ? `+${formatDayCount(credit, { lower: true })}` : null}
               subtitle={soon ? 'Expiring soon — use it before it lapses.' : null}
               badge={<StatusBadge kind="compoff" status={record.status || 'earned'} dense />}
-              meta={expiry ? [{ label: 'Use by', value: fmtDate(expiry, '') }] : []}
+              // The figures in the strip, the correction card's way (2026-10-22).
+              meta={[
+                credit != null ? { label: 'Earned', value: `+${formatDayCount(credit, { lower: true })}` } : null,
+                expiry ? { label: 'Use by', value: fmtDate(expiry, '') } : null,
+              ].filter(Boolean)}
             />
           );
         }}

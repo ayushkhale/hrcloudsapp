@@ -34,7 +34,7 @@ import { useListRefresh } from '../../../hooks/useListRefresh';
 import { FlatList, View } from 'react-native';
 import { attendanceAPI } from '../../../api';
 import { usePagedList } from '../../../hooks/usePagedList';
-import { fmtDateShort, fmtMinutes, monthLabel, monthRange, ymdOnly } from '../../../lib/dates';
+import { fmtDateShort, fmtMinutes, fmtTime, monthLabel, monthRange, ymdOnly } from '../../../lib/dates';
 import { space } from '../../../theme/tokens';
 import { icons } from '../../../theme/icons';
 import { EmptyState, ErrorState, ListFooter, StatusBadge } from '../../../ui';
@@ -116,23 +116,36 @@ export function OvertimeTab({ period }) {
         // and not a total: the figure grows as more pages arrive, and claiming
         // a total that is still filling in would be the lie.
         ListHeaderComponent={list.items.length > 0 ? <StatCards items={stats} /> : null}
-        renderItem={({ item: record }) => (
-          <RecordCard
-            icon={icons.overtime}
-            tone="indigo"
-            onPress={() => setSelected(record)}
-            accessibilityLabel="this overtime entry"
-            title={fmtDateShort(overtimeDate(record), 'That day')}
-            value={fmtMinutes(overtimeMinutes(record), '0m')}
-            subtitle="Worked out from your punches."
-            badge={<StatusBadge kind="overtime" status={record.status || 'pending'} dense />}
-          />
-        )}
+        // The correction card's shape (user, 2026-10-22): the date as the
+        // title, the status top right, the figures in the strip — the extra
+        // time and the punches it came from. The sentence "Worked out from
+        // your punches" was on every card; it lives in the sheet now.
+        renderItem={({ item: record }) => {
+          const day = record?.record || record?.attendance_record || null;
+          const inAt = fmtTime(day?.clock_in_time, '');
+          const outAt = fmtTime(day?.clock_out_time, '');
+          return (
+            <RecordCard
+              icon={icons.overtime}
+              tone="indigo"
+              onPress={() => setSelected(record)}
+              accessibilityLabel="this overtime entry"
+              title={fmtDateShort(overtimeDate(record), 'That day')}
+              subtitle={record?.reason || null}
+              badge={<StatusBadge kind="overtime" status={record.status || 'pending'} dense />}
+              meta={[
+                { label: 'Extra time', value: fmtMinutes(overtimeMinutes(record), '0m') },
+                inAt ? { label: 'Clock in', value: inAt } : null,
+                outAt ? { label: 'Clock out', value: outAt } : null,
+              ].filter(Boolean)}
+            />
+          );
+        }}
         onEndReached={list.loadMore}
         onEndReachedThreshold={0.4}
         ListEmptyComponent={
           list.loading ? (
-            <CardsSkeleton rows={5} />
+            <CardsSkeleton rows={5} height={110} />
           ) : (
             <EmptyState
               icon={icons.overtime}

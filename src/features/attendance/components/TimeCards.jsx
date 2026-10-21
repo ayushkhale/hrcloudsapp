@@ -18,7 +18,7 @@
 // This file holds the two that know what a working day is:
 //
 //   MonthHero  the month's headline, with the stepper inside it
-//   DayCard    one day of attendance — its punches, its chip, its hours
+//   DayCard    one day of attendance, as the house RecordCard (2026-10-22)
 //
 // ── THE COLOURS ARE THE DAY CHIPS, NOT NEW ONES ──────────────────────────────
 //
@@ -46,12 +46,13 @@ import { Text, View } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import { DAY_CHIPS, dayChipKey } from '../../../lib/dayStatus';
 import {
-  fmtMinutes, fmtTime, monthLabel, parseYMDLocal, ymdOnly,
+  fmtDateShort, fmtMinutes, fmtTime, monthLabel, todayYMD, ymdOnly,
 } from '../../../lib/dates';
-import { WEEKDAYS_SHORT } from '../../../lib/format';
-import { color, radius, space, text, toneOf } from '../../../theme/tokens';
+import { humanize } from '../../../lib/enums';
+import { color, radius, space, text } from '../../../theme/tokens';
+import { icons } from '../../../theme/icons';
 import { MonthStepper, SkeletonBlock, StatusBadge } from '../../../ui';
-import { CardShell } from '../../../ui/ListCards';
+import { RecordCard } from '../../../ui/ListCards';
 
 /* ─── MonthHero ───────────────────────────────────────────────────────────────
    The one thing somebody opening My Time wants: how this month is going. The
@@ -115,44 +116,32 @@ export function MonthHero({ period, onChangePeriod, headline, caption, facts = [
   );
 }
 
-/* ─── DateBlock ───────────────────────────────────────────────────────────────
-   The card's identity: the day number over its weekday, tinted by what the day
-   WAS. A Sunday reads slate, leave reads purple, an absence reads rose — so a
-   month of cards can be skimmed by colour before a word is read. */
+/* ─── DayCard ─────────────────────────────────────────────────────────────────
+   One day of attendance, as a RecordCard — the same card as a correction
+   (user, 2026-10-22: "show attendance cards, overtime, every row like the
+   correction cards — they look better"). It used to be its own shape: a
+   calendar-style date block on the left, the punch line in the middle, hours
+   and a badge stacked on the right. Now it is the house card:
 
-function DateBlock({ ymd, chipKey }) {
-  const t = toneOf(DAY_CHIPS[chipKey]?.tone || 'slate');
-  const d = parseYMDLocal(ymd);
+     icon + tint   what the day WAS (DAY_CHIPS → tone), so a month of cards
+                   still skims by colour before a word is read
+     title         the date, "Tue, 14 Oct" — a correction's title too
+     subtitle      the one thing worth saying: late by how much, the work
+                   mode, or for a day with no punches what it was ("Weekly off")
+     badge         the record's status
+     meta strip    Clock in · Clock out · Worked, under a hairline */
 
-  return (
-    <View
-      style={{
-        width: 46,
-        paddingVertical: space[2],
-        borderRadius: radius.md,
-        backgroundColor: t.bg,
-        borderWidth: 1,
-        borderColor: t.border,
-        alignItems: 'center',
-      }}
-    >
-      <Text style={[text.bodyStrong, { fontSize: 17, lineHeight: 21, color: t.fg, fontVariant: ['tabular-nums'] }]}>
-        {d ? d.getDate() : '—'}
-      </Text>
-      <Text style={[text.label, { fontSize: 9, color: t.fg, opacity: 0.8 }]}>
-        {d ? WEEKDAYS_SHORT[d.getDay()] : ''}
-      </Text>
-    </View>
-  );
-}
-
-/** "9:14 am → 6:42 pm", and just the one side when the day is still open. */
-function punchLine(record) {
-  const inAt = fmtTime(record?.clock_in_time, '');
-  const outAt = fmtTime(record?.clock_out_time, '');
-  if (!inAt && !outAt) return null;
-  return `${inAt || 'Not recorded'} → ${outAt || 'still open'}`;
-}
+const DAY_ICON = {
+  present: icons.ok,
+  late: icons.clock,
+  half_day: icons.clock,
+  on_leave: icons.leave,
+  absent: icons.warn,
+  holiday: icons.holiday,
+  weekly_off: icons.calendar,
+  no_data: icons.calendar,
+  upcoming: icons.calendar,
+};
 
 /**
  * One day of attendance.
@@ -171,44 +160,37 @@ export function DayCard({ record, today, onPress }) {
     ?? (record?.effective_hours != null ? Math.round(Number(record.effective_hours) * 60) : null);
   const late = Number(record?.late_minutes) > 0 ? Number(record.late_minutes) : 0;
 
-  const punches = punchLine(record);
-  // A day with no punches says what it WAS instead of showing an empty line —
-  // "Weekly off" is more use than a blank row with a badge on it.
-  const line = punches || chip.label;
-  const note = late > 0 ? `${fmtMinutes(late)} late`
-    : record?.work_mode ? String(record.work_mode).replace(/_/g, ' ')
+  const inAt = fmtTime(record?.clock_in_time, '');
+  const outAt = fmtTime(record?.clock_out_time, '');
+  const punched = !!(inAt || outAt);
+  const isToday = ymd === (today || todayYMD());
+
+  const subtitle = late > 0 ? `${fmtMinutes(late)} late`
+    : record?.work_mode ? humanize(record.work_mode)
+    : !punched ? chip.label
     : null;
 
+  // Never a dash (§5): a side that didn't happen says so in words. Today's
+  // open day is "Still open"; an old one missing its clock-out is "Not
+  // recorded" — the thing a correction is for.
+  const meta = punched ? [
+    { label: 'Clock in', value: inAt || 'Not recorded' },
+    { label: 'Clock out', value: outAt || (isToday ? 'Still open' : 'Not recorded') },
+    worked != null ? { label: 'Worked', value: fmtMinutes(worked, '0m') } : null,
+  ].filter(Boolean) : [];
+
   return (
-    <CardShell onPress={onPress} accessibilityLabel={`${line}. Open this day.`}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[3] }}>
-        <DateBlock ymd={ymd} chipKey={chipKey} />
-
-        <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
-          <Text numberOfLines={1} style={text.bodyStrong}>{line}</Text>
-          {note ? (
-            <Text
-              numberOfLines={1}
-              style={[text.caption, late > 0 ? { color: color.danger.fg } : null]}
-            >
-              {note}
-            </Text>
-          ) : null}
-        </View>
-
-        <View style={{ alignItems: 'flex-end', gap: 4 }}>
-          {worked != null ? (
-            <Text style={[text.smallStrong, { fontSize: 14, fontVariant: ['tabular-nums'] }]}>
-              {fmtMinutes(worked, '0m')}
-            </Text>
-          ) : null}
-          <StatusBadge kind="record" status={record?.status || 'not_marked'} dense />
-        </View>
-      </View>
-
-    </CardShell>
+    <RecordCard
+      icon={DAY_ICON[chipKey] || icons.calendar}
+      tone={chip?.tone || 'slate'}
+      onPress={onPress}
+      accessibilityLabel={`${fmtDateShort(ymd, 'This day')}, ${chip?.label || ''}. Open this day.`}
+      title={fmtDateShort(ymd, 'That day')}
+      subtitle={subtitle}
+      badge={<StatusBadge kind="record" status={record?.status || 'not_marked'} dense />}
+      meta={meta}
+    />
   );
 }
-
 
 export default { MonthHero, DayCard };

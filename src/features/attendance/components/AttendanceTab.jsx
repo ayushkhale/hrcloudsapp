@@ -170,7 +170,7 @@ export function AttendanceTab({ period, onChangePeriod, onDayPress }) {
       onEndReachedThreshold={0.4}
       ListEmptyComponent={
         history.loading ? (
-          <CardsSkeleton rows={6} />
+          <CardsSkeleton rows={6} height={118} />
         ) : (
           <EmptyState
             icon={icons.calendar}
