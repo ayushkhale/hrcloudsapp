@@ -11,6 +11,7 @@ import { DrawerButton } from './AppDrawer';
 import { useDrawer } from './DrawerContext';
 import { useGo, useRouteTarget } from './routes';
 import { unreadCount } from '../features/notifications/notifications.data';
+import { mayaAvailable, openMaya } from '../features/maya/mayaBridge';
 
 const firstNameOf = (user) =>
   user?.first_name || user?.firstName || (user?.name ? String(user.name).trim().split(/\s+/)[0] : '') || null;
@@ -44,6 +45,7 @@ export function AppTopBar() {
   const greeting = greetingFor();
   const firstName = firstNameOf(user) || 'there';
   const Bell = icons.bell;
+  const Sparkle = icons.maya;
 
   return (
     <View
@@ -66,6 +68,32 @@ export function AppTopBar() {
             {firstName}
           </Text>
         </View>
+
+        {/* ── ASK MAYA LIVES HERE (user, 2026-10-21) ─────────────────────────
+            "place ask maya next to notification, remove floating everywhere,
+            just sparkle icon". It was a floating purple pill over every tab
+            (features/maya/MayaFab), covering the bottom of every list. Now a
+            sparkle beside the bell — tinted purple, not white like the bell,
+            because it is the one control up here that does something rather
+            than goes somewhere. Absent when Maya has no key (§2). */}
+        {mayaAvailable() && Sparkle ? (
+          <Pressable
+            onPress={() => openMaya()}
+            accessibilityRole="button"
+            accessibilityLabel="Ask Maya"
+            hitSlop={8}
+            style={({ pressed }) => ({
+              width: 40,
+              height: 40,
+              borderRadius: radius.full,
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: pressed ? color.brandSoftBorder : color.brandChipBg,
+            })}
+          >
+            <Sparkle size={iconSize.md} color={color.brandChipFg} />
+          </Pressable>
+        ) : null}
 
         <Pressable
           onPress={openNotifications}

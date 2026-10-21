@@ -8,10 +8,10 @@
 //
 // ── A CALENDAR TILE, NOT A LIST ROW (2026-10-18) ────────────────────────────
 //
-// Each holiday is a SQUARE CARD, two across, and it leads with a date block
-// the way a wall calendar does: the day number large, the month above it, the
-// weekday below the name, and a festive/occasion icon in the bottom-right
-// corner (matching hrcloudsweb's icon set).
+// Each holiday is a compact card, THREE across (user, 2026-10-21 — two
+// across took too much room), and it leads with the date the way a wall
+// calendar does: the month above a large day number, the occasion's icon
+// opposite (hrcloudsweb's icon set), the name, then the weekday.
 //
 // ── ALL HOLIDAYS VISIBLE AT ONCE ────────────────────────────────────────────
 //
@@ -108,64 +108,48 @@ function getHolidayIcon(name) {
   return icons.holiday || icons.calendar;
 }
 
+const COLUMNS = 3;
+
 const styles = StyleSheet.create({
   card: {
     flex: 1,
+    minWidth: 0,
     backgroundColor: color.surface,
     borderRadius: radius.lg,
     borderWidth: 1,
-    padding: space[3],
-    minHeight: 144,
-    justifyContent: 'space-between',
-  },
-  cardContent: {
+    paddingHorizontal: space[2] + 2,
+    paddingVertical: space[2] + 2,
     gap: space[2],
   },
-  dateBlock: {
-    alignSelf: 'flex-start',
-    minWidth: 52,
-    alignItems: 'center',
-    paddingVertical: space[1] + 2,
-    paddingHorizontal: space[2],
-    borderRadius: radius.md,
+  top: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
   },
   dateMonth: {
+    fontSize: 10,
     letterSpacing: 0.6,
     textTransform: 'uppercase',
   },
   dateDay: {
     fontSize: 22,
-    lineHeight: 26,
+    lineHeight: 25,
   },
-  nameBlock: {
-    gap: 1,
-  },
-  cardFooter: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    justifyContent: 'space-between',
-    marginTop: space[2],
-  },
-  optionalBadge: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: space[2],
-    paddingVertical: 2,
+  iconChip: {
+    width: 26,
+    height: 26,
     borderRadius: radius.full,
-    backgroundColor: color.brandSoftBg,
-  },
-  iconTile: {
-    width: 32,
-    height: 32,
-    borderRadius: radius.md,
     alignItems: 'center',
     justifyContent: 'center',
   },
 });
 
 /* ─── One holiday ───────────────────────────────────────────────────────────
-   Square-ish: the grid gives it half the width, and the content decides the
-   height. Every card in a row stretches to the tallest, with the holiday icon
-   anchored to the bottom-right corner. */
+   A third of the width (user, 2026-10-21: "holidays card take too much space,
+   show 3 in one line"). The date leads — month over day, wall-calendar style —
+   with the occasion's icon opposite it; the name under that, two lines at
+   most; then the weekday, and "Optional" when it is one. The old two-across
+   card spent 144pt of height on a separate date tile and a footer row. */
 
 function HolidayCard({ ymd, holiday, past }) {
   const { month, day } = datePieces(ymd);
@@ -173,58 +157,35 @@ function HolidayCard({ ymd, holiday, past }) {
   // A past holiday keeps its shape and loses its colour — it is still a fact,
   // it just isn't news. Slate for gone, purple for coming.
   const tone = toneOf(past ? 'slate' : 'purple');
-  const weekday = fmtWeekday(ymd, '');
+  // The weekday, because a holiday that lands on a Sunday is not a day off and
+  // people want to know before they plan around it.
+  const weekday = fmtWeekday(ymd, '').slice(0, 3);
   const HolidayIcon = getHolidayIcon(nameOf(holiday));
 
   return (
-    <View
-      style={[
-        styles.card,
-        {
-          borderColor: past ? color.borderSubtle : tone.border,
-        },
-      ]}
-    >
-      <View style={styles.cardContent}>
-        {/* The date block. This is the thing the eye lands on. */}
-        <View style={[styles.dateBlock, { backgroundColor: tone.bg }]}>
-          <Text style={[text.caption, styles.dateMonth, { color: tone.fg }]}>
-            {month}
-          </Text>
-          <Text style={[text.metric, styles.dateDay, { color: tone.fg }]}>{day}</Text>
+    <View style={[styles.card, { borderColor: past ? color.borderSubtle : tone.border }]}>
+      <View style={styles.top}>
+        <View>
+          <Text style={[text.caption, styles.dateMonth, { color: tone.fg }]}>{month}</Text>
+          <Text style={[text.metric, styles.dateDay, { color: past ? color.textSecondary : color.brand }]}>{day}</Text>
         </View>
-
-        <View style={styles.nameBlock}>
-          <Text numberOfLines={2} style={[text.bodyStrong, past ? { color: color.textSecondary } : null]}>
-            {nameOf(holiday)}
-          </Text>
-          {/* The weekday, because a holiday that lands on a Sunday is not a day
-              off and people want to know before they plan around it. */}
-          {weekday ? <Text style={text.caption}>{weekday}</Text> : null}
-        </View>
-      </View>
-
-      {/* Footer row: optional tag on bottom left, festival icon on bottom right */}
-      <View style={styles.cardFooter}>
-        {optional ? (
-          <View style={styles.optionalBadge}>
-            <Text style={[text.badge, { color: color.brand }]}>OPTIONAL</Text>
-          </View>
-        ) : (
-          <View />
-        )}
-
         {HolidayIcon ? (
-          <View
-            style={[
-              styles.iconTile,
-              { backgroundColor: past ? color.surfaceSubtle : tone.bg },
-            ]}
-          >
-            <HolidayIcon size={16} color={past ? color.textMuted : tone.fg} />
+          <View style={[styles.iconChip, { backgroundColor: past ? color.surfaceSubtle : tone.chip }]}>
+            <HolidayIcon size={14} color={past ? color.textMuted : tone.fg} />
           </View>
         ) : null}
       </View>
+
+      <Text
+        numberOfLines={2}
+        style={[text.smallStrong, { fontSize: 12.5, lineHeight: 16 }, past ? { color: color.textSecondary } : null]}
+      >
+        {nameOf(holiday)}
+      </Text>
+
+      <Text numberOfLines={1} style={[text.caption, { fontSize: 10.5 }]}>
+        {optional ? `${weekday} · Optional` : weekday}
+      </Text>
     </View>
   );
 }
@@ -248,6 +209,14 @@ export function HolidaysTab() {
       .sort((a, b) => (a.date < b.date ? -1 : 1));
   }, [holidays.data]);
 
+  // The last row is padded with empty cells, so a lone holiday at the end
+  // stays a third wide instead of stretching across the row.
+  const cells = useMemo(() => {
+    const out = [...rows];
+    while (out.length % COLUMNS) out.push({ filler: true, date: `filler-${out.length}` });
+    return out;
+  }, [rows]);
+
   if (holidays.error && (holidays.data || []).length === 0) {
     return (
       <View style={{ padding: space[4] }}>
@@ -263,18 +232,19 @@ export function HolidaysTab() {
 
   return (
     <FlatList
-      data={rows}
+      data={cells}
       keyExtractor={(r) => r.date}
-      numColumns={2}
-      // `columnWrapperStyle` is what puts the gutter BETWEEN the two cards;
+      numColumns={COLUMNS}
+      // `columnWrapperStyle` is what puts the gutter BETWEEN the cards;
       // `cardListStyle` already supplies the outer one.
-      columnWrapperStyle={{ gap: space[3] }}
-      renderItem={({ item }) => (
-        <HolidayCard ymd={item.date} holiday={item.raw} past={item.date < todayYMD()} />
+      columnWrapperStyle={{ gap: space[2] }}
+      renderItem={({ item }) => (item.filler
+        ? <View style={{ flex: 1 }} />
+        : <HolidayCard ymd={item.date} holiday={item.raw} past={item.date < todayYMD()} />
       )}
       ListEmptyComponent={
         holidays.loading ? (
-          <CardsSkeleton rows={4} height={144} />
+          <CardsSkeleton rows={4} height={104} />
         ) : (
           <EmptyState
             icon={icons.calendar}

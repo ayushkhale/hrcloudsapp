@@ -59,18 +59,29 @@
 // content rather than eating 140pt of a phone permanently. Sections mount one
 // at a time — eight kept alive would be eight sets of requests on first open,
 // for seven views nobody is looking at.
+//
+// ── HIDDEN UNTIL THE PHONE CONFIRMS IT'S YOU (user, 2026-10-21) ─────────────
+//
+// "In salary showing screen, show it hidden, ask biometric and then show it,
+// it can be turned off from settings." While locked (lib/payPrivacy.js) the
+// hero's figure is dots and the strip and sections are replaced by one panel
+// with a "Show my pay" button — the sections don’t MOUNT and the payslips
+// aren’t read until it opens. Unlocked lasts until the app goes to
+// the background; the eye on the hero locks it again by hand. Settings ›
+// Privacy turns the whole thing off.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 
 import { payrollAPI } from '../../../api';
 import { useResource } from '../../../hooks/useResource';
 import { isFeatureDisabled, isNotFound } from '../../../lib/errors/attendanceErrors';
 import { formatMoney } from '../../../lib/format';
-import { color, space } from '../../../theme/tokens';
+import { usePayPrivacy } from '../../../lib/payPrivacy';
+import { color, radius, space, text } from '../../../theme/tokens';
 import { icons } from '../../../theme/icons';
-import { HeroCard } from '../../../ui';
+import { Button, HeroCard, showToast } from '../../../ui';
 import { CategoryStrip } from '../../../ui/ListCards';
 import { AppTopBar } from '../../../navigation/AppTopBar';
 import { BankTab } from '../components/BankTab';
@@ -119,11 +130,12 @@ function usePaySections() {
    rupee tile, no month line; the figure, big. Payslips is already the section
    right under it, so the card has nowhere to go and does not pretend to. No
    payslip yet is a card with words, never a ₹0. */
-function PayHero({ payslips }) {
+function PayHero({ payslips, hidden, onHide }) {
   const latest = (payslips.data || [])[0] || null;
   const loading = payslips.loading && !payslips.data?.length;
+  const EyeOff = icons.eyeSlash;
 
-  if (!latest && !loading) {
+  if (!hidden && !latest && !loading) {
     return (
       <HeroCard
         eyebrow="Your pay"
@@ -138,9 +150,53 @@ function PayHero({ payslips }) {
       eyebrow="Reached your bank"
       metric
       big
-      title={latest ? formatMoney(slipNet(latest)) : ''}
-      loading={loading}
+      title={hidden ? '₹ ••••••' : latest ? formatMoney(slipNet(latest)) : ''}
+      loading={loading && !hidden}
+      right={!hidden && onHide && EyeOff ? (
+        <Pressable
+          onPress={onHide}
+          accessibilityRole="button"
+          accessibilityLabel="Hide my pay"
+          hitSlop={8}
+          style={({ pressed }) => ({
+            width: 40,
+            height: 40,
+            borderRadius: radius.full,
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: pressed ? color.brandSoftBorder : color.brandChipBg,
+          })}
+        >
+          <EyeOff size={20} color={color.brandChipFg} />
+        </Pressable>
+      ) : null}
     />
+  );
+}
+
+/* ─── The lock ────────────────────────────────────────────────────────────────
+   One panel where the sections would be: the fingerprint, one line, one
+   button. The person already knows what is behind it. */
+function PayLock({ onUnlock, busy }) {
+  const Finger = icons.fingerprint || icons.locked;
+  return (
+    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: space[6], gap: space[3] }}>
+      <View
+        style={{
+          width: 72,
+          height: 72,
+          borderRadius: radius.full,
+          backgroundColor: color.brandChipBg,
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        {Finger ? <Finger size={34} color={color.brandChipFg} /> : null}
+      </View>
+      <Text style={[text.h2, { textAlign: 'center' }]}>Your pay is hidden</Text>
+      <Text style={[text.small, { textAlign: 'center' }]}>Confirm it’s you to see it.</Text>
+      <Button title="Show my pay" icon={Finger} onPress={onUnlock} loading={busy} style={{ marginTop: space[2] }} />
+    </View>
   );
 }
 
@@ -148,13 +204,26 @@ function PayHero({ payslips }) {
 
 export default function PayScreen({ navigation, route }) {
   const [section, setSection] = useState('payslips');
+  const privacy = usePayPrivacy();
+  const [unlocking, setUnlocking] = useState(false);
+  const { unlock } = privacy;
+  const showPay = useCallback(async () => {
+    if (unlocking) return;
+    setUnlocking(true);
+    const result = await unlock();
+    setUnlocking(false);
+    if (result === 'locked_out') showToast('Too many tries. Unlock your phone, then try again.', 'error');
+    else if (result === 'failed') showToast('We couldn’t confirm it’s you. Please try again.', 'error');
+  }, [unlock, unlocking]);
 
   const available = usePaySections();
 
   // ONE read, two readers: the hero and the Payslips section.
+  // Not asked for while the pay is hidden — see the header.
   const payslips = useResource(() => payrollAPI.getMyPayslips(), {
     select: selectPayslips,
     initial: [],
+    enabled: !privacy.locked,
   });
 
   const sections = useMemo(() => [
@@ -203,13 +272,19 @@ export default function PayScreen({ navigation, route }) {
       {/* On the canvas, not a white band with a hairline (2026-10-20). */}
       <View style={{ paddingTop: space[1] }}>
         <View style={{ paddingHorizontal: space[4], paddingBottom: space[2] }}>
-          <PayHero payslips={payslips} />
+          <PayHero
+            payslips={payslips}
+            hidden={privacy.locked}
+            onHide={privacy.hideEnabled ? privacy.lock : undefined}
+          />
         </View>
-        <CategoryStrip items={sections} value={section} onChange={setSection} />
+        {!privacy.locked ? <CategoryStrip items={sections} value={section} onChange={setSection} /> : null}
       </View>
 
       <View style={{ flex: 1 }}>
-        {section === 'payslips' ? (
+        {privacy.locked ? (
+          <PayLock onUnlock={showPay} busy={unlocking} />
+        ) : section === 'payslips' ? (
           <PayslipsTab payslips={payslips} />
         ) : section === 'salary' ? (
           <SalaryTab />

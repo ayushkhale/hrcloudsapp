@@ -257,8 +257,7 @@ of boxed tiles, which the user rejected as "one packed into another".
 ### `FloatingAction` (`ui/FloatingAction.jsx`)
 
 The one create action of a section (Apply for leave, Request a correction) or
-page (DayLog's Request a correction): a purple pill floating bottom-right. It
-stands above the Ask Maya button when that is showing. The list under it pads
+page (DayLog's Request a correction): a purple pill floating bottom-right. The list under it pads
 its bottom by `FLOATING_CLEARANCE`. Pass `overTabBar={false}` on a pushed page
 with no tab bar. One per screen.
 

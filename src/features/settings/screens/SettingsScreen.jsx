@@ -30,6 +30,7 @@ import { mayaAvailable, openMaya } from '../../maya/mayaBridge';
 import { useMayaPrefs } from '../../maya/mayaPrefs';
 import { VOICE_LANGS, languageLabel } from '../../maya/mayaInstructions';
 import { SettingsGroup, SettingsRow } from '../components/SettingsParts';
+import { confirmIdentity, usePayPrivacy } from '../../../lib/payPrivacy';
 
 export default function SettingsScreen({ navigation }) {
   const confirm = useConfirm();
@@ -40,6 +41,18 @@ export default function SettingsScreen({ navigation }) {
   // switch shows the saved value once the start-up read lands.
   const [haptics, setHaptics] = useState(hapticsEnabled);
   useEffect(() => onHapticsChange(setHaptics), []);
+
+  /* My Pay's lock (lib/payPrivacy.js). Switching it OFF asks the phone first:
+     otherwise whoever is holding it turns the lock off and reads the pay,
+     which makes the lock decoration. Switching it ON needs nothing. */
+  const payPrivacy = usePayPrivacy();
+  const setHidePay = async (on) => {
+    if (on) { payPrivacy.setHideEnabled(true); return; }
+    const result = await confirmIdentity();
+    if (result === 'ok') payPrivacy.setHideEnabled(false);
+    else if (result === 'locked_out') showToast('Too many tries. Unlock your phone, then try again.', 'error');
+    else if (result === 'failed') showToast('We couldn’t confirm it’s you.', 'error');
+  };
 
   const signOut = async () => {
     const ok = await confirm({
@@ -65,12 +78,6 @@ export default function SettingsScreen({ navigation }) {
             onPress={openMaya}
           />
           <SettingsRow
-            icon={icons.sparkles}
-            label="Floating Maya button"
-            caption="A shortcut to Maya that floats above your screens."
-            toggle={{ value: prefs.fab, onChange: (v) => setPref('fab', v) }}
-          />
-          <SettingsRow
             icon={icons.globe}
             label="Maya’s language"
             value={languageLabel(prefs.lang)}
@@ -91,6 +98,15 @@ export default function SettingsScreen({ navigation }) {
           label="Vibrate on tap"
           caption="A light tick when you choose, punch or save."
           toggle={{ value: haptics, onChange: setHapticsEnabled }}
+        />
+      </SettingsGroup>
+
+      <SettingsGroup title="Privacy">
+        <SettingsRow
+          icon={icons.fingerprint || icons.locked}
+          label="Hide my pay"
+          caption="Confirm it’s you before My Pay shows your salary."
+          toggle={{ value: payPrivacy.hideEnabled, onChange: setHidePay }}
         />
       </SettingsGroup>
 

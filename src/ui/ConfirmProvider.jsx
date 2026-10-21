@@ -95,6 +95,16 @@ export function ConfirmProvider({ children }) {
   // The pending promise's resolve. A ref, not state: it must survive the
   // re-render that opens the dialog, and it is never rendered.
   const resolver = useRef(null);
+
+  /* WHAT THE DIALOG DRAWS WHILE IT FADES OUT (2026-10-21). Answering sets
+     `opts` to null, but the Modal keeps fading for ~300ms after — and it used
+     to fade with `opts?.title` gone: an EMPTY white card with two blank
+     buttons. Every confirm did it; on Sign out it was the "UI breaks in
+     between", because the app shell was being swapped for Login under it at
+     the same moment. The last question stays drawn until the fade ends. */
+  const lastOpts = useRef(null);
+  if (opts) lastOpts.current = opts;
+  const shown = opts || lastOpts.current;
   const insets = useSafeAreaInsets();
 
   /** Answer once, then forget — a second press can't resolve a dead promise. */
@@ -180,27 +190,27 @@ export function ConfirmProvider({ children }) {
               elevate('md'),
             ]}
           >
-            <ConfirmIcon destructive={opts?.destructive} icon={opts?.icon} />
+            <ConfirmIcon destructive={shown?.destructive} icon={shown?.icon} />
 
             <Text accessibilityRole="header" style={[text.h2, { textAlign: 'center', color: color.ink }]}>
-              {opts?.title}
+              {shown?.title}
             </Text>
 
-            {opts?.message ? (
+            {shown?.message ? (
               <Text style={[text.body, { color: color.textSecondary, textAlign: 'center', maxWidth: 340 }]}>
-                {opts.message}
+                {shown.message}
               </Text>
             ) : null}
 
             <View style={{ alignSelf: 'stretch', gap: space[2], marginTop: space[4] }}>
               <Button
-                title={opts?.confirmText}
-                variant={opts?.destructive ? 'danger' : 'primary'}
+                title={shown?.confirmText}
+                variant={shown?.destructive ? 'danger' : 'primary'}
                 onPress={() => settle(true)}
                 fullWidth
               />
               <Button
-                title={opts?.cancelText}
+                title={shown?.cancelText}
                 variant="outline"
                 onPress={() => settle(false)}
                 fullWidth

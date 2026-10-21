@@ -137,6 +137,8 @@ export const icons = {
   /** ONLY inside a sheet. Never on a row — house rule §3. */
   view: s('EyeIcon'),
   eyeSlash: s('EyeSlashIcon', 'EyeOffIcon'),
+  /** "Confirm it's you" — the phone's fingerprint / face / PIN check (My Pay's lock). */
+  fingerprint: s('FingerPrintIcon'),
 
   // ── People and org ────────────────────────────────────────────────────────
   profile: s('UserCircleIcon'),

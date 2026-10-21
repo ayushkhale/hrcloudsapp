@@ -33,6 +33,17 @@
 // lists, so its rows need edges to be objects — and they sit on `color.bg`
 // (slate-50), which is what white cards need underneath them. What must never
 // happen is both treatments on the same screen.
+//
+// ── "REQUEST A CORRECTION" ON THE DAY CARD (user, 2026-10-21) ───────────────
+//
+// "On attendance screen there's no button for apply for correction on a
+// specific date" — and asked: a labelled button, not a pencil. It sits under
+// a hairline at the foot of each PAST day that recorded (or should have
+// recorded) work: present, late, half day, absent, no data. Not on a weekly
+// off, a holiday or leave — nothing was owed, and a button on every Sunday is
+// noise. Not on today or later: the form's own floor is yesterday (the
+// server's rule, CorrectionFormScreen `maxDate`). The day page still offers
+// it for ANY past day, for the rare worked Sunday.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React from 'react';
@@ -40,12 +51,16 @@ import { Text, View } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import { DAY_CHIPS, dayChipKey } from '../../../lib/dayStatus';
 import {
-  fmtMinutes, fmtTime, monthLabel, parseYMDLocal, ymdOnly,
+  fmtMinutes, fmtTime, monthLabel, parseYMDLocal, todayYMD, ymdOnly,
 } from '../../../lib/dates';
 import { WEEKDAYS_SHORT } from '../../../lib/format';
 import { color, radius, space, text, toneOf } from '../../../theme/tokens';
-import { MonthStepper, SkeletonBlock, StatusBadge } from '../../../ui';
+import { icons } from '../../../theme/icons';
+import { Button, MonthStepper, SkeletonBlock, StatusBadge } from '../../../ui';
 import { CardShell } from '../../../ui/ListCards';
+
+/** Day kinds a correction can be asked for — see the header. */
+const CORRECTABLE = new Set(['present', 'late', 'half_day', 'absent', 'no_data']);
 
 /* ─── MonthHero ───────────────────────────────────────────────────────────────
    The one thing somebody opening My Time wants: how this month is going. The
@@ -155,11 +170,13 @@ function punchLine(record) {
  * @param {object} props.record  a dense `/attendance/history` row
  * @param {string} [props.today] injectable for tests
  * @param {Function} [props.onPress]
+ * @param {(ymd: string) => void} [props.onCorrect]  opens the correction form for this day
  */
-export function DayCard({ record, today, onPress }) {
+export function DayCard({ record, today, onPress, onCorrect }) {
   const ymd = ymdOnly(record?.date);
   const chipKey = dayChipKey({ ...record, date: ymd }, today);
   const chip = DAY_CHIPS[chipKey];
+  const canCorrect = !!onCorrect && !!ymd && ymd < (today || todayYMD()) && CORRECTABLE.has(chipKey);
 
   const worked = record?.worked_minutes ?? record?.effective_minutes
     ?? (record?.effective_hours != null ? Math.round(Number(record.effective_hours) * 60) : null);
@@ -199,6 +216,27 @@ export function DayCard({ record, today, onPress }) {
           <StatusBadge kind="record" status={record?.status || 'not_marked'} dense />
         </View>
       </View>
+
+      {canCorrect ? (
+        <View
+          style={{
+            marginTop: space[3],
+            paddingTop: space[2],
+            borderTopWidth: 1,
+            borderTopColor: color.borderSubtle,
+            alignItems: 'flex-end',
+          }}
+        >
+          <Button
+            title="Request a correction"
+            icon={icons.edit}
+            size="sm"
+            variant="soft"
+            onPress={() => onCorrect(ymd)}
+            accessibilityLabel={`Request a correction for ${ymd}`}
+          />
+        </View>
+      ) : null}
     </CardShell>
   );
 }

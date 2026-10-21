@@ -57,8 +57,8 @@
 // anyway", and it must never name a route in the app.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import React, { useEffect, useRef } from 'react';
-import { Text, View } from 'react-native';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { Animated, Image, StyleSheet, Text, View } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import BootSplash from 'react-native-bootsplash';
@@ -239,12 +239,54 @@ const navTheme = {
   },
 };
 
+/* ── The sign-out cover (2026-10-21) ──────────────────────────────────────────
+   "UI still breaks at logout." Ending a session swaps the whole app shell for
+   the auth stack, and for the length of that swap the shell — tabs, nested
+   headers, a drawer and a dialog still closing — was on screen half torn
+   down. Instead, the moment `isAuthenticated` drops, BEFORE that frame is
+   painted (a layout effect), an opaque cover the colour of the Login screen,
+   with the Login screen's logo, goes over everything. The swap happens out of
+   sight underneath it; then it fades away onto Login, which is the same
+   colour and logo, so the hand-over reads as one calm cut. */
+const COVER_LOGO = require('../assets/brand/logo2.png');
+const COVER_HOLD_MS = 450;
+
+function useSignOutCover(isAuthenticated) {
+  const was = useRef(isAuthenticated);
+  const opacity = useRef(new Animated.Value(0)).current;
+  const [shown, setShown] = useState(false);
+
+  useLayoutEffect(() => {
+    const ended = was.current && !isAuthenticated;
+    was.current = isAuthenticated;
+    if (!ended) return undefined;
+    opacity.setValue(1);
+    setShown(true);
+    const t = setTimeout(() => {
+      Animated.timing(opacity, { toValue: 0, duration: 260, useNativeDriver: true })
+        .start(() => setShown(false));
+    }, COVER_HOLD_MS);
+    return () => clearTimeout(t);
+  }, [isAuthenticated, opacity]);
+
+  if (!shown) return null;
+  return (
+    <Animated.View
+      pointerEvents="none"
+      style={[StyleSheet.absoluteFill, { opacity, backgroundColor: color.bg, alignItems: 'center', justifyContent: 'center' }]}
+    >
+      <Image source={COVER_LOGO} resizeMode="contain" style={{ width: 140, height: Math.round(140 / (256 / 176)) }} />
+    </Animated.View>
+  );
+}
+
 export function RootNavigator() {
   const { isAuthenticated, isLoading, refusedRole } = useAuth();
   // The splash waits for this too. Without it the tour would replace an
   // already-visible Login screen a frame after launch.
   const { checking, needsOnboarding, markSeen } = useOnboarding();
   const splashHidden = useRef(false);
+  const signOutCover = useSignOutCover(isAuthenticated);
 
   // Deep links wait for a session rather than being dropped — see linking.js.
   useEffect(() => { setLinkingAuthed(isAuthenticated); }, [isAuthenticated]);
@@ -326,6 +368,7 @@ export function RootNavigator() {
             </Root.Screen>
           )}
         </Root.Navigator>
+        {signOutCover}
       </View>
     </NavigationContainer>
   );

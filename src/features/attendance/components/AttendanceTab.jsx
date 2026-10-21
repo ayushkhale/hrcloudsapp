@@ -62,8 +62,9 @@ const summaryOf = (data) => data?.summary ?? data ?? {};
  * @param {{year: number, month: number}} props.period
  * @param {Function} props.onChangePeriod
  * @param {Function} props.onDayPress  opens the DayLog sheet
+ * @param {Function} [props.onCorrectDay]  opens the correction form for a date
  */
-export function AttendanceTab({ period, onChangePeriod, onDayPress }) {
+export function AttendanceTab({ period, onChangePeriod, onDayPress, onCorrectDay }) {
   const filterKey = `${period.year}-${period.month}`;
   const today = todayYMD();
 
@@ -163,6 +164,7 @@ export function AttendanceTab({ period, onChangePeriod, onDayPress }) {
             record={record}
             today={today}
             onPress={ymd ? () => onDayPress(ymd) : undefined}
+            onCorrect={onCorrectDay}
           />
         );
       }}

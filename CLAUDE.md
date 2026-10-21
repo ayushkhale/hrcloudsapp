@@ -56,8 +56,8 @@ screen keeps the web's *data and rules* and throws away its *layout*.
   `CategoryStrip` in `ui/ListCards.jsx`.
 - **A section's one create action floats at the bottom** — `FloatingAction`
   (Apply for leave, Request a correction), not a full-width button at the top
-  of the list (user, 2026-10-21). It stands above the Ask Maya button when that
-  one is showing; the list under it pads by `FLOATING_CLEARANCE`.
+  of the list (user, 2026-10-21). The list under it pads by `FLOATING_CLEARANCE`. Ask Maya is the
+  sparkle beside the bell in `AppTopBar` — there is no floating Maya button.
 - **Every list re-reads on pull AND on return.** `hooks/useListRefresh.js` gives
   the `refreshControl` and quietly reloads when the screen regains focus (a
   modal form closed over it). A new section list uses it from day one.

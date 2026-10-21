@@ -4,7 +4,8 @@
 // A phone preference with no server home, saved in AsyncStorage keyed per user
 // (the same shape as quickActions.js). Three things a person controls:
 //
-//   fab    the floating Maya button — on by default
+//   fab    UNUSED since 2026-10-21 — the floating button is gone; Maya is the
+//          sparkle in AppTopBar. Kept so a saved pref still parses.
 //   shake  open Maya on a phone shake — on by default (needs react-native-shake
 //          linked; the hook is a no-op until the native module is present)
 //   lang   the language Maya answers in — English by default
