@@ -54,4 +54,5 @@ export { FieldHelp, HelpLabel } from './FieldHelp';
 export { HeaderMenu, useHeaderMenu } from './HeaderMenu';
 
 export { HeroCard } from './HeroCard';
+export { FloatingAction, FLOATING_CLEARANCE } from './FloatingAction';
 export { haptic, hapticsEnabled, setHapticsEnabled, onHapticsChange } from './haptics';

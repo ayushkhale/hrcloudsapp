@@ -36,6 +36,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useListRefresh } from '../../../hooks/useListRefresh';
 import { ScrollView, Text, View } from 'react-native';
 import { documentsAPI } from '../../../api';
 import { useAuth } from '../../../state/AuthContext';
@@ -337,6 +338,8 @@ export function CompanyTab({ openId, onOpenHandled }) {
   const refresh = useCallback(() => { load(); loadTally(); }, [load, loadTally]);
   useAttendanceChanged([ATTENDANCE_EVENTS.ACKNOWLEDGEMENT], refresh);
 
+  const { refreshControl } = useListRefresh(refresh, state.loading);
+
   // The deep link: read the one document and open it.
   useEffect(() => {
     if (!openId) return undefined;
@@ -366,7 +369,7 @@ export function CompanyTab({ openId, onOpenHandled }) {
   const current = filter ?? 'pending';
 
   return (
-    <ScrollView contentContainerStyle={cardListStyle}>
+    <ScrollView contentContainerStyle={cardListStyle} refreshControl={refreshControl}>
       {gone ? (
         <InlineAlert tone="blue">
           That document isn’t available to you any more — it was withdrawn, replaced by a newer version, or addressed to someone else. Everything issued to you is below.

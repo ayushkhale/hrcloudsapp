@@ -34,20 +34,17 @@
 // Applying for leave IS still a page (`ApplyLeave`), because a record being
 // written is a page; a record being read is a sheet (§3).
 //
-// ── THE SELECTOR IS A GRID OF ICONS, NOT WORDS, AND IT HIDES NOTHING ─────────
+// ── THE SELECTOR IS ONE SCROLLING ROW OF ICONS (user, 2026-10-21) ────────────
 //
-// It was a `ui/TabStrip` of text tabs. Seven labels is about 560pt at this
-// type size, so on a 360pt phone most of the menu was off-screen with nothing
-// to say it existed. A horizontal scroller was no better: overflow only
-// advertises itself when an item is cut in half at the edge, and the seventh
-// item is simply gone. Three tiles and a `More` tile was worse still — it
-// swapped the first three out for the last five, so no state of the screen
-// ever showed all eight.
+// It was a `ui/TabStrip` of text tabs, then three tiles and a `More`, then a
+// two-row grid of boxed tiles. The user asked for one horizontal row that
+// scrolls, with no box around each item — `CategoryStrip`'s header says how
+// the row still shows that there is more past the edge. Each item has room
+// for a COUNT, and an open flag is exactly the thing somebody should see
+// without opening the section.
 //
-// `CategoryStrip` draws all eight at once, four to a row, two tight rows.
-// Every entry is on screen the moment My Time opens. It also gives each one a
-// place to carry a COUNT, which a text tab had no room for, and an open flag
-// is exactly the thing somebody should see without opening the section.
+// The first entry says "Attendance", not "Days" (same day): it is the web's
+// "My Attendance", and one thing has one name (CLAUDE.md §10).
 //
 // ── WHY THE MONTH MOVED INTO THE ATTENDANCE SECTION ──────────────────────────
 //
@@ -197,7 +194,7 @@ export default function TimeScreen({ navigation, route }) {
   // trusting, and comparing these lists against each other is the entire
   // reason the strip exists.
   const sections = useMemo(() => [
-    { value: 'attendance', label: 'Days', icon: icons.calendar },
+    { value: 'attendance', label: 'Attendance', icon: icons.calendar },
     { value: 'locations', label: 'Locations', icon: icons.location },
     { value: 'leave', label: 'Leave', icon: icons.leave },
     { value: 'corrections', label: 'Corrections', icon: icons.edit },

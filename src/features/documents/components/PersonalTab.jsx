@@ -27,6 +27,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useListRefresh } from '../../../hooks/useListRefresh';
 import { ScrollView, Text, View } from 'react-native';
 import { documentsAPI } from '../../../api';
 import { fmtDate } from '../../../lib/dates';
@@ -251,6 +252,11 @@ export function PersonalTab({ onUpload }) {
   useEffect(() => { load(); loadTypes(); }, [load, loadTypes]);
   useAttendanceChanged([ATTENDANCE_EVENTS.DOCUMENT, ATTENDANCE_EVENTS.DOCUMENT_REQUEST], useCallback(() => load(), [load]));
 
+  const { refreshControl } = useListRefresh(
+    useCallback(() => { load(); loadTypes(); }, [load, loadTypes]),
+    state.loading,
+  );
+
   const index = useMemo(() => new Map(types.rows.map((t) => [t.id, t])), [types.rows]);
   const rows = useMemo(() => state.rows.map((d) => ({ ...d, _display: displayStatus(d) })), [state.rows]);
   const count = (pred) => rows.filter(pred).length;
@@ -364,7 +370,7 @@ export function PersonalTab({ onUpload }) {
   };
 
   return (
-    <ScrollView contentContainerStyle={cardListStyle}>
+    <ScrollView contentContainerStyle={cardListStyle} refreshControl={refreshControl}>
       <FilterTabs options={options} value={current} onChange={setFilter} />
       {current !== 'types' ? (
         <Button title="Upload a document" icon={icons.upload} onPress={() => onUpload({})} fullWidth />

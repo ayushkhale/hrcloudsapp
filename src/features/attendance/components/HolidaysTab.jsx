@@ -27,6 +27,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useMemo } from 'react';
+import { useListRefresh } from '../../../hooks/useListRefresh';
 import { FlatList, StyleSheet, Text, View } from 'react-native';
 import { attendanceAPI } from '../../../api';
 import { useResource } from '../../../hooks/useResource';
@@ -237,6 +238,8 @@ export function HolidaysTab() {
     initial: [],
   });
 
+  const { refreshControl } = useListRefresh(holidays.reload, holidays.loading);
+
   // All holidays sorted chronologically — shown all at once
   const rows = useMemo(() => {
     return (holidays.data || [])
@@ -281,6 +284,7 @@ export function HolidaysTab() {
         )
       }
       contentContainerStyle={cardListStyle}
+      refreshControl={refreshControl}
     />
   );
 }

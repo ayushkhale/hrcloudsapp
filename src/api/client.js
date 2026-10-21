@@ -183,6 +183,10 @@ function shapeError(response, data) {
 async function send(endpoint, options, token) {
   const headers = {
     'Content-Type': 'application/json',
+    // Every read here is live state — today's punches above all. A platform
+    // HTTP cache answering a GET from disk is a card that "doesn't update"
+    // after a clock-out (2026-10-21), so no read may be served stale.
+    ...(!options.method || options.method === 'GET' ? { 'Cache-Control': 'no-cache' } : {}),
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
     ...(options.headers || {}),
   };

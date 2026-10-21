@@ -14,7 +14,7 @@
 // behind in TimeCards.jsx is what is genuinely about attendance: `MonthHero`,
 // `DayCard` and the punch line they draw.
 //
-//   CategoryStrip  the sections of a tab, as icon tiles rather than text tabs
+//   CategoryStrip  the sections of a tab, one scrolling row of icons
 //   CardShell      the white card with the press tint — the base of all of them
 //   RecordCard     one record: a tinted identity, the fact, the number
 //   StatCards      two to four figures above a list
@@ -31,68 +31,71 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 import { color, elevate, font, radius, space, text, toneOf } from '../theme/tokens';
 import { FieldHelp } from './FieldHelp';
 import { SkeletonBlock } from './Skeleton';
 import { haptic } from './haptics';
 
 /* ─── CategoryStrip ───────────────────────────────────────────────────────────
-   The sections of My Time, as icon tiles — the web's MY TIME menu, which has
-   eight entries, laid out for a thumb.
+   The sections of a tab root (My Time, My Pay, My Documents, My Tasks), as
+   one horizontal row of icons with a word under each.
 
-   ── EVERY SECTION, ALWAYS, NO "MORE" (2026-10-18) ──────────────────────────
+   ── ONE ROW THAT SCROLLS (user, 2026-10-21) ───────────────────────────────
 
-   It was a `ui/TabStrip` of words first: "Attendance · Corrections · Overtime
-   · Flags · Earned Leave" is about 420pt of label, so on a 360pt phone the
-   last two sections sat off-screen with nothing to say they existed.
+   "the action buttons clearly need a redesign completely — they look so
+   awful one packed into another — align them in one line horizontal, one
+   row, scrollable". This REVERSES the 2026-10-18 grid (four per row, two
+   rows, nothing hidden) on the user's instruction; CLAUDE.md §1 records the
+   change, so don't put the grid back.
 
-   Then it was a horizontal scroller of icon cards, which was worse in the one
-   way that matters: the overflow was still invisible.
+   What "packed into another" was: a bordered white tile holding a tinted
+   square holding the glyph — a box in a box in a box, eight times, in two
+   rows that cost ~150pt above every list. Now each section is three things
+   and no box: a ROUND tinted chip, the word under it, and — on the selected
+   one only — a short purple bar under the word. One row is ~80pt.
 
-   Then it was three tiles and a `More` tile, which is the same failure wearing
-   a button. Pressing `More` REPLACED the first three with the last five, so no
-   arrangement of the screen ever showed a person all eight sections — and the
-   tile they had just been looking at vanished to make room. A disclosure that
-   hides what it reveals from is not a disclosure.
+   The grid's old worry was that a scroller hides its overflow. That is
+   answered by WIDTH, not by wrapping: items are sized so a 360pt phone cuts
+   the fifth one in half at the edge, and a half-drawn icon is the thing that
+   says "there's more this way". The selected section is scrolled into view,
+   so a deep-linked section is never the one off-screen.
 
-   So all eight are drawn at once, four to a row, two rows. Every section is on
-   screen the moment My Time opens, nothing hides past an edge or behind a
-   press, and each tile is a quarter of the width — about 80pt on a normal
-   phone, comfortably over the 44pt minimum. The rows are deliberately tight:
-   two rows of tiles sit above the list, and every point they take is a point
-   of records somebody does not see.
+   It must not look like `FilterTabs`, which sits directly under it on Leave
+   and Corrections: those are pills of words, this is a row of icons. Two
+   rows of identical pills would be two "where am I" answers in one shape.
 
    A `badge` is the count of things WAITING ON SOMEBODY — a pending request,
    an open flag. It is the only number here, so it means one thing. */
 
-/* ── PACKED TILES (2026-10-20) ────────────────────────────────────────────
-   User, on My Tasks: "why so much space between action buttons". Each
-   section was a bare 44pt chip centred in a 25%-wide slot, so a 360pt phone
-   showed four chips with ~45pt of nothing between each pair. They are now
-   compact WHITE TILES — chip and label inside — packed four across with an
-   8pt gap, the reference quick-action cards. Same four-per-row rule, same
-   nothing-hidden rule; just no empty canyons. The width is measured, because
-   percentages plus a fixed gap overflow the row by a few points. */
-const STRIP_GAP = 8;
-const STRIP_COLS = 4;
+const STRIP_ITEM_MIN = 68;
+const STRIP_CHIP = 46;
 
 export function CategoryStrip({ items, value, onChange }) {
-  const [rowWidth, setRowWidth] = React.useState(0);
-  const tileWidth = rowWidth
-    ? Math.floor((rowWidth - STRIP_GAP * (STRIP_COLS - 1)) / STRIP_COLS)
-    : undefined;
+  const scroller = React.useRef(null);
+  const offsets = React.useRef({});
+
+  // Keep the selected section on screen — a drawer row can deep-link straight
+  // to the last one, which would otherwise sit past the right edge.
+  React.useEffect(() => {
+    const x = offsets.current[value];
+    if (x != null && scroller.current) {
+      scroller.current.scrollTo({ x: Math.max(0, x - space[4] - STRIP_ITEM_MIN), animated: true });
+    }
+  }, [value]);
+
   return (
-    <View
+    <ScrollView
+      ref={scroller}
+      horizontal
+      showsHorizontalScrollIndicator={false}
       accessibilityRole="tablist"
-      onLayout={(e) => setRowWidth(e.nativeEvent.layout.width - space[4] * 2)}
-      style={{
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        paddingHorizontal: space[4],
-        paddingTop: space[1],
-        paddingBottom: space[3],
-        gap: STRIP_GAP,
+      style={{ flexGrow: 0 }}
+      contentContainerStyle={{
+        paddingHorizontal: space[3],
+        paddingTop: space[2],
+        paddingBottom: space[2],
+        gap: space[1],
       }}
     >
       {items.map((item) => {
@@ -102,6 +105,7 @@ export function CategoryStrip({ items, value, onChange }) {
         return (
           <Pressable
             key={item.value}
+            onLayout={(e) => { offsets.current[item.value] = e.nativeEvent.layout.x; }}
             onPress={() => {
               if (!active) haptic('selection');
               onChange(item.value);
@@ -110,61 +114,44 @@ export function CategoryStrip({ items, value, onChange }) {
             accessibilityState={{ selected: active }}
             accessibilityLabel={item.badge ? `${item.label}, ${item.badge} waiting` : item.label}
             style={({ pressed }) => ({
-              width: tileWidth || '23%',
+              minWidth: STRIP_ITEM_MIN,
               alignItems: 'center',
-              gap: 6,
-              paddingTop: space[3],
-              paddingBottom: space[2] + 2,
-              paddingHorizontal: 2,
-              borderRadius: radius.lg,
-              backgroundColor: active ? color.brandChipBg : color.surface,
-              borderWidth: 1,
-              borderColor: active ? color.brandSoftBorder : color.borderSubtle,
+              paddingHorizontal: space[1],
+              paddingTop: 2,
               // A scale, not opacity: the selected chip is elevated, and opacity
               // over an elevated view is the Android grey-block flash (CardShell).
-              transform: [{ scale: pressed ? 0.95 : 1 }],
+              transform: [{ scale: pressed ? 0.94 : 1 }],
             })}
           >
-            {/* ── THE CHIP IS PURPLE AT REST (2026-10-18) ─────────────────
-                This was a white square with a slate hairline and a grey
-                glyph, and the selected one was purple-50 — a tint you cannot
-                see across a room. Eight grey squares in a row is the single
-                biggest reason the app read as bland.
-
-                Now: purple-100 behind a purple-600 glyph at rest, SOLID
-                purple with a white glyph when selected. The selected state is
-                a fill rather than a tint because only ever one is selected,
-                so the filled square is an answer to "where am I", not noise.
-                No border at all — the fill does that job, and a hairline
-                around a tinted chip only muddies it. */}
+            {/* Tinted at rest, SOLID purple when selected — only ever one is
+                selected, so the filled circle answers "where am I" and is not
+                noise. Round, uniform radius: safe for the Android shadow. */}
             <View
               style={{
-                width: 40,
-                height: 40,
-                borderRadius: radius.md,
+                width: STRIP_CHIP,
+                height: STRIP_CHIP,
+                borderRadius: radius.full,
                 alignItems: 'center',
                 justifyContent: 'center',
                 backgroundColor: active ? color.brand : color.brandChipBg,
-                // The selected chip lifts a little (uniform radius, so the
-                // Android outline shadow is safe — tokens.js `elevateSheet`).
                 ...(active ? elevate('md') : null),
               }}
             >
-              {Icon ? <Icon size={20} color={active ? color.textOnBrand : color.brandChipFg} /> : null}
+              {Icon ? <Icon size={21} color={active ? color.textOnBrand : color.brandChipFg} /> : null}
 
               {item.badge ? (
                 <View
                   style={{
                     position: 'absolute',
-                    top: -4,
-                    right: -4,
-                    minWidth: 17,
-                    height: 17,
+                    top: -3,
+                    right: -5,
+                    minWidth: 18,
+                    height: 18,
                     paddingHorizontal: 4,
                     borderRadius: radius.full,
                     backgroundColor: color.pending.dot,
                     borderWidth: 2,
-                    borderColor: color.surface,
+                    borderColor: color.bg,
                     alignItems: 'center',
                     justifyContent: 'center',
                   }}
@@ -181,19 +168,32 @@ export function CategoryStrip({ items, value, onChange }) {
               style={[
                 text.caption,
                 {
-                  fontSize: 10.5,
+                  marginTop: 6,
+                  fontSize: 11.5,
                   textAlign: 'center',
-                  color: active ? color.brandSoftFg : color.textSecondary,
+                  color: active ? color.brand : color.textSecondary,
                   fontFamily: active ? font.bold : font.medium,
                 },
               ]}
             >
               {item.label}
             </Text>
+
+            {/* The underline. Drawn transparent when unselected so every item
+                is the same height and the row never jumps on a switch. */}
+            <View
+              style={{
+                marginTop: 5,
+                width: 22,
+                height: 3,
+                borderRadius: radius.full,
+                backgroundColor: active ? color.brand : 'transparent',
+              }}
+            />
           </Pressable>
         );
       })}
-    </View>
+    </ScrollView>
   );
 }
 

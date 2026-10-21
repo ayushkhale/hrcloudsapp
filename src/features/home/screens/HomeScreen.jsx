@@ -70,6 +70,7 @@ import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { attendanceAPI } from '../../../api';
 import { useTodayAttendance } from '../../../hooks/useTodayAttendance';
+import { useListRefresh } from '../../../hooks/useListRefresh';
 import { unwrap } from '../../../lib/normalize';
 import { color, gutter, space } from '../../../theme/tokens';
 import { ErrorState, SkeletonBlock } from '../../../ui';
@@ -105,6 +106,14 @@ export default function HomeScreen() {
       .catch(() => { if (!cancelled) setContract(null); });
     return () => { cancelled = true; };
   }, [reloadKey]);
+
+  // Back on Home — from a punch on the web, a correction, a day page — re-read
+  // quietly (hooks/useListRefresh.js; its pull spinner is unused here, Home's
+  // own pull below awaits the punch card first).
+  useListRefresh(
+    useCallback(() => { refresh(); setReloadKey((k) => k + 1); }, [refresh]),
+    loading,
+  );
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);

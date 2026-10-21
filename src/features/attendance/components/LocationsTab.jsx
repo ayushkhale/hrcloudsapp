@@ -23,24 +23,47 @@
 // `/attendance/my-field-assignments` → { work_mode, assigned_office, records }.
 // A failed read is the same as no assignment, because that is what the punch
 // card already assumes (it hides the work-mode toggle rather than crashing).
+//
+// ── "VIEW ON MAP" (user, 2026-10-21) ────────────────────────────────────────
+//
+// Every place with a GPS pin gets a View on map button that opens the phone's
+// maps app — the web's link, the web's URL (lib/fieldPlanes.js `mapsUrl`).
+// A site WITHOUT a pin gets no button: there is nothing to open, and a button
+// that lands on an empty map is the broken control §2 forbids. The web says
+// `assigned_office` carries no pin; the observed payload sometimes does, so
+// the office gets the button exactly when its coordinates arrive.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useMemo } from 'react';
-import { ScrollView, View } from 'react-native';
+import { Linking, ScrollView, View } from 'react-native';
 import { attendanceAPI } from '../../../api';
 import { useResource } from '../../../hooks/useResource';
+import { useListRefresh } from '../../../hooks/useListRefresh';
 import { fmtDate } from '../../../lib/dates';
 import { humanize } from '../../../lib/enums';
+import { coord, hasPin, mapsUrl } from '../../../lib/fieldPlanes';
 import { listFrom } from '../../../lib/normalize';
 import { space } from '../../../theme/tokens';
 import { icons } from '../../../theme/icons';
-import { EmptyState, ErrorState, InlineAlert } from '../../../ui';
+import { Button, EmptyState, ErrorState, InlineAlert, showToast } from '../../../ui';
 import { CardsSkeleton, RecordCard, StatCards, cardListStyle } from '../../../ui/ListCards';
 
 const siteName = (r) => r?.field_location?.name || r?.location?.name || r?.name || 'A site';
 const clientOf = (r) => r?.field_location?.client_name || r?.client_name || null;
 const radiusOf = (r) => r?.field_location?.geofence_radius_meters ?? r?.geofence_radius_meters ?? null;
 const isLive = (r) => r?.is_active !== false;
+const placeOf = (r) => r?.field_location || r?.location || r;
+
+function openMap(place) {
+  Linking.openURL(mapsUrl(coord(place.latitude), coord(place.longitude)))
+    .catch(() => showToast('We couldn’t open a maps app on this phone.', 'error'));
+}
+
+/** The card's action — only for a place that has a pin. */
+function MapButton({ place }) {
+  if (!hasPin(place)) return null;
+  return <Button title="View on map" icon={icons.map} size="sm" variant="soft" onPress={() => openMap(place)} />;
+}
 
 export function LocationsTab() {
   const assignments = useResource(() => attendanceAPI.getMyFieldAssignments());
@@ -65,6 +88,8 @@ export function LocationsTab() {
     },
   ], [data?.work_mode, sites]);
 
+  const { refreshControl } = useListRefresh(assignments.reload, assignments.loading);
+
   if (assignments.error) {
     return (
       <View style={{ padding: space[4] }}>
@@ -83,7 +108,7 @@ export function LocationsTab() {
   }
 
   return (
-    <ScrollView contentContainerStyle={cardListStyle}>
+    <ScrollView contentContainerStyle={cardListStyle} refreshControl={refreshControl}>
       <StatCards items={stats} />
 
       {office ? (
@@ -92,6 +117,7 @@ export function LocationsTab() {
           tone="purple"
           title={office.name || 'Your office'}
           subtitle="Your assigned office. Clocking in from here always counts."
+          action={hasPin(office) ? <MapButton place={office} /> : null}
         />
       ) : null}
 
@@ -111,6 +137,7 @@ export function LocationsTab() {
                 ? { label: 'From', value: fmtDate(record.effective_from, '') }
                 : null,
             ].filter(Boolean)}
+            action={hasPin(placeOf(record)) ? <MapButton place={placeOf(record)} /> : null}
           />
         ))
       ) : !office ? (

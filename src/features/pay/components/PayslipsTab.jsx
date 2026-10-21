@@ -28,6 +28,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useCallback, useMemo, useState } from 'react';
+import { useListRefresh } from '../../../hooks/useListRefresh';
 import { ScrollView, Text, View } from 'react-native';
 import { payrollAPI, payrollFiles } from '../../../api';
 import { downloadFile } from '../../../api/files';
@@ -272,6 +273,8 @@ export function PayslipsTab({ payslips }) {
   const [view, setView] = useState('months');
   const [open, setOpen] = useState(null);
 
+  const { refreshControl } = useListRefresh(payslips.reload, payslips.loading);
+
   const slips = payslips.data || [];
 
   if (payslips.error && slips.length === 0) {
@@ -288,7 +291,7 @@ export function PayslipsTab({ payslips }) {
   }
 
   return (
-    <ScrollView contentContainerStyle={cardListStyle}>
+    <ScrollView contentContainerStyle={cardListStyle} refreshControl={refreshControl}>
       <FilterTabs options={VIEWS} value={view} onChange={setView} />
 
       {view === 'year' ? (

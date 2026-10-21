@@ -246,6 +246,22 @@ the auto-scroll.
 
 **Never turn it back into a wrapping row.**
 
+### `CategoryStrip` (`ui/ListCards.jsx`)
+
+The section selector on a tab root (My Time, My Pay, My Documents, My Tasks):
+one horizontal, scrolling row — a round tinted icon chip, a word under it, and
+a short purple underline under the selected one. No box around an item. It
+scrolls the selected section into view. Since 2026-10-21; it was a two-row grid
+of boxed tiles, which the user rejected as "one packed into another".
+
+### `FloatingAction` (`ui/FloatingAction.jsx`)
+
+The one create action of a section (Apply for leave, Request a correction) or
+page (DayLog's Request a correction): a purple pill floating bottom-right. It
+stands above the Ask Maya button when that is showing. The list under it pads
+its bottom by `FLOATING_CLEARANCE`. Pass `overTabBar={false}` on a pushed page
+with no tab bar. One per screen.
+
 ### `MonthStepper`
 
 ```jsx

@@ -24,6 +24,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useCallback, useMemo, useState } from 'react';
+import { useListRefresh } from '../../../hooks/useListRefresh';
 import { ScrollView, Text, View } from 'react-native';
 import { payrollAPI } from '../../../api';
 import { useResource } from '../../../hooks/useResource';
@@ -237,6 +238,11 @@ export function ClaimsTab({ onNewClaim, onOpenClaim }) {
     reloadCategories();
   }, [reloadClaims, reloadCategories]));
 
+  const { refreshControl } = useListRefresh(
+    useCallback(() => { reloadClaims(); reloadCategories(); }, [reloadClaims, reloadCategories]),
+    claims.loading || categories.loading,
+  );
+
   const rows = claims.data || [];
   const cats = useMemo(
     () => (categories.data || []).filter((r) => r.category?.id && r.category.is_active !== false),
@@ -257,7 +263,7 @@ export function ClaimsTab({ onNewClaim, onOpenClaim }) {
   }
 
   return (
-    <ScrollView contentContainerStyle={cardListStyle}>
+    <ScrollView contentContainerStyle={cardListStyle} refreshControl={refreshControl}>
       <FilterTabs options={VIEWS} value={view} onChange={setView} />
       <Button title="New claim" icon={icons.add} onPress={() => onNewClaim()} fullWidth />
 

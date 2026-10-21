@@ -41,13 +41,22 @@
 // believes their manager will read it. It is a `useConfirm` until the backend
 // accepts one; the moment it does, this becomes a ReasonPrompt and the only
 // change is which component is mounted.
+//
+// ── "REQUEST A CORRECTION" FLOATS (user, 2026-10-21) ────────────────────────
+//
+// It was a full-width button at the top of the list; it is a FloatingAction
+// at the bottom, where a thumb is. And the list now hears its own form: the
+// form emits REGULARIZATION on submit, but nothing here listened, so a new
+// request did not appear until the section was reopened. It also reloads
+// on pull and on return (hooks/useListRefresh.js).
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useCallback, useMemo, useState } from 'react';
 import { FlatList, View } from 'react-native';
 import { attendanceAPI } from '../../../api';
 import { usePagedList } from '../../../hooks/usePagedList';
-import { ATTENDANCE_EVENTS, emitAttendanceChanged } from '../../../lib/events';
+import { useListRefresh } from '../../../hooks/useListRefresh';
+import { ATTENDANCE_EVENTS, emitAttendanceChanged, useAttendanceChanged } from '../../../lib/events';
 import { attendanceErrorMessage } from '../../../lib/errors/attendanceErrors';
 import { fmtDate, fmtDateShort, fmtTime, ymdOnly } from '../../../lib/dates';
 import { REGULARIZATION_FILTERS } from '../../../lib/enums';
@@ -55,7 +64,8 @@ import { entityId } from '../../../lib/normalize';
 import { space } from '../../../theme/tokens';
 import { icons } from '../../../theme/icons';
 import {
-  Button, EmptyState, ErrorState, FilterTabs, ListFooter, StatusBadge, showToast, useConfirm,
+  Button, EmptyState, ErrorState, FLOATING_CLEARANCE, FilterTabs, FloatingAction, ListFooter, StatusBadge,
+  showToast, useConfirm,
 } from '../../../ui';
 import { CorrectionSheet } from './SelfRecordSheets';
 import { CardsSkeleton, RecordCard, cardListStyle } from '../../../ui/ListCards';
@@ -96,6 +106,9 @@ export function CorrectionsTab({ onNewRequest }) {
   })), [list.items]);
 
   const { reload } = list;
+  useAttendanceChanged([ATTENDANCE_EVENTS.REGULARIZATION], reload);
+  const { refreshControl } = useListRefresh(reload, list.loading);
+
   const cancelRequest = useCallback(async (req) => {
     const id = entityId(req);
     if (!id || cancelling) return;
@@ -130,21 +143,27 @@ export function CorrectionsTab({ onNewRequest }) {
 
   const header = (
     <View style={{ gap: space[3], paddingBottom: space[1] }}>
-      <Button title="Request a correction" onPress={() => onNewRequest?.()} icon={icons.add} fullWidth />
       <FilterTabs options={options} value={filter} onChange={setFilter} />
     </View>
   );
 
+  const fab = (
+    <FloatingAction title="Request a correction" icon={icons.add} onPress={() => onNewRequest?.()} />
+  );
+
   if (list.error && list.items.length === 0) {
     return (
-      <View style={{ padding: space[4], gap: space[3] }}>
-        {header}
-        <ErrorState
-          error={list.error}
-          domain="attendance"
-          onRetry={list.reload}
-          fallback="We couldn’t load your corrections."
-        />
+      <View style={{ flex: 1 }}>
+        <View style={{ padding: space[4], gap: space[3] }}>
+          {header}
+          <ErrorState
+            error={list.error}
+            domain="attendance"
+            onRetry={list.reload}
+            fallback="We couldn’t load your corrections."
+          />
+        </View>
+        {fab}
       </View>
     );
   }
@@ -226,8 +245,11 @@ export function CorrectionsTab({ onNewRequest }) {
             />
           ) : null
         }
-        contentContainerStyle={cardListStyle}
+        contentContainerStyle={[cardListStyle, { paddingBottom: FLOATING_CLEARANCE }]}
+        refreshControl={refreshControl}
       />
+
+      {fab}
 
       {selected ? <CorrectionSheet item={selected} onClose={() => setSelected(null)} /> : null}
     </>

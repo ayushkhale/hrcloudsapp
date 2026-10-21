@@ -22,6 +22,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useMemo } from 'react';
+import { useListRefresh } from '../../../hooks/useListRefresh';
 import { ScrollView, Text, View } from 'react-native';
 import { payrollAPI } from '../../../api';
 import { useResource } from '../../../hooks/useResource';
@@ -61,6 +62,8 @@ export function BenefitsTab() {
     [active],
   );
 
+  const { refreshControl } = useListRefresh(benefits.reload, benefits.loading);
+
   if (benefits.error && rows.length === 0) {
     return (
       <View style={{ padding: space[4] }}>
@@ -87,7 +90,7 @@ export function BenefitsTab() {
   }
 
   return (
-    <ScrollView contentContainerStyle={cardListStyle}>
+    <ScrollView contentContainerStyle={cardListStyle} refreshControl={refreshControl}>
       {active.length > 0 ? (
         <StatCards
           items={[

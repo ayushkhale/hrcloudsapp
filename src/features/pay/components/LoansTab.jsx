@@ -27,6 +27,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useEffect, useMemo, useState } from 'react';
+import { useListRefresh } from '../../../hooks/useListRefresh';
 import { ScrollView, Text, View } from 'react-native';
 import { payrollAPI } from '../../../api';
 import { useResource } from '../../../hooks/useResource';
@@ -159,6 +160,8 @@ export function LoansTab() {
     [live],
   );
 
+  const { refreshControl } = useListRefresh(loans.reload, loans.loading);
+
   if (loans.error && rows.length === 0) {
     return (
       <View style={{ padding: space[4] }}>
@@ -185,7 +188,7 @@ export function LoansTab() {
   }
 
   return (
-    <ScrollView contentContainerStyle={cardListStyle}>
+    <ScrollView contentContainerStyle={cardListStyle} refreshControl={refreshControl}>
       {live.length > 0 ? (
         <StatCards
           items={[

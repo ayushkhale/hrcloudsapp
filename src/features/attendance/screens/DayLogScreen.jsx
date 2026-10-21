@@ -24,6 +24,15 @@
 // to read in the future). The old day stays on screen until the new one lands
 // — only the first load is a skeleton (§2). The date is local state, not a
 // route param: stepping through a week must not stack seven screens.
+//
+// ── "REQUEST A CORRECTION" FLOATS AT THE BOTTOM (user, 2026-10-21) ──────────
+//
+// On any PAST day — the web's rule (DailyLogModal: `date < todayYMD()`).
+// Today is still being recorded, so there is nothing settled to correct yet.
+// It shows whether or not the day has a record: "I was marked absent but I
+// was working" is the commonest correction there is, and that day has none.
+// The form lives in the Time stack only, so from Home it is reached through
+// the Time tab (`initial: false`, so closing it lands on My Time, CLAUDE.md §6).
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useLayoutEffect, useState } from 'react';
@@ -32,7 +41,7 @@ import { useAuth } from '../../../state/AuthContext';
 import { addDaysYMD, fmtDate, fmtWeekday, todayYMD } from '../../../lib/dates';
 import { color, elevate, gutter, iconSize, radius, space, text } from '../../../theme/tokens';
 import { icons } from '../../../theme/icons';
-import { DatePicker, Skeleton } from '../../../ui';
+import { DatePicker, FLOATING_CLEARANCE, FloatingAction, Skeleton } from '../../../ui';
 import { haptic } from '../../../ui/haptics';
 import { DayLogBody, useDayLog } from '../components/DayLogParts';
 
@@ -107,6 +116,15 @@ export default function DayLogScreen({ navigation, route }) {
   const { loading, error, day, ready, reload } = useDayLog(date);
   const today = todayYMD();
   const canGoForward = date < today;
+  const canCorrect = date < today;
+
+  const requestCorrection = () => {
+    if (navigation.getState()?.routeNames?.includes('CorrectionForm')) {
+      navigation.navigate('CorrectionForm', { date });
+    } else {
+      navigation.navigate('TimeTab', { screen: 'CorrectionForm', params: { date }, initial: false });
+    }
+  };
 
   const go = (next) => {
     if (!next || next > today || next === date) return;
@@ -143,7 +161,7 @@ export default function DayLogScreen({ navigation, route }) {
     <>
       <ScrollView
         style={{ flex: 1, backgroundColor: color.bg }}
-        contentContainerStyle={{ padding: gutter, gap: space[4], paddingBottom: space[10] }}
+        contentContainerStyle={{ padding: gutter, gap: space[4], paddingBottom: canCorrect ? FLOATING_CLEARANCE : space[10] }}
         refreshControl={<RefreshControl refreshing={loading && ready} onRefresh={reload} tintColor={color.brand} colors={[color.brand]} />}
       >
         <DateRow
@@ -159,6 +177,15 @@ export default function DayLogScreen({ navigation, route }) {
           <DayLogBody date={date} day={day} error={error} onRetry={reload} person={user} />
         )}
       </ScrollView>
+
+      {canCorrect ? (
+        <FloatingAction
+          title="Request a correction"
+          icon={icons.edit}
+          onPress={requestCorrection}
+          overTabBar={false}
+        />
+      ) : null}
 
       <DatePicker
         open={picking}

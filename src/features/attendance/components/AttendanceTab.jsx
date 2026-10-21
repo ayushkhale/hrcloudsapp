@@ -40,6 +40,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useCallback, useMemo } from 'react';
+import { useListRefresh } from '../../../hooks/useListRefresh';
 import { FlatList, View } from 'react-native';
 import { attendanceAPI } from '../../../api';
 import { usePagedList } from '../../../hooks/usePagedList';
@@ -82,6 +83,11 @@ export function AttendanceTab({ period, onChangePeriod, onDayPress }) {
   useAttendanceChanged(
     [ATTENDANCE_EVENTS.PUNCH, ATTENDANCE_EVENTS.REGULARIZATION],
     useCallback(() => { reloadSummary(); reloadHistory(); }, [reloadSummary, reloadHistory]),
+  );
+
+  const { refreshControl } = useListRefresh(
+    useCallback(() => { reloadSummary(); reloadHistory(); }, [reloadSummary, reloadHistory]),
+    summary.loading || history.loading,
   );
 
   const hero = useMemo(() => {
@@ -185,6 +191,7 @@ export function AttendanceTab({ period, onChangePeriod, onDayPress }) {
         ) : null
       }
       contentContainerStyle={cardListStyle}
+      refreshControl={refreshControl}
     />
   );
 }

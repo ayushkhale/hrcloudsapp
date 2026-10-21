@@ -64,7 +64,7 @@ import { humanize } from '../../../lib/enums';
 import { dayChip, statusReasonNote } from '../../../lib/dayStatus';
 import { color, palette, radius, space, text, toneOf } from '../../../theme/tokens';
 import { icons } from '../../../theme/icons';
-import { Avatar, ErrorState, SheetFooterNote, StatusBadge } from '../../../ui';
+import { Avatar, ErrorState, StatusBadge } from '../../../ui';
 
 /* ─── Reading the payload ─────────────────────────────────────────────────────
    The daily-log shape is not pinned in NativeRef/10-api, so each value is read
@@ -97,9 +97,91 @@ const otMins = (d) => num(first(d, 'overtime_minutes')) ?? hoursToMins(first(d, 
 const expectedMins = (d) => num(first(d, 'expected_minutes', 'shift_minutes'))
   ?? hoursToMins(first(d, 'expected_hours', 'shift_hours'));
 
-const punchesOf = (d) => (Array.isArray(d?.punches) ? d.punches : Array.isArray(d?.sessions) ? d.sessions : []);
-const breaksOf = (d) => (Array.isArray(d?.breaks) ? d.breaks : []);
+const listOf = (v) => (Array.isArray(v) ? v : []);
 const whereOf = (p) => p?.location_name || p?.office_name || (p?.work_mode ? humanize(p.work_mode) : '') || null;
+
+/* ── THE PAYLOAD IS A WRAPPER (2026-10-21) ────────────────────────────────────
+   `/attendance/daily-log` answers `{ record, logs, sessions, breaks,
+   anomalies }` (10-api/03-payload-shapes.md; the web DailyLogModal reads it
+   exactly this way). This file used to read `clock_in_time` and `punches`
+   off the TOP LEVEL, where they never are — so every day said "Clocked in ·
+   Not yet" while the web showed both punches for the same date (user,
+   2026-10-21). `readDayLog` flattens it ONCE, in useDayLog: the record's own
+   fields on top, the arrays beside them, and every reader below stays
+   unchanged. Older payloads were the punch list itself; that still works. */
+export function readDayLog(payload) {
+  if (!payload) return null;
+  if (Array.isArray(payload)) return { logs: payload, sessions: [], breaks: [], anomalies: [] };
+  const record = payload.record || payload.attendance_record || (payload.status ? payload : null);
+  const breaks = listOf(payload.breaks);
+  return {
+    ...(record || {}),
+    record: record || null,
+    logs: listOf(payload.logs || payload.punches || payload.attendance_logs),
+    sessions: listOf(payload.sessions),
+    breaks: breaks.length ? breaks : listOf(record?.breaks),
+    anomalies: listOf(payload.anomalies),
+  };
+}
+
+// A punch's moment and kind, in the spellings the web's punch table reads.
+const logTime = (l) => first(l, 'timestamp', 'punch_time', 'created_at');
+const logType = (l) => String(l?.type || l?.log_type || '').toLowerCase();
+
+/* The day's work sessions, from the best source that has any:
+     1. the PUNCHES (`logs`) — each clock_in opens a session, the next
+        clock_out closes it. They carry an explicit type, so they are never
+        mistaken for anything else.
+     2. the record's own first-in / last-out — one session.
+     3. `sessions` — last, because those are WORK SPANS: a day with a break
+        comes back as two of them, which would read as clocking out for lunch. */
+function sessionsOf(day) {
+  const logs = listOf(day?.logs)
+    .filter((l) => logTime(l))
+    .sort((a, b) => new Date(logTime(a)) - new Date(logTime(b)));
+  const paired = [];
+  logs.forEach((l) => {
+    const kind = logType(l);
+    if (kind === 'clock_in') {
+      paired.push({ in: logTime(l), out: null, where: whereOf(l) });
+    } else if (kind === 'clock_out') {
+      const open = paired[paired.length - 1];
+      if (open && !open.out) open.out = logTime(l);
+      else paired.push({ in: null, out: logTime(l), where: whereOf(l) });
+    }
+  });
+  if (paired.length) return paired;
+
+  const recIn = first(day, 'clock_in_time', 'first_in', 'in_time');
+  const recOut = first(day, 'clock_out_time', 'last_out', 'out_time');
+  if (recIn || recOut) {
+    return [{ in: recIn, out: recOut, where: day?.work_mode ? humanize(day.work_mode) : null }];
+  }
+
+  return listOf(day?.sessions).map((s) => ({
+    in: first(s, 'start', 'clock_in_time', 'in_time', 'start_time', 'punch_in'),
+    out: first(s, 'end', 'clock_out_time', 'out_time', 'end_time', 'punch_out'),
+    where: whereOf(s),
+  })).filter((s) => s.in || s.out);
+}
+
+/* Breaks from the `breaks` array; failing that, paired from the punches. */
+function breaksOf(day) {
+  const listed = listOf(day?.breaks);
+  if (listed.length) return listed;
+  const out = [];
+  listOf(day?.logs)
+    .filter((l) => logTime(l))
+    .sort((a, b) => new Date(logTime(a)) - new Date(logTime(b)))
+    .forEach((l) => {
+      const kind = logType(l);
+      if (kind === 'break_start') out.push({ start_time: logTime(l), end_time: null });
+      else if (kind === 'break_end' && out.length && !out[out.length - 1].end_time) {
+        out[out.length - 1].end_time = logTime(l);
+      }
+    });
+  return out;
+}
 
 /**
  * Minutes since midnight for a punch time, whichever way it arrived — a
@@ -172,27 +254,17 @@ function ReasonHero({ chip, note }) {
    break belongs to the latest session that began before it (the first
    session when it can't be placed). */
 function buildTimeline(day) {
-  let sessions = punchesOf(day).map((p) => ({
-    in: first(p, 'clock_in_time', 'in_time', 'start_time', 'punch_in'),
-    out: first(p, 'clock_out_time', 'out_time', 'end_time', 'punch_out'),
-    where: whereOf(p),
-  }));
-  // No punch array but the day carries its own in/out: one session.
-  if (!sessions.length && (first(day, 'clock_in_time', 'first_in', 'in_time') || first(day, 'clock_out_time', 'last_out', 'out_time'))) {
-    sessions = [{
-      in: first(day, 'clock_in_time', 'first_in', 'in_time'),
-      out: first(day, 'clock_out_time', 'last_out', 'out_time'),
-      where: day?.work_mode ? humanize(day.work_mode) : null,
-    }];
-  }
-  sessions = sessions
+  const sessions = sessionsOf(day)
     .map((x, i) => ({ ...x, i, inMins: timeOf(x.in) }))
     .sort((a, b) => (a.inMins ?? Infinity) - (b.inMins ?? Infinity));
 
   const breaks = breaksOf(day).map((b, i) => {
     const startAt = first(b, 'start_time', 'break_start', 'started_at');
-    const mins = num(first(b, 'duration_minutes', 'minutes'));
-    return { i, startAt, endAt: first(b, 'end_time', 'break_end', 'ended_at'), mins, startMins: timeOf(startAt) };
+    const endAt = first(b, 'end_time', 'break_end', 'ended_at');
+    // A break paired from the punches has no duration of its own.
+    const span = timeOf(startAt) != null && timeOf(endAt) != null ? timeOf(endAt) - timeOf(startAt) : null;
+    const mins = num(first(b, 'duration_minutes', 'minutes')) ?? (span != null && span >= 0 ? span : null);
+    return { i, startAt, endAt, mins, startMins: timeOf(startAt) };
   }).sort((a, b) => (a.startMins ?? Infinity) - (b.startMins ?? Infinity));
 
   const breaksFor = sessions.map(() => []);
@@ -261,7 +333,7 @@ export function useDayLog(date) {
     let cancelled = false;
     setState((s) => ({ ...s, loading: true, error: null }));
     attendanceAPI.getDailyLog(date)
-      .then((res) => { if (!cancelled) setState({ loading: false, error: null, day: unwrap(res) || null, date }); })
+      .then((res) => { if (!cancelled) setState({ loading: false, error: null, day: readDayLog(unwrap(res)), date }); })
       .catch((error) => { if (!cancelled) setState({ loading: false, error, day: null, date }); });
     return () => { cancelled = true; };
   }, [date, nonce]);
@@ -503,11 +575,8 @@ export function DayLogBody({ date, day, error, onRetry, person }) {
         <NotePanel>{reasonNote}</NotePanel>
       ) : null}
 
-      <SheetFooterNote>
-        {hasRecord
-          ? 'Something wrong with this day? Request a correction from My Time.'
-          : 'Nothing here to correct — a day off needs no attendance.'}
-      </SheetFooterNote>
+      {/* No "request a correction from My Time" line any more — DayLogScreen
+          floats the button itself on every past day (2026-10-21). */}
     </View>
   );
 }

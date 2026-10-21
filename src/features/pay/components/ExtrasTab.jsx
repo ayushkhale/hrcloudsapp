@@ -35,6 +35,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useMemo } from 'react';
+import { useListRefresh } from '../../../hooks/useListRefresh';
 import { ScrollView, View } from 'react-native';
 import { payrollAPI } from '../../../api';
 import { TERMS } from '../../../config/dictionary';
@@ -80,6 +81,11 @@ export function ExtrasTab() {
     || (adjustments.loading && !adjustments.data?.length)
     || (payouts.loading && !payouts.data?.length);
 
+  const { refreshControl } = useListRefresh(
+    () => { bonuses.reload(); adjustments.reload(); payouts.reload(); },
+    bonuses.loading || adjustments.loading || payouts.loading,
+  );
+
   // All failed: there is nothing to show, so the failure IS the content.
   if (bonuses.error && adjustments.error && payouts.error) {
     return (
@@ -97,7 +103,7 @@ export function ExtrasTab() {
   if (loading && rows.length === 0) return <CardsSkeleton rows={3} height={84} />;
 
   return (
-    <ScrollView contentContainerStyle={cardListStyle}>
+    <ScrollView contentContainerStyle={cardListStyle} refreshControl={refreshControl}>
       {/* One side failed. The other side's rows are real and stay on screen;
           the gap is named rather than hidden. */}
       {bonuses.error && !adjustments.error ? (

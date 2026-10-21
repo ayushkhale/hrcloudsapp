@@ -20,6 +20,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useMemo, useState } from 'react';
+import { useListRefresh } from '../../../hooks/useListRefresh';
 import { ScrollView, Text, View } from 'react-native';
 import { payrollAPI } from '../../../api';
 import { useResource } from '../../../hooks/useResource';
@@ -110,6 +111,11 @@ export function SalaryTab() {
       || String(z.effective_from).localeCompare(String(a.effective_from)),
   ), [history.data]);
 
+  const { refreshControl } = useListRefresh(
+    () => { current.reload(); history.reload(); },
+    current.loading || history.loading,
+  );
+
   if (current.error) {
     return (
       <View style={{ padding: space[4] }}>
@@ -136,7 +142,7 @@ export function SalaryTab() {
   }
 
   return (
-    <ScrollView contentContainerStyle={cardListStyle}>
+    <ScrollView contentContainerStyle={cardListStyle} refreshControl={refreshControl}>
       {/* The headline is TAKE-HOME, because that is the number people mean
           when they say "my salary". INK on the soft hero (2026-10-20): it was
           purple-700 text on a purple-100 block, and the figure sank into its

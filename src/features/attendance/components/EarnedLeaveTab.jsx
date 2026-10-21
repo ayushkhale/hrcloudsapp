@@ -48,6 +48,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useCallback, useMemo, useState } from 'react';
+import { useListRefresh } from '../../../hooks/useListRefresh';
 import { FlatList, View } from 'react-native';
 import { attendanceAPI } from '../../../api';
 import { usePagedList } from '../../../hooks/usePagedList';
@@ -100,6 +101,11 @@ export function EarnedLeaveTab() {
   useAttendanceChanged(
     [ATTENDANCE_EVENTS.COMPOFF, ATTENDANCE_EVENTS.PUNCH],
     useCallback(() => { reloadSummary(); reloadList(); }, [reloadSummary, reloadList]),
+  );
+
+  const { refreshControl } = useListRefresh(
+    useCallback(() => { reloadSummary(); reloadList(); }, [reloadSummary, reloadList]),
+    summary.loading || list.loading,
   );
 
   // Counted from the rows, not the summary: the summary has no expiry in it,
@@ -244,6 +250,7 @@ export function EarnedLeaveTab() {
           ) : null
         }
         contentContainerStyle={cardListStyle}
+        refreshControl={refreshControl}
       />
 
       {selected ? (

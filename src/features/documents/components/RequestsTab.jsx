@@ -22,6 +22,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useListRefresh } from '../../../hooks/useListRefresh';
 import { ScrollView, Text } from 'react-native';
 import { documentsAPI } from '../../../api';
 import { fmtDate } from '../../../lib/dates';
@@ -105,6 +106,11 @@ export function RequestsTab({ onUpload }) {
   useAttendanceChanged(
     [ATTENDANCE_EVENTS.DOCUMENT, ATTENDANCE_EVENTS.DOCUMENT_REQUEST],
     useCallback(() => { loadChecklist(); loadRequests(); }, [loadChecklist, loadRequests]),
+  );
+
+  const { refreshControl } = useListRefresh(
+    useCallback(() => { loadChecklist(); loadRequests(); }, [loadChecklist, loadRequests]),
+    checklist.loading || requests.loading,
   );
 
   const items = useMemo(() => checklist.data?.items || [], [checklist.data]);
@@ -236,7 +242,7 @@ export function RequestsTab({ onUpload }) {
   };
 
   return (
-    <ScrollView contentContainerStyle={cardListStyle}>
+    <ScrollView contentContainerStyle={cardListStyle} refreshControl={refreshControl}>
       <FilterTabs
         options={VIEWS.map((v) => (v.value === 'required' && todo ? { ...v, label: `Required (${todo} to do)` } : v))}
         value={view}

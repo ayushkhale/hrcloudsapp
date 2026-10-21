@@ -16,6 +16,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useCallback, useEffect, useState } from 'react';
+import { useListRefresh } from '../../../hooks/useListRefresh';
 import { ScrollView, Text } from 'react-native';
 import { documentsAPI } from '../../../api';
 import { icons } from '../../../theme/icons';
@@ -48,6 +49,8 @@ export function FormsTab() {
 
   useEffect(() => { load(); }, [load]);
 
+  const { refreshControl } = useListRefresh(load, state.loading);
+
   const download = async (row) => {
     if (busy) return;
     setBusy(row.id);
@@ -61,7 +64,7 @@ export function FormsTab() {
   const Search = icons.search;
 
   return (
-    <ScrollView contentContainerStyle={cardListStyle} keyboardShouldPersistTaps="handled">
+    <ScrollView contentContainerStyle={cardListStyle} keyboardShouldPersistTaps="handled" refreshControl={refreshControl}>
       <TextField
         kind="search"
         value={search}

@@ -29,6 +29,10 @@ const AuthContext = createContext(null);
 // foreground instead.
 const MAX_TIMER_MS = 2 ** 31 - 1;
 
+// Longer than the root navigator's fade from the app shell to Login, so the
+// shell never draws itself without a user (see endSession).
+const SHELL_FADE_MS = 600;
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [role, setRole] = useState(null);
@@ -49,6 +53,8 @@ export function AuthProvider({ children }) {
   const [selection, setSelection] = useState(null); // { token, organizations[] }
 
   const mounted = useRef(true);
+  // Bumped by every session start and end — see endSession.
+  const sessionGen = useRef(0);
   useEffect(() => {
     mounted.current = true;
     return () => { mounted.current = false; };
@@ -95,6 +101,7 @@ export function AuthProvider({ children }) {
     }
 
     setRefusedRole(null);
+    sessionGen.current += 1; // a sign-out's pending wipe must not hit this session
     setIsAuthenticated(true);
     setRole(session.role);
     setOrgId(session.orgId);
@@ -104,15 +111,29 @@ export function AuthProvider({ children }) {
     return true;
   }, [hydrateProfile]);
 
+  /* ── SIGNING OUT IN TWO STEPS (2026-10-21) ─────────────────────────────────
+     "Sign out is breaking ui in between." Everything used to be wiped in one
+     render — and RootNavigator FADES the app shell out rather than cutting
+     it, so for that fade the shell was still on screen with `role` already
+     null: `workspace` went null, AppTabs drew nothing, and the greeting and
+     avatar emptied. A blank, half-torn app, then Login.
+
+     So `isAuthenticated` drops first (that is what starts the switch to
+     Login, and the token is cleared below either way), and the person's
+     identity is wiped once the shell has gone. `sessionGen` lets a sign-in
+     inside that window cancel the wipe rather than lose its own user. */
   const endSession = useCallback(async ({ expired = false } = {}) => {
-    // Immediately reset in-memory auth state so navigation updates immediately
     setIsAuthenticated(false);
-    setUser(null);
-    setRole(null);
-    setOrgId(null);
     setTokenExp(null);
     setSelection(null);
     setSessionExpired(expired);
+    const gen = ++sessionGen.current;
+    setTimeout(() => {
+      if (gen !== sessionGen.current || !mounted.current) return;
+      setUser(null);
+      setRole(null);
+      setOrgId(null);
+    }, SHELL_FADE_MS);
 
     // Safely clear persistent session data in background
     try {
@@ -254,6 +275,7 @@ export function AuthProvider({ children }) {
     }
     setSessionExpired(false);
     setSelection(null);
+    sessionGen.current += 1; // cancels a sign-out's pending wipe (endSession)
     setUser({ ...auth.user, ...session.user });
     setRole(session.role);
     setOrgId(session.orgId);

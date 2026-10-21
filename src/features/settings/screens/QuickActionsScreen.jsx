@@ -146,7 +146,7 @@ export default function QuickActionsScreen() {
       {/* A GRID, NOT A LIST (2026-10-21). Sixteen 60pt rows in a 75% sheet
           put My Tasks and everything after it below the fold, and people
           reported them as missing. Four to a row, every action is on screen
-          at once — the CategoryStrip rule (CLAUDE.md §1). */}
+          at once (CLAUDE.md §1). */}
       <OptionSheet
         visible={slot != null}
         title={current ? `Replace ${current.label}` : 'Replace'}

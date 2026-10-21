@@ -7,9 +7,17 @@
 // Every fetch in the app must be cancellable and must discard out-of-order
 // responses. Doing it here once means no screen writes `let cancelled = false`
 // again — and no screen forgets to.
+//
+// A FAILED RE-READ KEEPS WHAT WAS LOADED (2026-10-21). An error used to reset
+// `data` to `initial`, so one dropped request during a pull — or during the
+// quiet reload-on-return (hooks/useListRefresh.js) — swapped a loaded list
+// for an error screen. Callers were already written for the other behaviour
+// (`error && rows.length === 0` → ErrorState). Data from a DIFFERENT query
+// (the deps changed: another year, another id) is still dropped on failure,
+// because showing last year's figures under this year's label is worse.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { unwrap } from '../lib/normalize';
 
 /**
@@ -34,6 +42,11 @@ export function useResource(fetcher, {
   const onErrorRef = useRef(onError);
   onErrorRef.current = onError;
   const requestId = useRef(0);
+  // Which query the data on screen came from — a new object whenever the deps
+  // change. See the header: a failed re-read of the SAME query keeps its data.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const query = useMemo(() => ({}), [enabled, ...deps]);
+  const dataQuery = useRef(null);
 
   const load = useCallback(async () => {
     if (!enabled) {
@@ -46,14 +59,16 @@ export function useResource(fetcher, {
       const res = await fetcherRef.current();
       if (id !== requestId.current) return;
       const raw = unwrap(res);
+      dataQuery.current = query;
       setState({ data: selectRef.current ? selectRef.current(raw) : raw, loading: false, error: null });
     } catch (error) {
       if (id !== requestId.current) return;
-      setState({ data: initial, loading: false, error });
+      const keep = dataQuery.current === query;
+      setState((s) => ({ data: keep ? s.data : initial, loading: false, error }));
       onErrorRef.current?.(error);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [enabled, ...deps]);
+  }, [query]);
 
   useEffect(() => { load(); }, [load]);
 

@@ -7,10 +7,15 @@
 //
 // ── THE RULES THAT MATTER (and break most often) ─────────────────────────────
 //
-//   • THE STATE COMES FROM THE SERVER (T-H2). `today.status` decides which
-//     buttons show. We never re-derive it from `clock_out_time` — that breaks
-//     the overnight carry-over. The clock fields are read ONLY for the live
-//     number, never for the state machine.
+//   • THE STATE IS THE WEB'S RULE, VERBATIM (2026-10-21). Working = status
+//     `in_progress`, or a clock-in with no clock-out; done = a clock-out;
+//     otherwise idle (web AttendanceCard `phase`). It used to map the status
+//     word first and treated `present` as WORKING — but `present` is what a
+//     day becomes the moment you clock OUT, so the card kept offering Clock
+//     Out after a clock-out and "didn't update" (user: "web is showing clock
+//     in/out for the date but app fails"). The overnight carry-over is safe
+//     under this rule: `/today` returns yesterday's still-open record, which
+//     has a clock-in and no clock-out.
 //
 //   • A PUNCH IS NEVER QUEUED OFFLINE (T-H1). Offline → the button stays live
 //     and fails with one clear sentence on press. No optimistic "clocked in".
@@ -94,6 +99,7 @@ import { WorkModePicker } from './WorkModePicker';
 import { PunchPhotoCapture } from './PunchPhotoCapture';
 import { useAuth } from '../../../state/AuthContext';
 import { punchWithDeviceProof } from '../../devices/deviceKey';
+import { DEV_MODE_MESSAGE, openDeveloperSettings, useDeveloperMode } from '../../../lib/developerMode';
 // The tile every attendance fact takes, shared with the Time screen's lists.
 import { Stat } from './StatTiles';
 
@@ -101,22 +107,15 @@ const WORK_MODE_KEY = 'hrclouds_attendance_work_mode';
 const WORK_MODE_LABEL = { office: 'Office', remote: 'Remote', hybrid: 'Hybrid', field: 'Field' };
 
 /* ── Reading the server state ─────────────────────────────────────────────────
-   `today.status` is authoritative (T-H2). This maps the vocabulary the gateway
-   uses to our three card states; an unknown or absent status falls back to the
-   clock fields, which is all we have left — but never ahead of the status. */
-function punchState(today, isClockedIn) {
+   The web card's `phase`, ported as-is (see the header). `status` is a DAY
+   status — present, half_day, absent — not a punch state, so it only ever
+   says "working" through `in_progress`; the clock fields say the rest. */
+function punchState(today) {
   const s = normalizeStatusKey(today?.status);
-  if (['clocked_in', 'working', 'present', 'in', 'on_break', 'break', 'checked_in'].includes(s)) {
-    return 'working';
-  }
-  if (['clocked_out', 'completed', 'done', 'checked_out', 'out', 'present_completed'].includes(s)) {
-    return 'done';
-  }
-  if (['not_clocked_in', 'idle', 'yet_to_clock_in', 'pending', 'absent'].includes(s)) {
-    return 'idle';
-  }
-  if (isClockedIn) return 'working';
-  if (today?.clock_out_time || today?.clock_out || today?.last_out_time) return 'done';
+  const inAt = today?.clock_in_time || today?.clock_in || today?.first_in_time;
+  const outAt = today?.clock_out_time || today?.clock_out || today?.last_out_time;
+  if (s === 'in_progress' || (inAt && !outAt)) return 'working';
+  if (outAt) return 'done';
   return 'idle';
 }
 
@@ -189,12 +188,27 @@ function resolveOfficeName(contract, geofence) {
 export function PunchCard({ today, shift: shiftData, contract, refresh }) {
   const { showToast } = useToast();
   const confirm = useConfirm();
-  const { workedMinutes, breakMinutes, onBreak, isClockedIn, breaksKnown } = useLiveWorked(today);
+  const { workedMinutes, breakMinutes, onBreak, breaksKnown } = useLiveWorked(today);
 
   const shift = useMemo(() => resolveShift(shiftData, today), [shiftData, today]);
-  const state = punchState(today, isClockedIn);
+  const state = punchState(today);
   const busyState = useState(null); // which action is in flight, e.g. 'in' | 'out' | 'break'
   const [busy, setBusy] = busyState;
+
+  /* ── NO PUNCH WITH DEVELOPER OPTIONS ON (user, 2026-10-21) ───────────────
+     Clock in, clock out and both break buttons ask afresh at the PRESS — the
+     buttons stay live (CLAUDE.md §3: the press does the checking), and a
+     stale "off" from before somebody opened Settings must not let one
+     through. A refusal is a toast; the rose notice above the buttons stays
+     until the switch is off. See lib/developerMode.js. */
+  const devMode = useDeveloperMode();
+  const { recheck: recheckDevMode } = devMode;
+  const blockedByDevMode = useCallback(async () => {
+    if (!(await recheckDevMode())) return false;
+    haptic('error');
+    showToast(DEV_MODE_MESSAGE, 'error');
+    return true;
+  }, [recheckDevMode, showToast]);
 
   // Work mode — only a hybrid contract gets the choice.
   const showWorkMode = choosesWorkMode(contract?.work_mode);
@@ -282,6 +296,7 @@ export function PunchCard({ today, shift: shiftData, contract, refresh }) {
      of them can never be reported as a failed punch. */
   const run = useCallback(async (key, fn, onOk, failure) => {
     if (busy) return;
+    if (await blockedByDevMode()) return;
     setBusy(key);
     try {
       await fn();
@@ -308,7 +323,7 @@ export function PunchCard({ today, shift: shiftData, contract, refresh }) {
     emitAttendanceChanged(ATTENDANCE_EVENTS.PUNCH);
     await refresh();
     setBusy(null);
-  }, [busy, refresh, setBusy, showToast]);
+  }, [busy, blockedByDevMode, refresh, setBusy, showToast]);
 
   /* ── Clock in: locate → photo → punch (2026-10-18) ───────────────────────
      The location is taken FIRST so it can be printed on the photo, then the
@@ -376,6 +391,9 @@ export function PunchCard({ today, shift: shiftData, contract, refresh }) {
 
   const clockIn = useCallback(async () => {
     if (busy || photoStep) return;
+    // Before the location and the camera: no point taking a photo for a
+    // punch that will be refused.
+    if (await blockedByDevMode()) return;
     setBusy('in');
     // Location is best-effort and NEVER blocks the punch (§6).
     const fix = await getPunchLocation({ prompt: true });
@@ -385,7 +403,7 @@ export function PunchCard({ today, shift: shiftData, contract, refresh }) {
     }
     setBusy(null);
     setPhotoStep({ fix });
-  }, [busy, photoStep, setBusy, showToast]);
+  }, [busy, photoStep, blockedByDevMode, setBusy, showToast]);
 
   const photoDone = useCallback((photo) => {
     const fix = photoStep?.fix;
@@ -401,6 +419,9 @@ export function PunchCard({ today, shift: shiftData, contract, refresh }) {
   }, [photoStep, sendClockIn, showToast]);
 
   const clockOut = useCallback(async () => {
+    // Refused before the confirm, not after it — "Clock out now?" → yes →
+    // "you can't" is a question asked for nothing.
+    if (await blockedByDevMode()) return;
     // Confirm FIRST, and AWAIT it — an unawaited confirm fires the API before
     // the person answers (§6).
     // fmtMinutes — a DURATION. fmtClockMinutes reads minutes as a time of day,
@@ -429,7 +450,7 @@ export function PunchCard({ today, shift: shiftData, contract, refresh }) {
         ...locationPayload(fix),
       }, attendanceAPI.clockOut);
     }, () => showToast('Clocked out.'), 'We couldn’t clock you out. Please try again.');
-  }, [confirm, run, workedMinutes, showToast, userId]);
+  }, [confirm, run, blockedByDevMode, workedMinutes, showToast, userId]);
 
   const startBreak = useCallback(
     () => run('break', () => punchWithDeviceProof('break_start', userId, { source: 'mobile' }, attendanceAPI.breakStart), () => showToast('Break started.'), 'We couldn’t start your break.'),
@@ -558,6 +579,26 @@ export function PunchCard({ today, shift: shiftData, contract, refresh }) {
           onChange={onChangeWorkMode}
           locked={state !== 'idle'}
         />
+      ) : null}
+
+      {/* Developer options on: the punch buttons refuse (see `blockedByDevMode`),
+          and this says why and offers the way out in one tap. Rose, because
+          it is the one notice on this card that stops a punch outright. */}
+      {devMode.on ? (
+        <View style={{ gap: space[2] }}>
+          <InlineAlert tone="rose">{DEV_MODE_MESSAGE}</InlineAlert>
+          <Button
+            title="Open Developer options"
+            icon={icons.settings}
+            variant="outline"
+            size="sm"
+            onPress={async () => {
+              if (!(await openDeveloperSettings())) {
+                showToast('Open Settings › System › Developer options and switch it off.', 'info');
+              }
+            }}
+          />
+        </View>
       ) : null}
 
       {notice ? (

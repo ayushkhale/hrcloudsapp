@@ -7,6 +7,7 @@ import com.facebook.react.ReactHost
 import com.facebook.react.ReactNativeApplicationEntryPoint.loadReactNative
 import com.facebook.react.defaults.DefaultReactHost.getDefaultReactHost
 import com.hrclouds.devicekey.DeviceKeyPackage
+import com.hrclouds.devicesafety.DeviceSafetyPackage
 
 class MainApplication : Application(), ReactApplication {
 
@@ -19,6 +20,8 @@ class MainApplication : Application(), ReactApplication {
           // add(MyReactNativePackage())
           // The attendance device key — app code, so nothing autolinks it.
           add(DeviceKeyPackage())
+          // The developer-mode gate on punches (devicesafety/DeviceSafetyModule.kt).
+          add(DeviceSafetyPackage())
         },
     )
   }

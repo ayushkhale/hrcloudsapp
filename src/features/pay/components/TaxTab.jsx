@@ -48,6 +48,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useCallback, useMemo, useState } from 'react';
+import { useListRefresh } from '../../../hooks/useListRefresh';
 import { ScrollView, Text, View } from 'react-native';
 import { payrollAPI, payrollFiles } from '../../../api';
 import { downloadFile } from '../../../api/files';
@@ -558,8 +559,13 @@ export function TaxTab({ onDeclare }) {
     reloadSummary();
   }, [reloadDeclaration, reloadSummary]));
 
+  const { refreshControl } = useListRefresh(
+    () => { summary.reload(); projection.reload(); declaration.reload(); if (view === 'monthly') monthly.reload(); },
+    summary.loading || projection.loading || declaration.loading,
+  );
+
   return (
-    <ScrollView contentContainerStyle={cardListStyle}>
+    <ScrollView contentContainerStyle={cardListStyle} refreshControl={refreshControl}>
       <FilterTabs options={VIEWS} value={view} onChange={setView} />
 
       {view === 'year' ? (

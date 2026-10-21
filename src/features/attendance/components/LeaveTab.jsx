@@ -44,13 +44,26 @@
 // A record being READ is a sheet; a record being WRITTEN is a page. The apply
 // form is a type picker, two dates, a half-day switch, a reason and an
 // attachment, with a pinned submit — the same shape as CorrectionForm, and
-// the same `presentation: 'modal'` route.
+// the same `presentation: 'modal'` route. The way IN floats at the bottom
+// (user, 2026-10-21: "put the apply for leave in bottom most as floating btn")
+// — it was a full-width button under the wallet, at the top of the screen.
+//
+// ── THE BALANCE IS A SHEET, AND IT HAS A YEAR (user, 2026-10-21) ───────────
+//
+// "Year is not coming on leaves page… show the leave balance under bottom
+// sheet." The web picks the balance year (this year and the two before —
+// LeaveDashboard's YEAR_OPTIONS, ported here); this section only ever asked
+// for the current one. The sideways row of wallet cards also took the top
+// third of the screen above the requests. Now one summary card — days left
+// in total, for the year being looked at — opens a sheet with the year
+// chips and a row per leave type.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useCallback, useMemo, useState } from 'react';
-import { FlatList, ScrollView, Text, View } from 'react-native';
+import { FlatList, Pressable, Text, View } from 'react-native';
 import { leaveAPI } from '../../../api';
 import { useResource } from '../../../hooks/useResource';
+import { useListRefresh } from '../../../hooks/useListRefresh';
 import { ATTENDANCE_EVENTS, useAttendanceChanged } from '../../../lib/events';
 import { leaveErrorMessage } from '../../../lib/errors/leaveErrors';
 import { fmtDateShort, isPastYMD, todayYMD, ymdOnly } from '../../../lib/dates';
@@ -60,7 +73,8 @@ import { entityId, num, toList } from '../../../lib/normalize';
 import { color, radius, space, text } from '../../../theme/tokens';
 import { icons } from '../../../theme/icons';
 import {
-  Button, EmptyState, ErrorState, FilterTabs, SkeletonBlock, StatusBadge, showToast, useConfirm,
+  Button, EmptyState, FLOATING_CLEARANCE, ErrorState, FilterTabs, FloatingAction, RecordSheet, SkeletonBlock,
+  StatusBadge, showToast, useConfirm,
 } from '../../../ui';
 import { LeaveSheet } from './SelfRecordSheets';
 import { CardsSkeleton, RecordCard, cardListStyle } from '../../../ui/ListCards';
@@ -94,68 +108,160 @@ const hasStarted = (req) => {
   return !!from && (from === todayYMD() || isPastYMD(from));
 };
 
-/* ─── One leave type's wallet ─────────────────────────────────────────────────
-   Days left, big; given and used underneath, small. The leave type's CODE
-   ("ECL_2026") is deliberately absent — it is HR's handle on a policy and
-   means nothing to the person whose days these are (web audit E-20). */
-function BalanceCard({ balance }) {
+/* ─── The balance year ────────────────────────────────────────────────────────
+   Ported from the web LeaveDashboard (`YEAR_OPTIONS`): this year and the two
+   before it. A future year has no balance to read yet. */
+const CURRENT_YEAR = new Date().getFullYear();
+const YEAR_OPTIONS = [CURRENT_YEAR, CURRENT_YEAR - 1, CURRENT_YEAR - 2];
+
+/* "2d and 1/2 d" at a headline size runs out of room (user, 2026-10-20). The
+   words stay formatDayCount's — they must match the web exactly — but only
+   the whole days are the big figure; the half rides on the small line. */
+function splitDays(label, suffix) {
+  const [big, ...rest] = String(label).split(' and ');
+  return { big, tail: rest.length ? `and ${rest.join(' and ')} ${suffix}` : suffix };
+}
+
+/* ─── The summary card ────────────────────────────────────────────────────────
+   What is left, in total, for the year being looked at — the one number
+   somebody opens Leave to check — and the way into the full balance. */
+function BalanceSummary({ year, total, types, loading, onOpen }) {
   const Icon = icons.leave;
+  const Chevron = icons.chevronRight;
+  const { big, tail } = splitDays(total, 'left');
+  return (
+    <Pressable
+      onPress={onOpen}
+      accessibilityRole="button"
+      accessibilityLabel={`Leave balance for ${year}: ${total} left. Open the balance.`}
+      style={({ pressed }) => ({
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: space[3],
+        padding: space[4],
+        borderRadius: radius.xl,
+        backgroundColor: pressed ? color.brandChipBg : color.brandSoftBg,
+      })}
+    >
+      <View
+        style={{
+          width: 44,
+          height: 44,
+          borderRadius: radius.full,
+          backgroundColor: color.brandChipBg,
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        {Icon ? <Icon size={22} color={color.brandChipFg} /> : null}
+      </View>
+
+      <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
+        <Text style={[text.label, { color: color.brandSoftFg }]}>{`Leave balance · ${year}`}</Text>
+        {loading ? (
+          <SkeletonBlock height={28} width="50%" />
+        ) : (
+          <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 4, flexWrap: 'wrap' }}>
+            <Text style={[text.metricLg, { fontSize: 26, lineHeight: 30, color: color.brand }]}>{big}</Text>
+            <Text numberOfLines={1} style={[text.caption, { marginBottom: 4, flexShrink: 1 }]}>
+              {types > 0 ? `${tail} · ${types} ${types === 1 ? 'type' : 'types'}` : tail}
+            </Text>
+          </View>
+        )}
+      </View>
+
+      {Chevron ? <Chevron size={18} color={color.brandSoftFg} /> : null}
+    </Pressable>
+  );
+}
+
+/* ─── One leave type, in the sheet ────────────────────────────────────────────
+   Days left on the right, big and purple; given and used under the name. The
+   leave type's CODE ("ECL_2026") is deliberately absent — it is HR's handle on
+   a policy and means nothing to the person whose days these are (web audit
+   E-20). */
+function BalanceRow({ balance, last }) {
+  const Icon = icons.leave;
+  const { big, tail } = splitDays(balance.left, 'left');
   return (
     <View
       style={{
-        width: 150,
-        backgroundColor: color.surface,
-        borderRadius: radius.lg,
-        borderWidth: 1,
-        borderColor: color.borderSubtle,
-        padding: space[3],
-        gap: space[2],
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: space[3],
+        paddingVertical: space[3],
+        borderBottomWidth: last ? 0 : 1,
+        borderBottomColor: color.borderSubtle,
       }}
     >
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[2] }}>
-        <View
-          style={{
-            width: 26,
-            height: 26,
-            borderRadius: radius.sm,
-            backgroundColor: color.brandChipBg,
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          {Icon ? <Icon size={14} color={color.brandChipFg} /> : null}
-        </View>
-        <Text numberOfLines={1} style={[text.caption, { flex: 1, minWidth: 0 }]}>
-          {balance.name}
-        </Text>
+      <View
+        style={{
+          width: 36,
+          height: 36,
+          borderRadius: radius.full,
+          backgroundColor: color.brandChipBg,
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        {Icon ? <Icon size={18} color={color.brandChipFg} /> : null}
       </View>
-
-      {/* "2d and 1/2 d" at 22pt is wider than the card (user, 2026-10-20). The
-          words stay formatDayCount's — they must match the web exactly — but
-          only the whole days are the big figure; the half rides on the small
-          line with "left", so nothing can run out of the card. */}
-      {(() => {
-        const [big, ...rest] = String(balance.left).split(' and ');
-        const tail = rest.length ? `and ${rest.join(' and ')} left` : 'left';
-        return (
-          <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 4, flexWrap: 'wrap' }}>
-            <Text
-              numberOfLines={1}
-              adjustsFontSizeToFit
-              minimumFontScale={0.7}
-              style={[text.metricLg, { fontSize: 24, lineHeight: 28, color: color.ink, flexShrink: 1 }]}
-            >
-              {big}
-            </Text>
-            <Text numberOfLines={1} style={[text.caption, { marginBottom: 4, flexShrink: 1 }]}>{tail}</Text>
-          </View>
-        );
-      })()}
-
-      <Text numberOfLines={1} style={[text.caption, { fontSize: 10, color: color.textMuted }]}>
-        {`${balance.given} given · ${balance.used} used`}
-      </Text>
+      <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
+        <Text numberOfLines={1} style={text.bodyStrong}>{balance.name}</Text>
+        <Text numberOfLines={1} style={text.caption}>{`${balance.given} given · ${balance.used} used`}</Text>
+      </View>
+      <View style={{ alignItems: 'flex-end' }}>
+        <Text style={[text.h2, { color: color.brand, fontVariant: ['tabular-nums'] }]}>{big}</Text>
+        <Text numberOfLines={1} style={[text.caption, { fontSize: 10 }]}>{tail}</Text>
+      </View>
     </View>
+  );
+}
+
+/* ─── The balance sheet ───────────────────────────────────────────────────────
+   The year chips, then one row per leave type, in the policy's own order. A
+   type with no days configured is still listed: "0d left" is an answer, and
+   its absence reads as a missing policy. */
+function BalanceSheet({ year, onYear, wallet, loading, error, onRetry, onClose }) {
+  const years = YEAR_OPTIONS.map((y) => ({ value: y, label: String(y) }));
+  return (
+    <RecordSheet
+      visible
+      onClose={onClose}
+      eyebrow="Leave balance"
+      icon={icons.leave}
+      title={`Your leave in ${year}`}
+    >
+      <View style={{ gap: space[3] }}>
+        <FilterTabs options={years} value={year} onChange={onYear} />
+
+        {error && wallet.length === 0 ? (
+          <ErrorState error={error} domain="leave" onRetry={onRetry} fallback="We couldn’t load your leave balance." />
+        ) : loading && wallet.length === 0 ? (
+          <View style={{ gap: space[2] }}>
+            <SkeletonBlock height={60} radius={radius.lg} />
+            <SkeletonBlock height={60} radius={radius.lg} />
+          </View>
+        ) : wallet.length === 0 ? (
+          <EmptyState
+            icon={icons.leave}
+            title="No leave balance"
+            message={`Nothing was set up for you in ${year}.`}
+          />
+        ) : (
+          <View
+            style={{
+              backgroundColor: color.surface,
+              borderRadius: radius.lg,
+              paddingHorizontal: space[4],
+              opacity: loading ? 0.6 : 1,
+            }}
+          >
+            {wallet.map((b, i) => <BalanceRow key={b.key} balance={b} last={i === wallet.length - 1} />)}
+          </View>
+        )}
+      </View>
+    </RecordSheet>
   );
 }
 
@@ -164,8 +270,9 @@ export function LeaveTab({ onApply }) {
   const [filter, setFilter] = useState('all');
   const [selected, setSelected] = useState(null);
   const [cancelling, setCancelling] = useState(null);
+  const [year, setYear] = useState(CURRENT_YEAR);
+  const [balanceOpen, setBalanceOpen] = useState(false);
 
-  const year = new Date().getFullYear();
   const balances = useResource(() => leaveAPI.getMyBalances(year), {
     select: (data) => toList(data, ['balances', 'leave_balances']),
     initial: [],
@@ -177,9 +284,8 @@ export function LeaveTab({ onApply }) {
     initial: [],
   });
 
-  /* The wallet, one tile per leave type, in whatever order the policy lists
-     them. A type with no days configured at all is still shown: "0 left" is
-     an answer, and its absence reads as a missing policy. */
+  /* The wallet, one row per leave type, in whatever order the policy lists
+     them. */
   const wallet = useMemo(() => (balances.data || []).map((b, i) => ({
     key: String(b?.id || b?.leave_type_id || i),
     name: b?.leave_type?.name || b?.leave_type_name || 'Leave',
@@ -187,6 +293,12 @@ export function LeaveTab({ onApply }) {
     given: formatDayCount(b?.total_accrued, { lower: true, fallback: '0d' }),
     used: formatDayCount(b?.total_used, { lower: true, fallback: '0d' }),
   })), [balances.data]);
+
+  // Days left across every type — the summary card's one number.
+  const totalLeft = useMemo(() => formatDayCount(
+    (balances.data || []).reduce((t, b) => t + num(b?.current_balance, 0), 0),
+    { fallback: '0d' },
+  ), [balances.data]);
 
   // Its own memo: an inline `requests.data || []` is a new array on every
   // render, which makes the two memos below depend on something that always
@@ -214,6 +326,10 @@ export function LeaveTab({ onApply }) {
   useAttendanceChanged(
     [ATTENDANCE_EVENTS.LEAVE, ATTENDANCE_EVENTS.COMPOFF],
     useCallback(() => { reloadRequests(); reloadBalances(); }, [reloadRequests, reloadBalances]),
+  );
+  const { refreshControl } = useListRefresh(
+    useCallback(() => { reloadRequests(); reloadBalances(); }, [reloadRequests, reloadBalances]),
+    requests.loading || balances.loading,
   );
 
   const cancelRequest = useCallback(async (req) => {
@@ -261,26 +377,13 @@ export function LeaveTab({ onApply }) {
 
   const header = (
     <View style={{ gap: space[3], paddingBottom: space[1] }}>
-      {/* The wallet scrolls sideways because the number of leave types is the
-          organisation's decision, not ours — two on one policy, seven on
-          another — and a wrapped grid of seven would push the requests off a
-          phone entirely. */}
-      {balances.loading && wallet.length === 0 ? (
-        <View style={{ flexDirection: 'row', gap: space[2] }}>
-          <SkeletonBlock height={92} width={150} radius={radius.lg} />
-          <SkeletonBlock height={92} width={150} radius={radius.lg} />
-        </View>
-      ) : wallet.length > 0 ? (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ gap: space[2], paddingRight: space[1] }}
-        >
-          {wallet.map((b) => <BalanceCard key={b.key} balance={b} />)}
-        </ScrollView>
-      ) : null}
-
-      <Button title="Apply for leave" onPress={onApply} icon={icons.add} fullWidth />
+      <BalanceSummary
+        year={year}
+        total={totalLeft}
+        types={wallet.length}
+        loading={balances.loading && wallet.length === 0}
+        onOpen={() => setBalanceOpen(true)}
+      />
 
       {rows.length > 0 ? (
         <FilterTabs options={options} value={filter} onChange={setFilter} />
@@ -288,15 +391,34 @@ export function LeaveTab({ onApply }) {
     </View>
   );
 
+  const fab = <FloatingAction title="Apply for leave" icon={icons.add} onPress={onApply} />;
+
+  const sheet = balanceOpen ? (
+    <BalanceSheet
+      year={year}
+      onYear={setYear}
+      wallet={wallet}
+      loading={balances.loading}
+      error={balances.error}
+      onRetry={reloadBalances}
+      onClose={() => setBalanceOpen(false)}
+    />
+  ) : null;
+
   if (requests.error && rows.length === 0) {
     return (
-      <View style={{ padding: space[4], gap: space[3] }}>
-        <ErrorState
-          error={requests.error}
-          domain="leave"
-          onRetry={requests.reload}
-          fallback="We couldn’t load your leave."
-        />
+      <View style={{ flex: 1 }}>
+        <View style={{ padding: space[4], gap: space[3] }}>
+          {header}
+          <ErrorState
+            error={requests.error}
+            domain="leave"
+            onRetry={requests.reload}
+            fallback="We couldn’t load your leave."
+          />
+        </View>
+        {fab}
+        {sheet}
       </View>
     );
   }
@@ -360,9 +482,12 @@ export function LeaveTab({ onApply }) {
             />
           )
         }
-        contentContainerStyle={cardListStyle}
+        contentContainerStyle={[cardListStyle, { paddingBottom: FLOATING_CLEARANCE }]}
+        refreshControl={refreshControl}
       />
 
+      {fab}
+      {sheet}
       {selected ? <LeaveSheet item={selected} onClose={() => setSelected(null)} /> : null}
     </>
   );

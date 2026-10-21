@@ -25,6 +25,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useCallback } from 'react';
+import { useListRefresh } from '../../../hooks/useListRefresh';
 import { ScrollView, Text, View } from 'react-native';
 import { payrollAPI } from '../../../api';
 import { useResource } from '../../../hooks/useResource';
@@ -55,6 +56,8 @@ export function BankTab({ onEdit }) {
   const reload = account.reload;
   useAttendanceChanged([ATTENDANCE_EVENTS.BANK_ACCOUNT], useCallback(() => reload(), [reload]));
 
+  const { refreshControl } = useListRefresh(reload, account.loading);
+
   // A 404 here means "you haven't added one", not "something broke". Every
   // other failure is a real error with a retry.
   const missing = account.error && isNotFound(account.error);
@@ -77,7 +80,7 @@ export function BankTab({ onEdit }) {
 
   if (missing || !data || !(data.bank_name || bankNumberShown(data))) {
     return (
-      <ScrollView contentContainerStyle={cardListStyle}>
+      <ScrollView contentContainerStyle={cardListStyle} refreshControl={refreshControl}>
         <EmptyState
           icon={icons.bank}
           title="No bank account on file"
@@ -89,7 +92,7 @@ export function BankTab({ onEdit }) {
   }
 
   return (
-    <ScrollView contentContainerStyle={cardListStyle}>
+    <ScrollView contentContainerStyle={cardListStyle} refreshControl={refreshControl}>
       <View
         style={{
           backgroundColor: color.surface,

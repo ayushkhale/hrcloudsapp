@@ -30,6 +30,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useMemo, useState } from 'react';
+import { useListRefresh } from '../../../hooks/useListRefresh';
 import { FlatList, View } from 'react-native';
 import { attendanceAPI } from '../../../api';
 import { usePagedList } from '../../../hooks/usePagedList';
@@ -66,6 +67,8 @@ export function OvertimeTab({ period }) {
     ({ page, limit }) => attendanceAPI.getMyOvertime({ page, limit }),
     { limit: 20, keys: ['overtime', 'requests', 'records'], accumulate: true },
   );
+
+  const { refreshControl } = useListRefresh(list.reload, list.loading);
 
   const stats = useMemo(() => {
     const { from, to } = monthRange(period.year, period.month);
@@ -150,6 +153,7 @@ export function OvertimeTab({ period }) {
           ) : null
         }
         contentContainerStyle={cardListStyle}
+        refreshControl={refreshControl}
       />
 
       {selected ? (

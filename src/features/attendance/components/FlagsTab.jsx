@@ -42,6 +42,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useState } from 'react';
+import { useListRefresh } from '../../../hooks/useListRefresh';
 import { FlatList, View } from 'react-native';
 import { attendanceAPI } from '../../../api';
 import { usePagedList } from '../../../hooks/usePagedList';
@@ -67,6 +68,8 @@ export function FlagsTab() {
     ({ page, limit }) => attendanceAPI.getMyAnomalies({ status, page, limit }),
     { limit: 20, keys: ['anomalies', 'records'], filterKey: status, accumulate: true },
   );
+
+  const { refreshControl } = useListRefresh(list.reload, list.loading);
 
   /* ── NO "STILL OPEN / SORTED OUT" CARDS HERE (2026-10-18) ─────────────────
      There were two StatCards above the filter and they were wrong three ways
@@ -168,6 +171,7 @@ export function FlagsTab() {
           ) : null
         }
         contentContainerStyle={cardListStyle}
+        refreshControl={refreshControl}
       />
 
       {selected ? <FlagSheet item={selected} onClose={() => setSelected(null)} /> : null}

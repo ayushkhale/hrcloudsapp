@@ -47,10 +47,20 @@ screen keeps the web's *data and rules* and throws away its *layout*.
   this app has one screen with a section strip — seven stack screens means seven
   headers and seven back presses for things people compare against each other.
   See `features/attendance/screens/TimeScreen.jsx`.
-- **A strip that scrolls hides things.** Overflow only advertises itself when an
-  item is cut in half at the edge; the seventh item is simply gone. Wrap into a
-  grid — four per row — so the whole menu is on screen. `CategoryStrip` in
-  `features/attendance/components/TimeCards.jsx`.
+- **The section strip is ONE scrolling row of icons** (user, 2026-10-21: "they
+  look so awful one packed into another — one line horizontal, one row,
+  scrollable"). This replaced the four-per-row grid; don't put the grid back.
+  Each item is a round tinted chip, a word, and an underline when selected —
+  no box around it. Items are sized so the fifth is cut in half at a 360pt
+  edge, because a half-drawn item is what tells people the row scrolls.
+  `CategoryStrip` in `ui/ListCards.jsx`.
+- **A section's one create action floats at the bottom** — `FloatingAction`
+  (Apply for leave, Request a correction), not a full-width button at the top
+  of the list (user, 2026-10-21). It stands above the Ask Maya button when that
+  one is showing; the list under it pads by `FLOATING_CLEARANCE`.
+- **Every list re-reads on pull AND on return.** `hooks/useListRefresh.js` gives
+  the `refreshControl` and quietly reloads when the screen regains focus (a
+  modal form closed over it). A new section list uses it from day one.
 - **No hover, no tooltip, no right-click.** If the web screen depended on one, the
   information moves into the card or the sheet.
 
