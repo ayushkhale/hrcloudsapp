@@ -93,8 +93,10 @@ that came out of that pass:
   shade: correct behind 10px badge text, invisible behind a 20px glyph.
 - **No hairline around a tint.** A border on a coloured chip reads as a box
   (see above) and mutes the colour. Fill or border, not both.
-- **Exactly one filled purple thing per screen** — the selected section chip,
-  the primary button. A fill is an answer to "where am I"; two fills is noise.
+- **Fills are purple, and few.** The primary button, the selected section chip
+  and the selected filter chip are all solid `brand` purple (2026-10-21 — the
+  primary button and filter used to be near-black "ink"; the user asked for
+  purple). Beyond those, a screen gets no other solid purple block.
 - **Colour the figure that matters.** A row of identical slate numbers has no
   shape. The headline figure takes the tone's `fg`.
 - **A screen with no colour in it is a bug**, not a neutral default. If a screen
@@ -199,14 +201,19 @@ card, this is why.
   bodyStrong small smallStrong label caption badge metric metricLg mono}`, `card`
   (a flat style object — **no `.base`**), `color`, `elevate(size)`, `elevateSheet()`,
   `toneOf(key)`.
-- **Purple only.** Tone keys keep the historic web names (`emerald`, `amber`,
-  `blue`, `rose`, `indigo`, `slate`, `purple`) and render purple; `toneOf(key)`
-  gives `{bg, fg, border, dot}`. rose/red stays for errors and destructive actions,
-  nothing else.
+- **Purple, grey, white — and the lavender surfaces.** That is the whole
+  palette (user, 2026-10-21: "too many colors on app, only keep purple, white,
+  grey like hrclouds web"). `palette` has no violet, fuchsia or indigo any more —
+  removed, so nothing can reach for them. `color.ink` is slate-900 heading TEXT,
+  never a fill. Tone keys keep the historic web names (`emerald`, `amber`,
+  `blue`, `rose`, `indigo`, `slate`, `purple`) and render as purple steps;
+  `toneOf(key)` gives `{bg, fg, border, dot}`. rose/red stays for errors,
+  destructive actions and "absent", nothing else (asked, same day).
 - **One deliberate exception: the ✚ Quick Actions sheet** (`navigation/ActionSheet.jsx`)
   keeps its multi-colour bordered cards. A purple-only pass was reverted on
   2026-10-18 at the user's request ("it was looking so good"). Change its
-  behaviour freely; leave its look alone.
+  behaviour freely; leave its look alone. Re-confirmed 2026-10-21 during the
+  purple-only pass.
 - **Icons only via `theme/icons.js`**, by semantic name — `icons.earnedLeave`, never
   `GiftIcon`. Add a name there with a comment rather than importing Heroicons in a
   screen. **The same destination wears the same icon everywhere** — the drawer row

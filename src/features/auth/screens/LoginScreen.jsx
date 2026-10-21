@@ -48,7 +48,7 @@ import {
 import { revealer, submitState } from '../../../lib/formGuard';
 import { useAuth } from '../../../state/AuthContext';
 import { icons } from '../../../theme/icons';
-import { color, font, space } from '../../../theme/tokens';
+import { color, font, palette, space } from '../../../theme/tokens';
 import {
   Button,
   Field,
@@ -267,14 +267,14 @@ export default function LoginScreen({ navigation }) {
             kind="email"
             autoComplete="email"
             placeholder="yourmail@gmail.com"
-            placeholderTextColor="#94A3B8"
+            placeholderTextColor={palette.slate[400]}
             invalid={credentialFailure}
             editable={!busy}
             returnKeyType="next"
             onSubmitEditing={() => passwordFocus.current?.()}
             style={[
               styles.inputBox,
-              { borderColor: credentialFailure || show(problems().identifier) ? color.danger.dot : '#CBD5E1' },
+              { borderColor: credentialFailure || show(problems().identifier) ? color.danger.dot : palette.slate[300] },
             ]}
             inputStyle={styles.inputText}
           />
@@ -316,7 +316,7 @@ export default function LoginScreen({ navigation }) {
             onChangeText={onPassword}
             kind="password"
             placeholder="••••••••"
-            placeholderTextColor="#94A3B8"
+            placeholderTextColor={palette.slate[400]}
             invalid={credentialFailure}
             editable={!busy}
             secureTextEntry={!reveal}
@@ -324,7 +324,7 @@ export default function LoginScreen({ navigation }) {
             onSubmitEditing={signIn}
             style={[
               styles.inputBox,
-              { borderColor: credentialFailure || show(problems().password) ? color.danger.dot : '#CBD5E1' },
+              { borderColor: credentialFailure || show(problems().password) ? color.danger.dot : palette.slate[300] },
             ]}
             inputStyle={styles.inputText}
             right={
@@ -336,9 +336,9 @@ export default function LoginScreen({ navigation }) {
                 style={styles.eyeButton}
               >
                 {reveal ? (
-                  <EyeSlash size={20} color="#64748B" />
+                  <EyeSlash size={20} color={palette.slate[500]} />
                 ) : (
-                  <Eye size={20} color="#64748B" />
+                  <Eye size={20} color={palette.slate[500]} />
                 )}
               </Pressable>
             }
@@ -379,7 +379,7 @@ export default function LoginScreen({ navigation }) {
         onPress={onGoogleSignIn}
         style={({ pressed }) => [
           styles.googleButton,
-          { backgroundColor: pressed ? '#F8FAFC' : '#FFFFFF' },
+          { backgroundColor: pressed ? palette.slate[50] : color.surface },
         ]}
       >
         <GoogleIcon size={20} />
@@ -399,13 +399,13 @@ const styles = StyleSheet.create({
     height: 48,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: '#CBD5E1',
+    borderColor: palette.slate[300],
     gap: space[3],
   },
   googleButtonText: {
     fontFamily: font.semibold,
     fontSize: 15,
-    color: '#1E293B',
+    color: palette.slate[800],
   },
   dividerContainer: {
     flexDirection: 'row',
@@ -415,13 +415,13 @@ const styles = StyleSheet.create({
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: '#E2E8F0',
+    backgroundColor: palette.slate[200],
   },
   dividerText: {
     marginHorizontal: space[3],
     fontFamily: font.medium,
     fontSize: 13,
-    color: '#94A3B8',
+    color: palette.slate[400],
   },
   formContainer: {
     gap: space[4],
@@ -431,15 +431,15 @@ const styles = StyleSheet.create({
     textTransform: 'none',
     fontSize: 14,
     fontFamily: font.medium,
-    color: '#1E293B',
+    color: palette.slate[800],
   },
   forgotPasswordText: {
     fontFamily: font.semibold,
     fontSize: 13.5,
-    color: '#8B5CF6',
+    color: color.brand,
   },
   inputBox: {
-    backgroundColor: '#EEF2F6',
+    backgroundColor: palette.slate[100],
     borderRadius: 10,
     minHeight: 48,
     paddingHorizontal: 14,
@@ -447,7 +447,7 @@ const styles = StyleSheet.create({
   inputText: {
     fontSize: 15,
     fontFamily: font.medium,
-    color: '#0F172A',
+    color: palette.slate[900],
   },
   eyeButton: {
     padding: 4,
@@ -458,8 +458,8 @@ const styles = StyleSheet.create({
   signInButton: {
     borderRadius: 10,
     height: 48,
-    backgroundColor: '#8B5CF6',
-    borderColor: '#8B5CF6',
+    backgroundColor: color.brand,
+    borderColor: color.brand,
   },
   signInButtonText: {
     fontSize: 16,

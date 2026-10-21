@@ -2,7 +2,7 @@
 // ui/Divider.jsx — Divider and Spacer.
 //
 // Trivial components with a real job: they stop `marginBottom: 13` and
-// `borderBottomColor: '#eee'` appearing in a screen file. Every gap in the app
+// `borderBottomColor: color.borderSubtle` appearing in a screen file. Every gap in the app
 // is a token (theme/tokens.js `space`), and these are how a screen asks for one
 // without reaching for a literal.
 // ─────────────────────────────────────────────────────────────────────────────

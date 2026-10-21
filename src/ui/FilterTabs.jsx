@@ -81,10 +81,11 @@ export function FilterTabs({ options = [], value, onChange, help, style }) {
                   borderWidth: 1,
                   minHeight: 38,
                   justifyContent: 'center',
+                  // Purple when selected (2026-10-21; was ink).
                   backgroundColor: selected
-                    ? color.ink
+                    ? color.brand
                     : pressed ? color.brandSoftBg : color.surface,
-                  borderColor: selected ? color.ink : color.borderSubtle,
+                  borderColor: selected ? color.brand : color.borderSubtle,
                 })}
               >
                 <Text

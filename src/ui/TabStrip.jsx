@@ -107,7 +107,7 @@ export function TabStrip({ tabs = [], value, onChange, help, style }) {
           {!atStart ? (
             <LinearGradient
               pointerEvents="none"
-              colors={[color.bg, 'rgba(248,250,252,0)']}
+              colors={[color.bg, color.bgClear]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: FADE_W }}
@@ -116,7 +116,7 @@ export function TabStrip({ tabs = [], value, onChange, help, style }) {
           {!atEnd && contentW > viewW ? (
             <LinearGradient
               pointerEvents="none"
-              colors={['rgba(248,250,252,0)', color.bg]}
+              colors={[color.bgClear, color.bg]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: FADE_W }}

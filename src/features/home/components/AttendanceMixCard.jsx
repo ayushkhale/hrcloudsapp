@@ -237,7 +237,7 @@ export function AttendanceMixCard({ graph, period, shift }) {
                 a late day is also a present day, and overtime is time. */}
             <LegendRow
               divided
-              dot={palette.fuchsia[500]}
+              dot={palette.purple[400]}
               label="Late arrivals"
               value={num(summary.late_days)}
             />

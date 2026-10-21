@@ -31,7 +31,7 @@ import React from 'react';
 import { Image, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import Svg, { Circle, Defs, FeGaussianBlur, Filter, RadialGradient, Stop } from 'react-native-svg';
 import { icons } from '../../../theme/icons';
-import { color, iconSize, radius, space, text } from '../../../theme/tokens';
+import { color, iconSize, palette, radius, space, text } from '../../../theme/tokens';
 import { Screen } from '../../../ui';
 
 // The brand logo from src/assets/brand/logo2.png. 256×176 ≈ 1.455:1
@@ -54,9 +54,9 @@ const LOGO_RATIO = 256 / 176;
    from screen readers, so it can never eat a tap meant for a field, and is
    never announced. */
 const BLOBS = [
-  { key: 'a', tint: '#9333ea', opacity: 0.34, cx: 1.02, cy: 0.02, r: 0.64 }, // top-right, brand purple
-  { key: 'b', tint: '#7c3aed', opacity: 0.24, cx: -0.06, cy: 0.44, r: 0.56 }, // mid-left, violet
-  { key: 'c', tint: '#c026d3', opacity: 0.20, cx: 0.92, cy: 1.02, r: 0.6 }, // bottom-right, fuchsia
+  { key: 'a', tint: palette.purple[600], opacity: 0.34, cx: 1.02, cy: 0.02, r: 0.64 }, // top-right, brand purple
+  { key: 'b', tint: palette.purple[400], opacity: 0.24, cx: -0.06, cy: 0.44, r: 0.56 }, // mid-left, light purple
+  { key: 'c', tint: palette.purple[800], opacity: 0.20, cx: 0.92, cy: 1.02, r: 0.6 }, // bottom-right, deep purple
 ];
 
 export function AuthBackdrop() {

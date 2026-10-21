@@ -203,7 +203,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: color.ink,
+    backgroundColor: color.brand,
     alignItems: 'center',
     justifyContent: 'center',
     ...elevate('md'),

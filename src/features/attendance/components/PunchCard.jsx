@@ -515,7 +515,7 @@ export function PunchCard({ today, shift: shiftData, contract, refresh }) {
           progress={hasShift ? ringProgress : 0}
           size={104}
           stroke={8}
-          tint={onBreak ? palette.fuchsia[400] : color.brand}
+          tint={onBreak ? palette.purple[300] : color.brand}
           track={color.borderSubtle}
         >
           <View style={{ alignItems: 'center' }}>

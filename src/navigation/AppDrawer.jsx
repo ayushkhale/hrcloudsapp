@@ -531,7 +531,7 @@ export function AppDrawer({ open, onClose }) {
           style={[
             StyleSheet.absoluteFill,
             {
-              backgroundColor: 'rgba(15, 23, 42, 0.45)',
+              backgroundColor: color.backdrop,
               opacity: slide,
             },
           ]}

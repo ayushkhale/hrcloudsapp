@@ -195,7 +195,7 @@ export default function QuickActionsScreen() {
                           style={{
                             position: 'absolute', top: -5, right: -5, minWidth: 18, height: 18,
                             borderRadius: 9, paddingHorizontal: 4, alignItems: 'center',
-                            justifyContent: 'center', backgroundColor: color.ink,
+                            justifyContent: 'center', backgroundColor: color.brand,
                           }}
                         >
                           <Text style={[text.badge, { color: color.textOnBrand, fontSize: 10 }]}>{where + 1}</Text>

@@ -22,7 +22,7 @@
 
 import React from 'react';
 import { View } from 'react-native';
-import { radius, toneOf } from '../theme/tokens';
+import { color, radius, toneOf } from '../theme/tokens';
 
 const SIZES = {
   sm: { box: 36, glyph: 18, r: radius.md },
@@ -59,7 +59,7 @@ export function IconTile({ icon: Icon, tone = 'purple', size = 'md', solid = fal
         backgroundColor: solid ? t.dot : t.chip,
       }, style]}
     >
-      {Icon ? <Icon size={s.glyph} color={solid ? '#ffffff' : t.fg} /> : null}
+      {Icon ? <Icon size={s.glyph} color={solid ? color.textOnBrand : t.fg} /> : null}
     </View>
   );
 }

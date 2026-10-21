@@ -26,18 +26,13 @@ export const palette = {
     500: '#a855f7', 600: '#9333ea', 700: '#7e22ce', 800: '#6b21a8', 900: '#581c87',
     950: '#3b0764',
   },
-  violet: {
-    50: '#f5f3ff', 100: '#ede9fe', 200: '#ddd6fe', 300: '#c4b5fd', 400: '#a78bfa',
-    500: '#8b5cf6', 600: '#7c3aed', 700: '#6d28d9', 800: '#5b21b6', 900: '#4c1d95',
-  },
-  fuchsia: {
-    50: '#fdf4ff', 100: '#fae8ff', 200: '#f5d0fe', 300: '#f0abfc', 400: '#e879f9',
-    500: '#d946ef', 600: '#c026d3', 700: '#a21caf', 800: '#86198f', 900: '#701a75',
-  },
-  indigo: {
-    50: '#eef2ff', 100: '#e0e7ff', 200: '#c7d2fe', 300: '#a5b4fc', 400: '#818cf8',
-    500: '#6366f1', 600: '#4f46e5', 700: '#4338ca', 800: '#3730a3', 900: '#312e81',
-  },
+  /* PURPLE, GREY, WHITE — and rose for errors. That is the whole palette
+     (user, 2026-10-21: "too many colors on app, only keep purple, white,
+     grey like hrclouds web, also keep lavender surfaces"). violet, fuchsia
+     and indigo were removed from this object, not just from use, so a new
+     screen can't reach for them. The ✚ Quick Actions sheet is the one
+     deliberate exception and keeps its own colours (navigation/ActionSheet).
+     Red stays ONLY for errors and destructive actions (same day, asked). */
   rose: {
     50: '#fff1f2', 100: '#ffe4e6', 200: '#fecdd3', 300: '#fda4af', 400: '#fb7185',
     500: '#f43f5e', 600: '#e11d48', 700: '#be123c', 800: '#9f1239', 900: '#881337',
@@ -60,6 +55,9 @@ export const color = {
      tab root fades in from (ui/Screen's `CanvasGlow`). Purple only — the
      reference shots were yellow; the brand is not. */
   bg: '#F7F5FC', // the app background. Never pure white
+  // The background at zero opacity — the END of an edge fade. A fade to
+  // transparent slate-50 left a grey band on the lavender (2026-10-21).
+  bgClear: 'rgba(247,245,252,0)',
   canvasTop: '#EFE7FD', // purple-100 at ~70%, the glow at the top of a root
   surface: palette.white,
   surfaceSubtle: '#F8F6FC', // section headers, read-only fields, chips
@@ -73,9 +71,14 @@ export const color = {
      soft hero gradient — where a purple-600 fill sat at the same weight as
      every purple chip around it. It is still the brand: a purple so dark it
      is read as black, the same move the reference shots make with theirs. */
-  ink: '#22143A',
-  inkPressed: '#3A2758',
-  inkSoft: 'rgba(34,20,58,0.06)',
+  /* INK IS GREY NOW (2026-10-21). It was a near-black aubergine used as the
+     primary button fill; the user asked for purple there. Every FILL that
+     used ink (Button primary, the selected FilterTabs chip, the ✚ centre
+     button) now uses `brand`, and `ink` survives only as heading text —
+     slate-900, the web's heading colour. */
+  ink: palette.slate[900],
+  inkPressed: palette.slate[800],
+  inkSoft: 'rgba(15,23,42,0.06)',
 
   // text
   textPrimary: palette.slate[900],
@@ -106,9 +109,9 @@ export const color = {
   pressTint: 'rgba(250,245,255,0.6)',
 
   // the hero gradient — exact web values from PageHeader.jsx
-  heroFrom: '#5B21B6', // violet-800
-  heroVia: '#6328D7', // custom
-  heroTo: '#4C1D95', // violet-900
+  heroFrom: palette.purple[700],
+  heroVia: palette.purple[600],
+  heroTo: palette.purple[800],
   heroSubtitle: palette.purple[100],
   heroBadgeIcon: palette.purple[200],
   heroBadgeBg: 'rgba(255,255,255,0.10)',
@@ -129,9 +132,11 @@ export const color = {
      icon square. The 50 shade is correct behind 10px badge text and invisible
      behind an icon at that size, which is how a palette this purple ended up
      looking grey. Use `bg` for a badge or a block, `chip` for an icon tile. */
-  success: { bg: palette.violet[50], chip: palette.violet[100], fg: palette.violet[700], border: palette.violet[200], dot: palette.violet[500] },
-  pending: { bg: palette.fuchsia[50], chip: palette.fuchsia[100], fg: palette.fuchsia[700], border: palette.fuchsia[200], dot: palette.fuchsia[500] },
-  info: { bg: palette.indigo[50], chip: palette.indigo[100], fg: palette.indigo[800], border: palette.indigo[200], dot: palette.indigo[500] },
+  /* Purple steps, told apart by depth rather than hue: done is the deepest
+     ink, waiting is a lighter one, information sits between. */
+  success: { bg: palette.purple[50], chip: palette.purple[100], fg: palette.purple[800], border: palette.purple[200], dot: palette.purple[700] },
+  pending: { bg: palette.purple[50], chip: palette.purple[100], fg: palette.purple[600], border: palette.purple[200], dot: palette.purple[400] },
+  info: { bg: palette.purple[50], chip: palette.purple[100], fg: palette.purple[700], border: palette.purple[200], dot: palette.purple[500] },
   brandTone: { bg: palette.purple[50], chip: palette.purple[100], fg: palette.purple[700], border: palette.purple[200], dot: palette.purple[500] },
   danger: { bg: palette.rose[50], chip: palette.rose[100], fg: palette.rose[700], border: palette.rose[200], dot: palette.rose[500] },
   neutral: { bg: palette.slate[50], chip: palette.slate[100], fg: palette.slate[600], border: palette.slate[200], dot: palette.slate[300] },
@@ -140,8 +145,8 @@ export const color = {
 /* ─── Tone keys ───────────────────────────────────────────────────────────────
    The web app's semantic tone names, kept EXACTLY as they are so a tone map
    ported from a web file keeps working. They are historic colour names that
-   now render purple — `emerald` is violet, `amber` is fuchsia, `blue` is
-   indigo. Only `rose` is still red. Don't rename them. (CLAUDE.md §5) */
+   now render purple — every one of them is a purple step (2026-10-21), and
+   only `rose` is still red. Don't rename them. (CLAUDE.md §5) */
 
 export const tone = {
   emerald: color.success,
@@ -150,9 +155,9 @@ export const tone = {
   purple: color.brandTone,
   rose: color.danger,
   slate: color.neutral,
-  indigo: { bg: palette.indigo[100], chip: palette.indigo[100], fg: palette.indigo[800], border: palette.indigo[300], dot: palette.indigo[700] },
-  orange: { bg: palette.fuchsia[100], chip: palette.fuchsia[100], fg: palette.fuchsia[800], border: palette.fuchsia[300], dot: palette.fuchsia[700] },
-  sky: { bg: palette.white, chip: palette.indigo[50], fg: palette.indigo[600], border: palette.indigo[300], dot: palette.indigo[300] },
+  indigo: { bg: palette.purple[100], chip: palette.purple[100], fg: palette.purple[800], border: palette.purple[300], dot: palette.purple[700] },
+  orange: { bg: palette.purple[100], chip: palette.purple[100], fg: palette.purple[700], border: palette.purple[300], dot: palette.purple[600] },
+  sky: { bg: palette.white, chip: palette.purple[50], fg: palette.purple[600], border: palette.purple[200], dot: palette.purple[300] },
 };
 
 export const toneOf = (key) => tone[key] || tone.slate;
@@ -165,13 +170,14 @@ export const toneOf = (key) => tone[key] || tone.slate;
 
 export const chart = {
   mix: [
-    { key: 'present', label: 'Present', field: 'present_days', color: '#6D28D9' }, // violet-700
-    { key: 'half', label: 'Half day', field: 'half_days', color: '#A78BFA' }, // violet-400
-    { key: 'leave', label: 'On leave', field: 'on_leave_days', color: '#C026D3' }, // fuchsia-600
-    { key: 'absent', label: 'Absent', field: 'absent_days', color: '#E11D48' }, // rose-600
+    // Purple by depth; absent stays rose — it is the one bad answer here.
+    { key: 'present', label: 'Present', field: 'present_days', color: palette.purple[700] },
+    { key: 'half', label: 'Half day', field: 'half_days', color: palette.purple[400] },
+    { key: 'leave', label: 'On leave', field: 'on_leave_days', color: palette.purple[200] },
+    { key: 'absent', label: 'Absent', field: 'absent_days', color: palette.rose[600] },
   ],
-  hoursBar: '#7C3AED', // violet-600
-  trend: { present: '#7C3AED', on_leave: '#A78BFA', absent: '#C026D3' },
+  hoursBar: palette.purple[600],
+  trend: { present: palette.purple[600], on_leave: palette.purple[300], absent: palette.rose[500] },
 
   /* One fill per day chip (lib/dayStatus.js `DAY_CHIPS`), for the daily bars
      on Home's "My month".
@@ -185,12 +191,12 @@ export const chart = {
      `edge` is the bar's 1px outline: the pale ones (holiday, weekly off, no
      data) are invisible on white without it. */
   day: {
-    present: { fill: '#7C3AED', edge: '#6D28D9' }, // violet-600 / 700
-    late: { fill: '#c084fc', edge: '#a855f7' }, // purple-400 / 500
-    half_day: { fill: '#c4b5fd', edge: '#a78bfa' }, // violet-300 / 400
-    on_leave: { fill: '#e879f9', edge: '#d946ef' }, // fuchsia-400 / 500
-    absent: { fill: '#fb7185', edge: '#f43f5e' }, // rose-400 / 500
-    holiday: { fill: '#a5b4fc', edge: '#818cf8' }, // indigo-300 / 400
+    present: { fill: palette.purple[600], edge: palette.purple[700] },
+    late: { fill: palette.purple[400], edge: palette.purple[500] },
+    half_day: { fill: palette.purple[300], edge: palette.purple[400] },
+    on_leave: { fill: palette.purple[200], edge: palette.purple[300] },
+    absent: { fill: palette.rose[400], edge: palette.rose[500] },
+    holiday: { fill: palette.purple[100], edge: palette.purple[300] },
     weekly_off: { fill: '#cbd5e1', edge: '#94a3b8' }, // slate-300 / 400
     no_data: { fill: '#e2e8f0', edge: '#cbd5e1' }, // slate-200 / 300
     upcoming: { fill: '#f1f5f9', edge: '#e2e8f0' }, // slate-100 / 200
@@ -209,7 +215,7 @@ export const calendarHeat = {
   present: { bg: palette.purple[700], border: palette.purple[700], fg: palette.white },
   late: { bg: palette.purple[400], border: palette.purple[400], fg: palette.white },
   half_day: { bg: palette.purple[300], border: palette.purple[300], fg: palette.purple[950] },
-  on_leave: { bg: palette.violet[200], border: palette.violet[300], fg: palette.violet[900] },
+  on_leave: { bg: palette.purple[200], border: palette.purple[300], fg: palette.purple[900] },
   absent: { bg: palette.purple[950], border: palette.purple[950], fg: palette.white },
   holiday: { bg: palette.purple[100], border: palette.purple[300], fg: palette.purple[700] },
   weekly_off: { bg: palette.slate[200], border: palette.slate[200], fg: palette.slate[600] },
@@ -316,21 +322,21 @@ export const iconSize = {
 
 const shadow = {
   xs: {
-    ios: { shadowColor: '#2E1065', shadowOpacity: 0.045, shadowRadius: 8, shadowOffset: { width: 0, height: 2 } },
+    ios: { shadowColor: palette.purple[950], shadowOpacity: 0.045, shadowRadius: 8, shadowOffset: { width: 0, height: 2 } },
     android: { elevation: 1 },
   },
   // Wider and fainter, tinted aubergine rather than slate: the lift of a
   // soft object, not the drop shadow of a box (2026-10-20).
   sm: {
-    ios: { shadowColor: '#2E1065', shadowOpacity: 0.06, shadowRadius: 14, shadowOffset: { width: 0, height: 4 } },
+    ios: { shadowColor: palette.purple[950], shadowOpacity: 0.06, shadowRadius: 14, shadowOffset: { width: 0, height: 4 } },
     android: { elevation: 2 },
   },
   md: {
-    ios: { shadowColor: '#4c1d95', shadowOpacity: 0.12, shadowRadius: 16, shadowOffset: { width: 0, height: 6 } },
+    ios: { shadowColor: palette.purple[900], shadowOpacity: 0.12, shadowRadius: 16, shadowOffset: { width: 0, height: 6 } },
     android: { elevation: 5 },
   },
   lg: {
-    ios: { shadowColor: '#0f172a', shadowOpacity: 0.18, shadowRadius: 28, shadowOffset: { width: 0, height: -4 } },
+    ios: { shadowColor: palette.slate[900], shadowOpacity: 0.18, shadowRadius: 28, shadowOffset: { width: 0, height: -4 } },
     android: { elevation: 16 },
   },
 };

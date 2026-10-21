@@ -48,8 +48,10 @@ import { haptic } from './haptics';
 const COMMITS = new Set(['primary', 'danger', 'onHero', 'breakEnd']);
 
 const VARIANTS = {
-  /** The ONE main action on a screen. Ink, not purple — see the header. */
-  primary: { bg: color.ink, pressedBg: color.inkPressed, fg: color.textOnBrand, border: color.ink },
+  /** The ONE main action on a screen. PURPLE (2026-10-21) — it was ink, a
+      near-black aubergine; the user asked for purple. The header's "ink, not
+      purple" reasoning is superseded. */
+  primary: { bg: color.brand, pressedBg: color.brandPressed, fg: color.textOnBrand, border: color.brand },
   /** Secondary. */
   soft: { bg: color.brandSoftBg, pressedBg: color.brandSoftBorder, fg: color.brandSoftFg, border: color.brandSoftBg },
   /** Tertiary. */
@@ -63,9 +65,9 @@ const VARIANTS = {
    */
   danger: { bg: palette.rose[500], pressedBg: palette.rose[600], fg: color.textOnBrand, border: palette.rose[500] },
   /** Start break — quiet, because it isn't the main action. */
-  breakStart: { bg: color.surface, pressedBg: palette.indigo[50], fg: palette.indigo[700], border: palette.indigo[100] },
+  breakStart: { bg: color.surface, pressedBg: color.brandSoftBg, fg: color.brandSoftFg, border: color.brandSoftBorder },
   /** End break — the main action while on a break. */
-  breakEnd: { bg: palette.indigo[600], pressedBg: palette.indigo[700], fg: color.textOnBrand, border: palette.indigo[600] },
+  breakEnd: { bg: palette.purple[700], pressedBg: palette.purple[800], fg: color.textOnBrand, border: palette.purple[700] },
 
   /* ── The two that live ON the purple gradient ──────────────────────────────
      The punch card is a dark brand-gradient surface, and `primary` on it is

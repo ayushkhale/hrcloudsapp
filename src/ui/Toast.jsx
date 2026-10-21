@@ -46,38 +46,33 @@ import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-na
 import { useReducedMotion } from '../hooks/useReducedMotion';
 import { microTiming } from '../theme/motion';
 import { icons } from '../theme/icons';
-import { font, radius, space } from '../theme/tokens';
+import { font, palette, radius, space } from '../theme/tokens';
 import { haptic } from './haptics';
 
 const DURATIONS = { success: 3500, info: 3500, error: 4500 };
 const GLYPHS = { success: 'ok', error: 'warn', info: 'info' };
+/* Purple for news, rose for an error — nothing else (2026-10-21). These were
+   violet and fuchsia hex values typed out by hand; they come from the palette. */
+const PURPLE_TOAST = {
+  bg: palette.purple[50],
+  border: palette.purple[200],
+  iconBg: palette.purple[100],
+  iconBorder: palette.purple[300],
+  iconColor: palette.purple[600],
+  textColor: palette.purple[900],
+  shadow: palette.purple[600],
+};
 const TOAST_THEMES = {
-  success: {
-    bg: '#faf5ff',
-    border: '#ddd6fe',
-    iconBg: '#ede9fe',
-    iconBorder: '#c4b5fd',
-    iconColor: '#7c3aed',
-    textColor: '#4c1d95',
-    shadow: '#7c3aed',
-  },
-  info: {
-    bg: '#faf5ff',
-    border: '#ddd6fe',
-    iconBg: '#ede9fe',
-    iconBorder: '#c4b5fd',
-    iconColor: '#7c3aed',
-    textColor: '#4c1d95',
-    shadow: '#7c3aed',
-  },
+  success: PURPLE_TOAST,
+  info: PURPLE_TOAST,
   error: {
-    bg: '#fdf4ff',
-    border: '#f5d0fe',
-    iconBg: '#ffe4e6',
-    iconBorder: '#fecdd3',
-    iconColor: '#e11d48',
-    textColor: '#701a75',
-    shadow: '#c026d3',
+    bg: palette.rose[50],
+    border: palette.rose[200],
+    iconBg: palette.rose[100],
+    iconBorder: palette.rose[200],
+    iconColor: palette.rose[600],
+    textColor: palette.rose[900],
+    shadow: palette.rose[600],
   },
 };
 

@@ -18,6 +18,7 @@
 
 import { normalizeStatusKey } from "./enums.js";
 import { todayYMD, ymdOnly } from "./dates.js";
+import { chart } from "../theme/tokens";
 
 /**
  * A metric from a dense row. `null` means "no data", which is NOT zero:
@@ -52,9 +53,9 @@ export const isSynthesizedDay = (record) => !!record && (record.id === null || r
 // the same three). Validated as a set: lightness band, chroma floor, and
 // colour-blind separation between every neighbouring pair.
 export const TREND_COLORS = {
-  present: "#7C3AED",  // purple
-  on_leave: "#A78BFA", // mid purple
-  absent: "#C026D3",   // reddish purple
+  present: chart.trend.present,
+  on_leave: chart.trend.on_leave,
+  absent: chart.trend.absent, // rose — the one bad answer
 };
 
 export const DAY_CHIPS = {

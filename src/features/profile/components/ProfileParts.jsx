@@ -86,7 +86,7 @@ export function IdentityCard({ profile, onPhotoError, onChangePhoto, uploading =
           backgroundColor: color.surface,
           borderWidth: 1.5,
           borderColor: color.borderSubtle,
-          shadowColor: '#0f172a',
+          shadowColor: color.textPrimary,
           shadowOffset: { width: 0, height: 4 },
           shadowOpacity: 0.08,
           shadowRadius: 10,
