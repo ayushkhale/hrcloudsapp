@@ -249,8 +249,8 @@ the auto-scroll.
 ### `CategoryStrip` (`ui/ListCards.jsx`)
 
 The section selector on a tab root (My Time, My Pay, My Documents, My Tasks):
-one horizontal, scrolling row — a round tinted icon chip, a word under it, and
-a short purple underline under the selected one. No box around an item. It
+one horizontal, scrolling row — a round tinted icon chip and a word under it;
+the selected chip is solid purple (no underline since 2026-10-22). No box around an item. It
 scrolls the selected section into view. Since 2026-10-21; it was a two-row grid
 of boxed tiles, which the user rejected as "one packed into another".
 

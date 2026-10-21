@@ -96,11 +96,16 @@ export const ROUTES = {
     // Documents — the web's MY DOCUMENTS section
     // One screen with four sections since 2026-10-20 — the same shape as My
     // Time and My Pay (features/documents/screens/DocumentsScreen.jsx).
-    documentsHome: ['DocsTab', 'DocumentsHome'],
-    documents: ['DocsTab', 'DocumentsHome', { section: 'personal' }],
-    companyDocuments: ['DocsTab', 'DocumentsHome', { section: 'company' }],
-    documentRequests: ['DocsTab', 'DocumentsHome', { section: 'requests' }],
-    forms: ['DocsTab', 'DocumentsHome', { section: 'forms' }],
+    // In HomeTab's stack since 2026-10-22, when Docs gave its tab to
+    // Schedules and became a sidebar destination, like My Tasks.
+    documentsHome: ['HomeTab', 'DocumentsHome'],
+    documents: ['HomeTab', 'DocumentsHome', { section: 'personal' }],
+    companyDocuments: ['HomeTab', 'DocumentsHome', { section: 'company' }],
+    documentRequests: ['HomeTab', 'DocumentsHome', { section: 'requests' }],
+    forms: ['HomeTab', 'DocumentsHome', { section: 'forms' }],
+
+    // Schedules — its own tab, empty for now (tabs.employee.js).
+    schedules: ['SchedulesTab', 'Schedules'],
 
     // Registered devices — the web's MY REGISTERED DEVICES. One pushed screen
     // here (this device + the rest), not the web's two tabs (user, 2026-10-20).

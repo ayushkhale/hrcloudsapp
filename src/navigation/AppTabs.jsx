@@ -138,7 +138,9 @@ function makeStack(tab) {
 }
 
 /**
- * The More badge: things waiting on the PERSON.
+ * The inbox count: things waiting on the PERSON. It rode on the Docs tab; since
+ * Docs moved into the sidebar (2026-10-22) it is drawn on the sidebar's My
+ * Documents group instead (AppDrawer `inbox`).
  *
  * Company documents they haven't acknowledged, plus document requests HR has
  * made of them. Not their own pending requests — see tabs.employee.js.
@@ -188,9 +190,9 @@ function useInboxCount() {
   return count;
 }
 
-function DrawerOverlay() {
+function DrawerOverlay({ inbox }) {
   const { open, closeDrawer } = useDrawer();
-  return <AppDrawer open={open} onClose={closeDrawer} />;
+  return <AppDrawer open={open} onClose={closeDrawer} inbox={inbox} />;
 }
 
 const styles = StyleSheet.create({
@@ -376,7 +378,7 @@ export function AppTabs() {
 
           {stacks.slice(2).map((tab) => renderTabScreen(tab, inbox, tabBarStyle))}
         </Tab.Navigator>
-        <DrawerOverlay />
+        <DrawerOverlay inbox={inbox} />
         <ActionSheet visible={actionsOpen} onClose={() => setActionsOpen(false)} />
         {/* Maya mounts once here, over every tab (features/maya/MayaProvider). */}
         <MayaProvider />

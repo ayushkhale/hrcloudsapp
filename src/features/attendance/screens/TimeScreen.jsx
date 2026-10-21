@@ -260,7 +260,7 @@ export default function TimeScreen({ navigation, route }) {
           strip survive the switch because they live HERE. */}
       <View style={{ flex: 1 }}>
         {section === 'attendance' ? (
-          <AttendanceTab period={period} onChangePeriod={setPeriod} onDayPress={openDay} onCorrectDay={newCorrection} />
+          <AttendanceTab period={period} onChangePeriod={setPeriod} onDayPress={openDay} />
         ) : section === 'locations' ? (
           <LocationsTab />
         ) : section === 'leave' ? (

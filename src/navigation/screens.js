@@ -78,6 +78,9 @@ const MODULES = {
   DocumentsHome:  () => require('../features/documents/screens/DocumentsScreen').default,
   UploadDocument: () => require('../features/documents/screens/UploadDocumentScreen').default,
 
+  // ── Schedules — the tab that replaced Docs (2026-10-22), empty for now ────
+  Schedules: () => require('../features/schedules/screens/SchedulesScreen').default,
+
   // ── Tasks — the web's MY TASKS (#249–#253) ───────────────────────────────
   // MyTasks is the one screen with its status sections and an Overdue section
   // (the web's separate "Overdue Tasks" route folded in, the way My Pay folded
@@ -125,7 +128,7 @@ function WrongWorkspaceFallback() {
   return null; // replaced by the real screen in RootNavigator — see that file
 }
 
-const TAB_ROOT_SCREENS = new Set(['Home', 'Time', 'PayHome', 'DocumentsHome', 'MyTasks']);
+const TAB_ROOT_SCREENS = new Set(['Home', 'Time', 'PayHome', 'Schedules']);
 
 /** What an unbuilt route renders: the file to create, and nothing else. */
 function placeholderFor(name) {

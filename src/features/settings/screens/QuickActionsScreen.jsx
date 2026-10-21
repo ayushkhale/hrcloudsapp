@@ -13,6 +13,15 @@
 // no remove, no reorder. An action already in another slot swaps places, so
 // there are always six different ones. Every pick saves at once; "Back to the
 // original six" undoes everything.
+//
+// ── THE PICKER IS THE ✚ SHEET'S OWN CARDS (user, 2026-10-22) ────────────────
+//
+// "The quick actions replacement UI needs to be like action buttons." It was
+// a grid of small icon tiles; it is now the ✚ sheet's `ActionCard` — tinted
+// icon, name, one line of what it does — two to a row, under the catalog's
+// groups (Start something · My Time · My Pay · …). The action already in this
+// slot is outlined in purple; one sitting in another slot carries that slot's
+// number, because picking it swaps the two.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useCallback, useMemo, useState } from 'react';
@@ -20,14 +29,14 @@ import { Pressable, ScrollView, Text, View } from 'react-native';
 import { color, font, gutter, iconSize, radius, space, text } from '../../../theme/tokens';
 import { icons } from '../../../theme/icons';
 import { LinkButton, OptionSheet, SkeletonBlock, showToast } from '../../../ui';
-import { toneFor } from '../../../navigation/ActionSheet';
+import { ActionCard, toneFor } from '../../../navigation/ActionSheet';
 import {
   DEFAULT_QUICK_ACTIONS, availableActions, quickActionFor, replaceSlot, saveQuickActions,
   useQuickActions,
 } from '../quickActions';
 
-const GRID_COLS = 4;
-const GRID_ROW = 96; // a tile: chip, two lines of label, padding and the row gap
+const GRID_COLS = 2;
+const GRID_ROW = 104; // an ActionCard (icon, name, two caption lines) plus the row gap
 
 export default function QuickActionsScreen() {
   const { ready, keys, userId, workspace } = useQuickActions();
@@ -48,7 +57,7 @@ export default function QuickActionsScreen() {
   // OptionSheet sizes itself from a per-row height; a "row" here is a group.
   const groupHeight = useMemo(() => {
     const rows = groups.reduce((n, g) => n + Math.ceil(g.items.length / GRID_COLS), 0);
-    return groups.length ? Math.ceil((groups.length * 40 + rows * GRID_ROW) / groups.length) : GRID_ROW;
+    return groups.length ? Math.ceil((groups.length * 44 + rows * GRID_ROW) / groups.length) : GRID_ROW;
   }, [groups]);
   const isDefault = keys.join('|') === DEFAULT_QUICK_ACTIONS.join('|');
 
@@ -143,10 +152,7 @@ export default function QuickActionsScreen() {
         <LinkButton title="Back to the original six" onPress={() => save([...DEFAULT_QUICK_ACTIONS])} />
       ) : null}
 
-      {/* A GRID, NOT A LIST (2026-10-21). Sixteen 60pt rows in a 75% sheet
-          put My Tasks and everything after it below the fold, and people
-          reported them as missing. Four to a row, every action is on screen
-          at once (CLAUDE.md §1). */}
+      {/* Two cards to a row, grouped — the ✚ sheet's own cards (see header). */}
       <OptionSheet
         visible={slot != null}
         title={current ? `Replace ${current.label}` : 'Replace'}
@@ -155,63 +161,28 @@ export default function QuickActionsScreen() {
         keyOf={(g) => g.group}
         rowHeight={groupHeight}
         renderRow={(g) => (
-          <View style={{ paddingHorizontal: gutter, paddingTop: space[3], gap: space[2] }}>
+          <View style={{ paddingHorizontal: gutter, paddingTop: space[4], gap: space[2] }}>
             <Text style={[text.label, { color: color.textMuted }]}>{g.group}</Text>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', rowGap: space[2] }}>
-              {g.items.map((a) => {
-                const Icon = a.icon;
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space[2] }}>
+              {g.items.map((a, i) => {
                 const where = keys.indexOf(a.key);
                 const here = where === slot;
                 const elsewhere = where >= 0 && !here;
                 return (
-                  <Pressable
+                  <ActionCard
                     key={a.key}
-                    accessibilityRole="button"
-                    accessibilityState={{ selected: here }}
+                    item={a}
+                    tone={toneFor(a.key, i)}
+                    selected={here}
+                    badge={elsewhere ? where + 1 : null}
                     accessibilityLabel={elsewhere
                       ? `${a.label}. In slot ${where + 1} — they’ll swap.`
                       : a.label}
                     onPress={() => pick(a.key)}
-                    style={({ pressed }) => ({
-                      width: '25%',
-                      alignItems: 'center',
-                      gap: 6,
-                      paddingVertical: space[2],
-                      borderRadius: radius.lg,
-                      backgroundColor: here ? color.brandChipBg : pressed ? color.pressTint : 'transparent',
-                      transform: [{ scale: pressed ? 0.95 : 1 }],
-                    })}
-                  >
-                    <View
-                      style={{
-                        width: 44, height: 44, borderRadius: radius.md, alignItems: 'center',
-                        justifyContent: 'center', backgroundColor: here ? color.brand : color.brandChipBg,
-                      }}
-                    >
-                      {Icon ? <Icon size={20} color={here ? color.textOnBrand : color.brandChipFg} /> : null}
-                      {/* Already on the ✚ sheet: which slot, so the swap is no surprise. */}
-                      {elsewhere ? (
-                        <View
-                          style={{
-                            position: 'absolute', top: -5, right: -5, minWidth: 18, height: 18,
-                            borderRadius: 9, paddingHorizontal: 4, alignItems: 'center',
-                            justifyContent: 'center', backgroundColor: color.brand,
-                          }}
-                        >
-                          <Text style={[text.badge, { color: color.textOnBrand, fontSize: 10 }]}>{where + 1}</Text>
-                        </View>
-                      ) : null}
-                    </View>
-                    <Text
-                      numberOfLines={2}
-                      style={[text.caption, {
-                        fontSize: 11, lineHeight: 14, textAlign: 'center',
-                        color: here ? color.brand : color.textPrimary,
-                      }]}
-                    >
-                      {a.label}
-                    </Text>
-                  </Pressable>
+                    // Fixed half width: a lone last card must not stretch
+                    // across the row the way the ✚ sheet's grid lets it.
+                    style={{ flexGrow: 0, flexBasis: '48.5%' }}
+                  />
                 );
               })}
             </View>

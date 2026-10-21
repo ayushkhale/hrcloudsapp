@@ -113,6 +113,51 @@ const styles = StyleSheet.create({
   },
 });
 
+/* ─── One action card ─────────────────────────────────────────────────────────
+   The ✚ sheet's card, exported so Settings › Quick actions picks from the SAME
+   cards it is filling (user, 2026-10-22: "the replacement UI needs to be like
+   action buttons"). Its look is this sheet's and stays this sheet's (CLAUDE.md
+   §5 exception). `selected` and `badge` are for the picker only: the action
+   already in the slot being replaced, and the slot number of one that sits
+   elsewhere (picking it swaps the two). */
+export function ActionCard({ item, tone, onPress, accessibilityLabel, selected = false, badge = null, style }) {
+  const Icon = item.icon;
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel || item.label}
+      accessibilityState={selected ? { selected: true } : undefined}
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.actionCard,
+        selected ? { borderColor: color.brand, backgroundColor: color.brandSoftBg } : null,
+        pressed ? styles.cardPressed : null,
+        style,
+      ]}
+    >
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <View style={[styles.iconBox, { backgroundColor: tone.bg, borderColor: tone.border }]}>
+          {Icon ? <Icon size={20} color={tone.fg} /> : null}
+        </View>
+        {badge != null ? (
+          <View
+            style={{
+              minWidth: 20, height: 20, borderRadius: radius.full, paddingHorizontal: 5,
+              alignItems: 'center', justifyContent: 'center', backgroundColor: color.brand,
+            }}
+          >
+            <Text style={[text.badge, { color: color.textOnBrand, fontSize: 10 }]}>{badge}</Text>
+          </View>
+        ) : null}
+      </View>
+      <View style={{ gap: 2 }}>
+        <Text numberOfLines={1} style={styles.cardLabel}>{item.label}</Text>
+        <Text numberOfLines={2} style={styles.cardCaption}>{item.caption}</Text>
+      </View>
+    </Pressable>
+  );
+}
+
 export function ActionSheet({ visible, onClose }) {
   const insets = useSafeAreaInsets();
   const { actions, workspace } = useQuickActions();
@@ -146,30 +191,14 @@ export function ActionSheet({ visible, onClose }) {
           </View>
 
           <View style={styles.grid}>
-            {actions.map((item, i) => {
-              const Icon = item.icon;
-              const tone = toneFor(item.key, i);
-              return (
-                <Pressable
-                  key={item.key}
-                  accessibilityRole="button"
-                  accessibilityLabel={item.label}
-                  onPress={() => after(close, () => runQuickAction(item, workspace))}
-                  style={({ pressed }) => [
-                    styles.actionCard,
-                    pressed ? styles.cardPressed : null,
-                  ]}
-                >
-                  <View style={[styles.iconBox, { backgroundColor: tone.bg, borderColor: tone.border }]}>
-                    {Icon ? <Icon size={20} color={tone.fg} /> : null}
-                  </View>
-                  <View style={{ gap: 2 }}>
-                    <Text numberOfLines={1} style={styles.cardLabel}>{item.label}</Text>
-                    <Text numberOfLines={2} style={styles.cardCaption}>{item.caption}</Text>
-                  </View>
-                </Pressable>
-              );
-            })}
+            {actions.map((item, i) => (
+              <ActionCard
+                key={item.key}
+                item={item}
+                tone={toneFor(item.key, i)}
+                onPress={() => after(close, () => runQuickAction(item, workspace))}
+              />
+            ))}
           </View>
         </View>
       )}

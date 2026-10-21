@@ -51,9 +51,11 @@ import { haptic } from './haptics';
 
    What "packed into another" was: a bordered white tile holding a tinted
    square holding the glyph — a box in a box in a box, eight times, in two
-   rows that cost ~150pt above every list. Now each section is three things
-   and no box: a ROUND tinted chip, the word under it, and — on the selected
-   one only — a short purple bar under the word. One row is ~80pt.
+   rows that cost ~150pt above every list. Now each section is two things
+   and no box: a ROUND tinted chip and the word under it; the selected one's
+   chip is solid purple and its word purple and bold. One row is ~72pt. (It
+   also had a short purple underline under the selected word; the user asked
+   for it to go, 2026-10-22 — the filled chip already says "you are here".)
 
    The grid's old worry was that a scroller hides its overflow. That is
    answered by WIDTH, not by wrapping: items are sized so a 360pt phone cuts
@@ -178,18 +180,6 @@ export function CategoryStrip({ items, value, onChange }) {
             >
               {item.label}
             </Text>
-
-            {/* The underline. Drawn transparent when unselected so every item
-                is the same height and the row never jumps on a switch. */}
-            <View
-              style={{
-                marginTop: 5,
-                width: 22,
-                height: 3,
-                borderRadius: radius.full,
-                backgroundColor: active ? color.brand : 'transparent',
-              }}
-            />
           </Pressable>
         );
       })}

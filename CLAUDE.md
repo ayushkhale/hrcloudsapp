@@ -50,7 +50,8 @@ screen keeps the web's *data and rules* and throws away its *layout*.
 - **The section strip is ONE scrolling row of icons** (user, 2026-10-21: "they
   look so awful one packed into another — one line horizontal, one row,
   scrollable"). This replaced the four-per-row grid; don't put the grid back.
-  Each item is a round tinted chip, a word, and an underline when selected —
+  Each item is a round tinted chip and a word (the selected chip solid purple;
+  no underline, 2026-10-22) —
   no box around it. Items are sized so the fifth is cut in half at a 360pt
   edge, because a half-drawn item is what tells people the row scrolls.
   `CategoryStrip` in `ui/ListCards.jsx`.

@@ -109,6 +109,9 @@ const SECTIONS = [
   {
     title: 'My Documents',
     icon: icons.folder,
+    // Things waiting on the person — documents to acknowledge, requests from
+    // HR. It was the Docs tab's badge until Docs moved here (2026-10-22).
+    badge: 'inbox',
     items: [
       { key: 'documentsHome', label: 'My Document Home', icon: icons.folder },
       { key: 'documents', label: 'My Personal Documents', icon: icons.folder },
@@ -140,11 +143,12 @@ const SECTIONS = [
     ],
   },
   {
-    title: 'Company',
+    // "Organization" and "Org Profile", not "Company" (user, 2026-10-22).
+    title: 'Organization',
     icon: icons.company,
     items: [
       { key: 'orgChart', label: 'Org Chart', icon: icons.orgChart },
-      { key: 'company', label: 'Company Profile', icon: icons.company },
+      { key: 'company', label: 'Org Profile', icon: icons.company },
       { key: 'directory', label: NAV.DIRECTORY, icon: icons.people },
     ],
   },
@@ -327,7 +331,7 @@ function SubMenuRow({ label, icon: Icon, onPress }) {
   );
 }
 
-function DropdownSection({ section, isExpanded, onToggle, onPick, targets }) {
+function DropdownSection({ section, isExpanded, onToggle, onPick, targets, count = 0 }) {
   const Icon = section.icon;
   const Chevron = isExpanded ? icons.chevronUp : icons.chevronDown;
 
@@ -361,6 +365,21 @@ function DropdownSection({ section, isExpanded, onToggle, onPick, targets }) {
           >
             {section.title}
           </Text>
+          {count > 0 ? (
+            <View
+              style={{
+                minWidth: 20,
+                height: 20,
+                paddingHorizontal: 6,
+                borderRadius: radius.full,
+                backgroundColor: color.danger.dot,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Text style={[text.badge, { color: color.textOnBrand }]}>{count > 99 ? '99+' : count}</Text>
+            </View>
+          ) : null}
         </View>
         {Chevron ? (
           <Chevron size={16} color={isExpanded ? color.brand : color.textMuted} />
@@ -397,7 +416,7 @@ function DropdownSection({ section, isExpanded, onToggle, onPick, targets }) {
  * @param {boolean} props.open
  * @param {Function} props.onClose
  */
-export function AppDrawer({ open, onClose }) {
+export function AppDrawer({ open, onClose, inbox = 0 }) {
   const insets = useSafeAreaInsets();
   const { width: screenWidth } = useWindowDimensions();
   const { user, logout } = useAuth();
@@ -411,7 +430,7 @@ export function AppDrawer({ open, onClose }) {
     'My time': true,
     'My pay': false,
     'My documents': false,
-    'Company': false,
+    'Organization': false,
     'Account': false,
   });
 
@@ -601,6 +620,7 @@ export function AppDrawer({ open, onClose }) {
                   onToggle={() => toggleSection(section.title)}
                   onPick={pick}
                   targets={targets}
+                  count={section.badge === 'inbox' ? inbox : 0}
                 />
               );
             })}

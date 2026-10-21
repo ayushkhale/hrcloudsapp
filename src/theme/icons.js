@@ -93,6 +93,9 @@ export const icons = {
   /** "View on map" — opens a site in the phone's maps app. A folded map, not
       the pin: the pin is the site itself, this is the way to get there. */
   map: s('MapIcon'),
+  /** My Schedules — shifts across days. NOT `calendar`, which is the
+      attendance month in My Time's strip. */
+  schedule: s('CalendarDaysIcon', 'CalendarIcon'),
   overtime: s('LightningBoltIcon', 'BoltIcon'),
   /** Leave — a day away from work. NOT `calendar`: that one is the attendance
       month, and the two sit side by side in My Time's strip. */
@@ -227,6 +230,7 @@ export const tabIcons = {
   },
   menu: { active: icons.menu, inactive: o('DotsVerticalIcon', 'EllipsisVerticalIcon') },
   folder: { active: icons.folder, inactive: o('FolderOpenIcon', 'FolderIcon') },
+  schedule: { active: icons.schedule, inactive: o('CalendarDaysIcon', 'CalendarIcon') },
   clipboardCheck: {
     active: icons.clipboardCheck,
     inactive: o('ClipboardCheckIcon', 'ClipboardDocumentCheckIcon'),

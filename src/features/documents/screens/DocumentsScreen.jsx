@@ -1,5 +1,10 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// features/documents/screens/DocumentsScreen.jsx — "My Documents". DocsTab root.
+// features/documents/screens/DocumentsScreen.jsx — "My Documents".
+//
+// A PUSHED SCREEN IN HomeTab's STACK since 2026-10-22 (it was the DocsTab
+// root; the user moved My Docs into the sidebar and gave its tab to
+// Schedules). So it wears the native back header, not the greeting bar —
+// the same rule as My Tasks (AppTabs: only a tab root shows the tab bar).
 //
 // ── ONE SCREEN, FOUR SECTIONS — THE SAME SHAPE AS MY TIME AND MY PAY ────────
 //
@@ -45,7 +50,6 @@ import { color, space } from '../../../theme/tokens';
 import { icons } from '../../../theme/icons';
 import { EmptyState, HeroCard } from '../../../ui';
 import { CategoryStrip } from '../../../ui/ListCards';
-import { AppTopBar } from '../../../navigation/AppTopBar';
 import { CompanyTab } from '../components/CompanyTab';
 import { FormsTab } from '../components/FormsTab';
 import { PersonalTab } from '../components/PersonalTab';
@@ -163,7 +167,6 @@ export default function DocumentsScreen({ navigation, route }) {
 
   return (
     <View style={{ flex: 1, backgroundColor: color.bg }}>
-      <AppTopBar />
       {/* On the canvas, not a white band with a hairline (2026-10-20). */}
       <View style={{ paddingTop: space[1] }}>
         <View style={{ paddingHorizontal: space[4], paddingBottom: space[2] }}>

@@ -106,22 +106,25 @@ export const linkingConfig = {
         // Rebuilt 2026-10-20 for the current tab set. The old map still named
         // LeaveTab, MoreTab and PayTab › Payslips, none of which exist, so
         // every one of those links resolved to nothing.
-        HomeTab: { screens: { Home: 'home', Profile: 'profile' } },
-        TimeTab: { screens: { Time: { path: 'attendance', alias: ['leaves'] } } },
-        PayTab: { screens: { PayHome: 'payslips' } },
-        DocsTab: {
+        HomeTab: {
           screens: {
+            Home: 'home',
+            Profile: 'profile',
             // THE important one. The web contract (2026-10-08) deep-links to
             // /dashboard/employee/company-documents/:id, so the mobile path
             // keeps the same tail: one link works for both. DocumentsScreen
             // reads `documentId` (open that document in Company) and the
-            // path (which section) — see its header.
+            // path (which section) — see its header. In HomeTab since Docs
+            // lost its tab (2026-10-22).
             DocumentsHome: {
               path: 'documents',
               alias: ['company-documents/:documentId', 'document-requests', 'my-documents'],
             },
           },
         },
+        TimeTab: { screens: { Time: { path: 'attendance', alias: ['leaves'] } } },
+        PayTab: { screens: { PayHome: 'payslips' } },
+        SchedulesTab: { screens: { Schedules: 'schedules' } },
       },
     },
   },

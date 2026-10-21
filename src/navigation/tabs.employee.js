@@ -13,7 +13,8 @@
 //
 // ── THE ORDER, AND WHY HOME IS IN THE MIDDLE (2026-10-17) ────────────────────
 //
-//   Time · Pay · HOME · Docs · Tasks
+//   Home · Time · ✚ · Pay · Schedules   (Docs moved to the sidebar 2026-10-22;
+//   Schedules took its slot. The notes below are the history.)
 //
 // Home is the third of five because the centre slot is the one a thumb
 // reaches without moving the hand, and Home is where the punch button is.
@@ -75,7 +76,7 @@ export const EMPLOYEE_TABS = [
       { name: 'Profile', title: 'My Profile' },
       { name: 'Settings', title: 'Settings' },
       { name: 'QuickActions', title: 'Quick actions' },
-      { name: 'Company', title: 'Company Profile' },
+      { name: 'Company', title: 'Org Profile' },
       { name: 'OrgChart', title: 'Org Chart' },
       { name: 'Directory', title: 'Directory' },
       { name: 'Devices', title: 'My Registered Devices' },
@@ -87,6 +88,11 @@ export const EMPLOYEE_TABS = [
       // greeting bar, and the tab bar hides under it (AppTabs).
       { name: 'MyTasks', title: 'My Tasks' },
       { name: 'TaskDetail', title: 'Task' },
+      // My Documents left the tab bar for the sidebar (user, 2026-10-22) — a
+      // pushed screen now, like My Tasks, with the native back header. Its
+      // sections and the upload form are unchanged.
+      { name: 'DocumentsHome', title: 'My Documents' },
+      { name: 'UploadDocument', title: 'Upload a document', presentation: 'modal' },
     ],
   },
   {
@@ -114,16 +120,14 @@ export const EMPLOYEE_TABS = [
     ],
   },
   {
-    name: 'DocsTab',
-    label: 'Docs',
-    icon: 'folder',
-    badge: 'inbox',
+    // Took Docs' slot on 2026-10-22 (user: "move My Docs to the sidebar and
+    // replace it with a new tab, My Schedules"). Empty for now — see
+    // features/schedules/screens/SchedulesScreen.jsx.
+    name: 'SchedulesTab',
+    label: 'Schedules',
+    icon: 'schedule',
     screens: [
-      { name: 'DocumentsHome', title: 'My Documents', headerShown: false },
-      // Personal, Company, Requests and Forms are SECTIONS of My Documents,
-      // like the sections of My Time and My Pay. Only the upload form is a
-      // route, because a record being WRITTEN is a page.
-      { name: 'UploadDocument', title: 'Upload a document', presentation: 'modal' },
+      { name: 'Schedules', title: 'My Schedules', headerShown: false },
     ],
   },
 ];
