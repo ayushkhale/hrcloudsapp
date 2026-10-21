@@ -40,7 +40,7 @@ import { ATTENDANCE_EVENTS, emitAttendanceChanged } from '../../../lib/events';
 import { color, gutter, radius, space, text } from '../../../theme/tokens';
 import { icons } from '../../../theme/icons';
 import {
-  Button, Field, FormSheet, InlineAlert, OptionSheet, TextField, showToast,
+  Button, CodeInput, Field, FormSheet, InlineAlert, OptionSheet, TextField, showToast,
 } from '../../../ui';
 import { beginRegistration, finishRegistration, suggestedDeviceName } from '../deviceKey';
 import { platformLabel } from '../deviceMeta';
@@ -180,13 +180,16 @@ export default function RegisterDeviceScreen({ navigation }) {
               ? `Sent to ${started.otp_sent_to}. It works for ${mmss(left)} more.`
               : `It works for ${mmss(left)} more.`}
           >
-            <TextField
-              kind="integer"
+            {/* The six boxes, like every other code in the app (user,
+                2026-10-22) — ui/CodeInput, the one sign-in uses. */}
+            <CodeInput
               value={code}
-              onChangeText={(v) => setCode(v.replace(/\D/g, '').slice(0, CODE_LENGTH))}
-              maxLength={CODE_LENGTH}
-              placeholder="6 digits"
+              onChangeText={setCode}
+              length={CODE_LENGTH}
+              invalid={tried && !!codeProblem}
+              editable={!busy}
               autoFocus
+              accessibilityHint="Enter the code we emailed you to register this phone"
             />
           </Field>
         ) : null}

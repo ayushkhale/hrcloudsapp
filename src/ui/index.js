@@ -36,6 +36,7 @@ export {
 export { FormSheet, FormSection } from './FormSheet';
 export { Field, ReadOnlyField, FormGrid } from './Field';
 export { TextField, PickerBox } from './TextField';
+export { CodeInput } from './CodeInput';
 export { Select, OptionSheet, Toggle } from './Select';
 export { TimeField, DateField, DatePicker } from './TimeField';
 export { PersonSelect, PersonSheet } from './PersonSelect';

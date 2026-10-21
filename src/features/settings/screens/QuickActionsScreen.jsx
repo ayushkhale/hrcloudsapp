@@ -1,34 +1,40 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // features/settings/screens/QuickActionsScreen.jsx — Settings › Quick actions.
 //
-// Moved out of SettingsScreen (2026-10-20) when Settings became a hub of
-// grouped rows: quick actions is one setting among several now, and a setting
-// that is a whole screen is reached from a row, not pinned to the top of the
-// hub. A pushed stack screen with a native back to Settings.
+// A pushed stack screen, reached from a Settings row and from the pencil on
+// the ✚ sheet itself (2026-10-22).
 //
-// ── SIX SLOTS, REPLACE ONLY (user, 2026-10-18) ──────────────────────────────
+// ── SIX SHORTCUTS, CHANGE ONE AT A TIME (user, 2026-10-18) ──────────────────
 //
-// The six slots are drawn as the ✚ sheet draws them; a tap opens the list of
-// everything that could go there, and picking one puts it in that slot. No add,
-// no remove, no reorder. An action already in another slot swaps places, so
-// there are always six different ones. Every pick saves at once; "Back to the
-// original six" undoes everything.
+// The ✚ sheet always holds six. A person can CHANGE what a shortcut is — no
+// adding, no removing, no reordering. Picking one that is already a shortcut
+// swaps the two, so there are always six different ones. Every change saves at
+// once; "Go back to the original 6" undoes everything. (quickActions.js holds
+// the rule; this screen only draws it.)
 //
-// ── THE PICKER IS THE ✚ SHEET'S OWN CARDS (user, 2026-10-22) ────────────────
+// ── REDESIGNED FOR SOMEBODY WHO HAS NEVER HEARD THE WORD "SLOT" (2026-10-22) ─
 //
-// "The quick actions replacement UI needs to be like action buttons." It was
-// a grid of small icon tiles; it is now the ✚ sheet's `ActionCard` — tinted
-// icon, name, one line of what it does — two to a row, under the catalog's
-// groups (Start something · My Time · My Pay · …). The action already in this
-// slot is outlined in purple; one sitting in another slot carries that slot's
-// number, because picking it swaps the two.
+// "The replaceable settings aren't right — completely redesign it for a
+// layman, unable to understand." What made it hard, and what replaced it:
+//
+//   • Engineering words — "slot", "replace", a swap glyph, a bare number on a
+//     card — became plain ones: shortcut, Change, Current.
+//   • No picture of what it changes. The screen now opens on a card that
+//     says, next to a ✚, exactly what these are and what tapping does.
+//   • The six look EXACTLY as they do in the ✚ sheet (its own ActionCard), so
+//     there is nothing to translate — each with a pencil on it.
+//   • The picker is titled with the shortcut being changed ("Change Apply for
+//     Leave"), marks that one "Current" and any other shortcut "Already a
+//     shortcut", and says in one line that picking one of those swaps them.
+//   • Every change answers with a toast that says what happened in words.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useCallback, useMemo, useState } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
-import { color, font, gutter, iconSize, radius, space, text } from '../../../theme/tokens';
+import { ScrollView, Text, View } from 'react-native';
+import LinearGradient from 'react-native-linear-gradient';
+import { color, gutter, radius, space, text } from '../../../theme/tokens';
 import { icons } from '../../../theme/icons';
-import { LinkButton, OptionSheet, SkeletonBlock, showToast } from '../../../ui';
+import { Button, OptionSheet, SkeletonBlock, showToast, useConfirm } from '../../../ui';
 import { ActionCard, toneFor } from '../../../navigation/ActionSheet';
 import {
   DEFAULT_QUICK_ACTIONS, availableActions, quickActionFor, replaceSlot, saveQuickActions,
@@ -38,13 +44,73 @@ import {
 const GRID_COLS = 2;
 const GRID_ROW = 104; // an ActionCard (icon, name, two caption lines) plus the row gap
 
+/** The pencil in a shortcut's corner: "tap to change this one". */
+function PencilMark() {
+  const Pencil = icons.edit;
+  return (
+    <View
+      style={{
+        width: 28,
+        height: 28,
+        borderRadius: radius.full,
+        backgroundColor: color.brandChipBg,
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
+      {Pencil ? <Pencil size={14} color={color.brandChipFg} /> : null}
+    </View>
+  );
+}
+
+/** The opening card: what these are, in one sentence, beside a ✚. */
+function Explainer() {
+  const Plus = icons.add;
+  return (
+    <LinearGradient
+      colors={[color.heroSoftFrom, color.heroSoftVia, color.heroSoftTo]}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+      style={{
+        borderRadius: radius.xl,
+        borderWidth: 1,
+        borderColor: color.heroSoftBorder,
+        padding: space[4],
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: space[3],
+      }}
+    >
+      <View
+        style={{
+          width: 48,
+          height: 48,
+          borderRadius: radius.full,
+          backgroundColor: color.brand,
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        {Plus ? <Plus size={24} color={color.textOnBrand} /> : null}
+      </View>
+      <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
+        <Text style={[text.h3, { color: color.ink }]}>Your ✚ shortcuts</Text>
+        <Text style={[text.small, { color: color.textSecondary }]}>
+          These 6 open when you tap ✚. Tap one to change it.
+        </Text>
+      </View>
+    </LinearGradient>
+  );
+}
+
 export default function QuickActionsScreen() {
+  const confirm = useConfirm();
   const { ready, keys, userId, workspace } = useQuickActions();
-  const [slot, setSlot] = useState(null); // index being replaced, or null
+  const [slot, setSlot] = useState(null); // which of the six is being changed, or null
   const [busy, setBusy] = useState(false);
 
   const catalog = useMemo(() => availableActions(workspace), [workspace]);
-  // The catalog's own groups, in catalog order: "Start something", "Go to".
+  // The catalog's own groups, in catalog order: "Start something", "My Time", …
   const groups = useMemo(() => {
     const out = [];
     catalog.forEach((a) => {
@@ -61,13 +127,14 @@ export default function QuickActionsScreen() {
   }, [groups]);
   const isDefault = keys.join('|') === DEFAULT_QUICK_ACTIONS.join('|');
 
-  const save = useCallback(async (next) => {
+  const save = useCallback(async (next, said) => {
     if (busy) return;
     setBusy(true);
     try {
       await saveQuickActions(userId, next);
+      if (said) showToast(said, 'success');
     } catch (err) {
-      showToast(err?.message || 'Couldn’t save your quick actions.', 'error');
+      showToast(err?.message || 'We couldn’t save your shortcuts.', 'error');
     } finally {
       setBusy(false);
     }
@@ -77,89 +144,75 @@ export default function QuickActionsScreen() {
     const index = slot;
     setSlot(null);
     if (index == null || keys[index] === key) return;
-    save(replaceSlot(keys, index, key));
+    const was = quickActionFor(keys[index]);
+    const now = quickActionFor(key);
+    const swapped = keys.includes(key);
+    save(
+      replaceSlot(keys, index, key),
+      swapped
+        ? `${now?.label} and ${was?.label} swapped places.`
+        : `${now?.label} is now a shortcut, instead of ${was?.label}.`,
+    );
   };
 
-  const Swap = icons.switch || icons.edit;
+  const reset = async () => {
+    const ok = await confirm({
+      title: 'Go back to the original 6?',
+      message: 'Your shortcuts go back to the ones the app started with.',
+      confirmText: 'Go back',
+      cancelText: 'Keep mine',
+      icon: icons.refresh,
+    });
+    if (ok) save([...DEFAULT_QUICK_ACTIONS], 'Your shortcuts are back to the original 6.');
+  };
+
   const current = slot != null ? quickActionFor(keys[slot]) : null;
 
   return (
     <ScrollView
       style={{ flex: 1, backgroundColor: color.bg }}
-      contentContainerStyle={{ padding: gutter, gap: space[3], paddingBottom: space[10] }}
+      contentContainerStyle={{ padding: gutter, gap: space[4], paddingBottom: space[10] }}
     >
-      <View style={{ gap: 2, paddingHorizontal: space[1] }}>
-        <Text style={text.small}>
-          The six actions behind the ✚ button. Tap one to replace it with something you use more.
-        </Text>
-      </View>
+      <Explainer />
 
       {!ready ? (
-        <SkeletonBlock height={240} radius={radius.lg} />
+        <SkeletonBlock height={300} radius={radius.lg} />
       ) : (
+        // The six, drawn exactly as the ✚ sheet draws them.
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space[2] }}>
           {keys.map((k, i) => {
             const a = quickActionFor(k);
             if (!a) return null;
-            const Icon = a.icon;
-            const tone = toneFor(k, i);
             return (
-              <Pressable
+              <ActionCard
                 key={`${i}-${k}`}
-                accessibilityRole="button"
-                accessibilityLabel={`Slot ${i + 1}: ${a.label}. Replace it.`}
-                disabled={busy}
-                onPress={() => setSlot(i)}
-                style={({ pressed }) => ({
-                  flexBasis: '48.5%',
-                  flexGrow: 1,
-                  padding: space[3],
-                  borderRadius: radius.lg,
-                  borderWidth: 1,
-                  borderColor: pressed ? color.border : color.borderSubtle,
-                  backgroundColor: pressed ? color.surfaceSubtle : color.surface,
-                  gap: space[2],
-                  transform: [{ scale: pressed ? 0.98 : 1 }],
-                })}
-              >
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                  <View
-                    style={{
-                      width: 40, height: 40, borderRadius: radius.md, borderWidth: 1,
-                      alignItems: 'center', justifyContent: 'center',
-                      backgroundColor: tone.bg, borderColor: tone.border,
-                    }}
-                  >
-                    {Icon ? <Icon size={20} color={tone.fg} /> : null}
-                  </View>
-                  {Swap ? <Swap size={iconSize.sm} color={color.textMuted} /> : null}
-                </View>
-                <View style={{ gap: 2 }}>
-                  <Text numberOfLines={1} style={{ fontFamily: font.bold, fontSize: 13, color: color.textPrimary }}>
-                    {a.label}
-                  </Text>
-                  <Text numberOfLines={2} style={[text.caption, { color: color.textMuted, fontSize: 11, lineHeight: 14 }]}>
-                    {a.caption}
-                  </Text>
-                </View>
-              </Pressable>
+                item={a}
+                tone={toneFor(k, i)}
+                badge={<PencilMark />}
+                accessibilityLabel={`${a.label}. Tap to change this shortcut.`}
+                onPress={() => { if (!busy) setSlot(i); }}
+              />
             );
           })}
         </View>
       )}
 
       {ready && !isDefault ? (
-        <LinkButton title="Back to the original six" onPress={() => save([...DEFAULT_QUICK_ACTIONS])} />
+        <Button title="Go back to the original 6" icon={icons.refresh} variant="outline" onPress={reset} fullWidth />
       ) : null}
 
-      {/* Two cards to a row, grouped — the ✚ sheet's own cards (see header). */}
       <OptionSheet
         visible={slot != null}
-        title={current ? `Replace ${current.label}` : 'Replace'}
+        title={current ? `Change “${current.label}”` : 'Change shortcut'}
         onClose={() => setSlot(null)}
         data={groups}
         keyOf={(g) => g.group}
         rowHeight={groupHeight}
+        header={(
+          <Text style={[text.small, { paddingHorizontal: gutter, color: color.textSecondary }]}>
+            Pick what goes in its place. Picking one that’s already a shortcut swaps the two.
+          </Text>
+        )}
         renderRow={(g) => (
           <View style={{ paddingHorizontal: gutter, paddingTop: space[4], gap: space[2] }}>
             <Text style={[text.label, { color: color.textMuted }]}>{g.group}</Text>
@@ -174,10 +227,12 @@ export default function QuickActionsScreen() {
                     item={a}
                     tone={toneFor(a.key, i)}
                     selected={here}
-                    badge={elsewhere ? where + 1 : null}
-                    accessibilityLabel={elsewhere
-                      ? `${a.label}. In slot ${where + 1} — they’ll swap.`
-                      : a.label}
+                    badge={here ? 'Current' : elsewhere ? 'Shortcut' : null}
+                    accessibilityLabel={here
+                      ? `${a.label}. This is the shortcut you’re changing.`
+                      : elsewhere
+                        ? `${a.label}. Already a shortcut — picking it swaps the two.`
+                        : a.label}
                     onPress={() => pick(a.key)}
                     // Fixed half width: a lone last card must not stretch
                     // across the row the way the ✚ sheet's grid lets it.

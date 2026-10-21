@@ -29,6 +29,8 @@ import { SheetShell } from '../ui/SheetShell';
 import { color, font, gutter, iconSize, radius, space, text } from '../theme/tokens';
 import { icons } from '../theme/icons';
 import { runQuickAction, useQuickActions } from '../features/settings/quickActions';
+import { navigationRef } from './navigationRef';
+import { ROUTES } from './routes';
 
 /* The original six tones, by the action that wore each one. Anything else in
    the catalog borrows one by its position, so every card still has a colour. */
@@ -117,9 +119,10 @@ const styles = StyleSheet.create({
    The ✚ sheet's card, exported so Settings › Quick actions picks from the SAME
    cards it is filling (user, 2026-10-22: "the replacement UI needs to be like
    action buttons"). Its look is this sheet's and stays this sheet's (CLAUDE.md
-   §5 exception). `selected` and `badge` are for the picker only: the action
-   already in the slot being replaced, and the slot number of one that sits
-   elsewhere (picking it swaps the two). */
+   §5 exception). `selected` and `badge` are for Settings › Quick actions
+   only: the shortcut being changed, and a corner marker — a word ("Current",
+   "Shortcut") drawn as a small purple chip, or any node (the pencil on each
+   of the six). */
 export function ActionCard({ item, tone, onPress, accessibilityLabel, selected = false, badge = null, style }) {
   const Icon = item.icon;
   return (
@@ -139,10 +142,10 @@ export function ActionCard({ item, tone, onPress, accessibilityLabel, selected =
         <View style={[styles.iconBox, { backgroundColor: tone.bg, borderColor: tone.border }]}>
           {Icon ? <Icon size={20} color={tone.fg} /> : null}
         </View>
-        {badge != null ? (
+        {React.isValidElement(badge) ? badge : badge != null ? (
           <View
             style={{
-              minWidth: 20, height: 20, borderRadius: radius.full, paddingHorizontal: 5,
+              minWidth: 20, height: 20, borderRadius: radius.full, paddingHorizontal: 7,
               alignItems: 'center', justifyContent: 'center', backgroundColor: color.brand,
             }}
           >
@@ -162,6 +165,10 @@ export function ActionSheet({ visible, onClose }) {
   const insets = useSafeAreaInsets();
   const { actions, workspace } = useQuickActions();
   const CloseIcon = icons.close;
+  const Pencil = icons.edit;
+  // The pencil: straight to Settings › Quick actions (user, 2026-10-22). Through
+  // navigationRef — this sheet sits beside the tab navigator (CLAUDE.md §6).
+  const customise = ROUTES[workspace]?.quickActions;
 
   // Close first, then move: navigating under a sheet still on screen leaves
   // it floating over the new page for a frame.
@@ -179,6 +186,22 @@ export function ActionSheet({ visible, onClose }) {
               <Text accessibilityRole="header" style={text.h3}>Quick Actions</Text>
               <Text style={[text.caption, { color: color.textMuted }]}>Choose an action to get started</Text>
             </View>
+            {customise && Pencil ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Change your shortcuts"
+                onPress={() => after(close, () => {
+                  if (navigationRef.isReady()) navigationRef.navigate(customise[0], { screen: customise[1] });
+                })}
+                hitSlop={8}
+                style={({ pressed }) => [styles.closeBtn, {
+                  marginRight: space[2],
+                  backgroundColor: pressed ? color.brandSoftBorder : color.brandChipBg,
+                }]}
+              >
+                <Pencil size={iconSize.sm} color={color.brandChipFg} />
+              </Pressable>
+            ) : null}
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Close"

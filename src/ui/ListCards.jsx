@@ -328,7 +328,23 @@ export function RecordCard({
                 gap: space[3],
               }}
             >
-              <View style={{ flex: 1, minWidth: 0, flexDirection: 'row', flexWrap: 'wrap', gap: space[3] }}>
+              {/* SPREAD, NOT HUDDLED (user, 2026-10-22: "all things are stuck
+                  in a horizontal row — stretch it over the whole row, equal
+                  spacing"). Up to four figures fill the width edge to edge,
+                  first flush left, last flush right. More than four (a policy's
+                  rules) would not fit on one line, so they wrap as before —
+                  spreading a wrapped set leaves a ragged last row. */}
+              <View
+                style={{
+                  flex: 1,
+                  minWidth: 0,
+                  flexDirection: 'row',
+                  flexWrap: 'wrap',
+                  justifyContent: meta.length > 1 && meta.length <= 4 && !action ? 'space-between' : 'flex-start',
+                  columnGap: space[3],
+                  rowGap: space[3],
+                }}
+              >
                 {meta.map((m) => (
                   <View key={m.label} style={{ minWidth: 0 }}>
                     <Text style={[text.label, { fontSize: 9, color: color.textMuted }]}>{m.label}</Text>

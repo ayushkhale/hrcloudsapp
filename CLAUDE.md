@@ -224,7 +224,9 @@ card, this is why.
   keeps its multi-colour bordered cards. A purple-only pass was reverted on
   2026-10-18 at the user's request ("it was looking so good"). Change its
   behaviour freely; leave its look alone. Re-confirmed 2026-10-21 during the
-  purple-only pass.
+  purple-only pass. Its header has a pencil beside the X (user, 2026-10-22)
+  that opens Settings › Quick actions, and that screen reuses the sheet's own
+  `ActionCard` so the shortcuts look the same in both places.
 - **Icons only via `theme/icons.js`**, by semantic name — `icons.earnedLeave`, never
   `GiftIcon`. Add a name there with a comment rather than importing Heroicons in a
   screen. **The same destination wears the same icon everywhere** — the drawer row

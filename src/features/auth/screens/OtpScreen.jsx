@@ -48,7 +48,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Platform, Pressable, Text, TextInput, View } from 'react-native';
+import { Text, View } from 'react-native';
 import { authAPI } from '../../../api';
 import { useCountdown } from '../../../hooks/useCountdown';
 import { useFormFocus } from '../../../hooks/useFormFocus';
@@ -63,6 +63,7 @@ import {
   LinkButton,
   useToast,
 } from '../../../ui';
+import { CodeInput } from '../../../ui/CodeInput';
 import { AuthScreen, StepDots } from '../components/AuthScreen';
 
 const CODE_LENGTH = 6;
@@ -93,43 +94,8 @@ function maskIdentifier(value) {
   return `${raw[0]}•••${raw.slice(-2)}`;
 }
 
-/* ── The six boxes ────────────────────────────────────────────────────────── */
-
-function CodeBoxes({ value, length, invalid, focused }) {
-  const digits = String(value || '').split('');
-
-  return (
-    <View style={{ flexDirection: 'row', gap: space[2], justifyContent: 'center' }}>
-      {Array.from({ length }).map((_, i) => {
-        const digit = digits[i];
-        // The caret's box: the next empty one, or the last while full.
-        const active = focused && (i === digits.length || (digits.length === length && i === length - 1));
-
-        return (
-          <View
-            key={i}
-            style={{
-              width: 46,
-              height: 58,
-              borderRadius: radius.md,
-              borderWidth: active ? 2 : 1,
-              borderColor: invalid
-                ? color.danger.dot
-                : active
-                  ? color.brand
-                  : color.border,
-              backgroundColor: color.surface,
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <Text style={[text.h1, { color: color.textPrimary }]}>{digit || ''}</Text>
-          </View>
-        );
-      })}
-    </View>
-  );
-}
+/* The six boxes live in ui/CodeInput.jsx (2026-10-22), shared with Register
+   this phone. */
 
 /* ── The screen ───────────────────────────────────────────────────────────── */
 
@@ -143,7 +109,6 @@ export default function OtpScreen({ navigation, route }) {
   const [requestId, setRequestId] = useState(route?.params?.requestId || null);
 
   const [code, setCode] = useState('');
-  const [focused, setFocused] = useState(false);
   const [attempted, setAttempted] = useState(false);
   const [resending, setResending] = useState(false);
   const [codeFailure, setCodeFailure] = useState(false);
@@ -286,46 +251,11 @@ export default function OtpScreen({ navigation, route }) {
         style={{ marginTop: space[6] }}
         onLayout={focus.register('_code').onLayout}
       >
-        <Pressable
-          onPress={() => codeInput.current?.focus()}
-          accessibilityRole="none"
-          // The boxes are decoration; the input below carries the semantics.
-          accessibilityElementsHidden
-          importantForAccessibility="no-hide-descendants"
-        >
-          <CodeBoxes
-            value={code}
-            length={CODE_LENGTH}
-            invalid={codeFailure || !!codeProblem}
-            focused={focused}
-          />
-        </Pressable>
-
-        <TextInput
+        <CodeInput
           ref={codeInput}
           value={code}
           onChangeText={onCode}
-          onFocus={() => setFocused(true)}
-          onBlur={() => setFocused(false)}
-          maxLength={CODE_LENGTH}
-          keyboardType="number-pad"
-          // The props that make the OS offer the mailed code.
-          autoComplete={Platform.OS === 'ios' ? 'one-time-code' : 'sms-otp'}
-          textContentType="oneTimeCode"
-          autoCorrect={false}
-          caretHidden
-          accessibilityLabel={`${CODE_LENGTH}-digit code`}
-          accessibilityHint="Enter the code we emailed you"
-          // Invisible but real: it keeps paste, autofill and the keyboard, all
-          // of which a View cannot do.
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            opacity: 0,
-          }}
+          invalid={codeFailure || !!codeProblem}
         />
 
         {codeProblem ? (

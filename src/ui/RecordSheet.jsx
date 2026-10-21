@@ -196,11 +196,17 @@ export function RecordSheet({
           </View>
 
           {/* ── Body ───────────────────────────────────────────────────── */}
-          {loading ? (
-            <View style={{ height: Math.min(320, bodyMax) }}>
-              <Skeleton type="sheet" />
-            </View>
-          ) : (
+          {/* ── THE SKELETON LIVES INSIDE THE SCROLL VIEW (2026-10-22) ─────
+              "Payslip bottom sheet isn't scrollable." `loading` used to swap
+              the WHOLE body: a plain View with the skeleton, then — once the
+              record landed — a scroll view mounted for the first time inside
+              a sheet that had already measured and fitted itself around the
+              skeleton. Every sheet that opens on `loading` (payslip, claim,
+              org person) came up sized for the skeleton with a body that would
+              not scroll. Sheets whose content merely GROWS inside an already
+              mounted scroll view were fine. So the scroll view is always
+              there, and the skeleton is its first content. */}
+          {(
             // SheetScrollView (a BottomSheetScrollView), NOT ScrollView. It hands the
             // gesture back to the sheet: at scroll-top a downward pull drags
             // the panel instead of fighting the list, which is the whole point
@@ -225,7 +231,11 @@ export function RecordSheet({
               // against the sheet's rounded top looks like a clipping bug.
               overScrollMode="never"
             >
-              {children}
+              {loading ? (
+                <View style={{ height: Math.min(320, bodyMax) }}>
+                  <Skeleton type="sheet" />
+                </View>
+              ) : children}
             </SheetScrollView>
           )}
 

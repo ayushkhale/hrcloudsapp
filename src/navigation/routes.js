@@ -120,6 +120,8 @@ export const ROUTES = {
     directory: ['HomeTab', 'Directory'],
     profile: ['HomeTab', 'Profile'],
     settings: ['HomeTab', 'Settings'],
+    // Settings › Quick actions — the ✚ sheet's pencil opens it (2026-10-22).
+    quickActions: ['HomeTab', 'QuickActions'],
   },
 };
 
