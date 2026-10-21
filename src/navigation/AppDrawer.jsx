@@ -92,6 +92,8 @@ const SECTIONS = [
       // lives in the dictionary so there is one place to change it.
       { key: 'earnedLeave', label: `My ${TERMS.COMP_OFF}`, icon: icons.earnedLeave },
       { key: 'holidays', label: 'Holidays', icon: icons.calendar },
+      // Its own tab too; the drawer lists it where the web will (My Time).
+      { key: 'schedules', label: 'My Schedules', icon: icons.schedule || icons.calendar },
     ],
   },
   {
@@ -455,6 +457,7 @@ export function AppDrawer({ open, onClose, inbox = 0 }) {
     flags: useRouteTarget('flags'),
     earnedLeave: useRouteTarget('earnedLeave'),
     holidays: useRouteTarget('holidays'),
+    schedules: useRouteTarget('schedules'),
     myTasks: useRouteTarget('myTasks'),
     overdueTasks: useRouteTarget('overdueTasks'),
     pay: useRouteTarget('pay'),

@@ -203,6 +203,32 @@ const logs = Array.isArray(payload) ? payload
 `type` values: `clock_in` · `clock_out` · `break_start` · `break_end`
 (→ `PUNCH_TYPE_LABELS`).
 
+### `GET /attendance/schedule/agenda` — **dense days, resolved server-side** (not deployed yet)
+
+The full contract is the web's `public/ref docs/md_updates/2026-10-22_frontend_my_schedule_forward_view_integration_guide.md`.
+The traps, each one tested in `__tests__/scheduleMeta.test.js`:
+
+```jsonc
+{
+  "range":   { "from": "2026-10-22", "to": "2026-11-20", "timezone": "Asia/Kolkata" },
+  "summary": { "working_days": 20.5, "weekly_offs": 8, "holidays": 1, "leave_days": 1.5,
+               "unassigned_days": 0, "items_due": 4, "next_day_off": "2026-10-25",
+               "next_holiday": { "date": "2026-11-01", "name": "Diwali" } },
+  "lanes":   { "shift": "ok", "holidays": "ok", "leave": "ok", "tasks": "ok",
+               "documents": "unavailable", "comp_offs": "ok", "shift_changes": "ok" },
+  "days": [ { "date": "2026-10-22", "day_kind": "working", "shift": { … }, "holiday": null,
+              "leave": null, "items": [ … ], "status_source": "derived", "status_reason": "pending_clock_in" } ]
+}
+```
+
+- **Switch on `day_kind`; never re-derive it.** `working · weekly_off · holiday · leave · half_day_leave · unassigned`.
+- **A weekend inside a leave span is `weekly_off`**, not leave — it was never charged.
+- **`holiday` can be `null` on a `holiday` day** (calendar exception) → "Non-working day". `leave.leave_type_name` can be `null` → "On leave".
+- **`half_day_leave` carries both `shift` and `leave`**; `summary.working_days` / `leave_days` can be fractional.
+- **Only `task_due` has `due_at`** (ISO with offset). The other item kinds carry `due_date` only — never print a time on them.
+- **`lanes`**: `ok · unavailable · truncated · excluded`. An `unavailable` lane with no items is NOT "nothing due".
+- **`awaiting_absent_cron` is provisional** — never render it as Absent.
+
 ### `GET /attendance/shift` — **wrapper** (T10)
 
 ```jsonc

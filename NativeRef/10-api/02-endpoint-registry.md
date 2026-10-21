@@ -56,7 +56,9 @@ refused.**
 | ✓ | GET | `/attendance/graph-data` | `month`, `year` | Daily bars for the dashboard chart |
 | + | GET | `/attendance/trends` | `months` (1–12, default 3) | A nice mobile card the web dashboard doesn't use |
 | + | GET | `/attendance/weekly-calendar` | `date?` | Week containing the date |
-| ✓ | GET | `/attendance/shift` | — | Returns `{ assignment, shift, rotation, weekly_offs }` — **not a bare shift** |
+| ✓ | GET | `/attendance/shift` | — | Returns `{ assignment, shift, rotation, weekly_offs }` — **not a bare shift**. A resolved `policy` object is proposed (web md_updates/2026-10-21_shift_and_attendance_policy_visibility_frontend_guide.md); read it when present, never require it |
+| ✓ ⏳ | GET | `/attendance/schedule/agenda` | `from?`, `to?` (`YYYY-MM-DD`, inclusive, default today + 29), `include?` CSV | **Not deployed yet (2026-10-22).** Dense `days[]` with a server-resolved `day_kind`, `summary`, per-lane `lanes`. Cap 92 days → `400 SCHEDULE_RANGE_TOO_LARGE` (a refusal, never a truncation). Built: features/schedules. See 03-payload-shapes.md |
+| ⏳ | GET | `/attendance/manager/schedule/team-agenda` | `from?`, `to?`, `subordinate_id?` | Manager plane; DIRECT reports only, HR included. Wrapper exists (`getTeamScheduleAgenda`); no employee UI |
 | ✓ ! | GET | `/attendance/holidays` | **none** | No `year` parameter exists. Sending one is ignored. Filter client-side |
 
 ### Work mode and field sites

@@ -114,6 +114,19 @@ export const attendanceAPI = {
    */
   getMyShift: () => request('/attendance/shift'),
 
+  // ── My Schedule — the forward agenda (2026-10-22) ───────────────────────────
+  // Web ref docs: md_updates/2026-10-22_frontend_my_schedule_forward_view_
+  // integration_guide.md. One request per visible window: a DENSE day per
+  // date from `from` to `to` (inclusive), each with a server-resolved
+  // `day_kind`. Range cap 92 days — a refusal (SCHEDULE_RANGE_TOO_LARGE),
+  // never a truncation. No `user_id`: the subject is the token.
+  /** @param {{from?: string, to?: string, include?: string}} [params] */
+  getScheduleAgenda: (params = {}) => request(`/attendance/schedule/agenda${qs(params)}`),
+  // The manager plane's coverage view over DIRECT reports (HR included —
+  // never org-wide). Not used by the employee app; here for the manager app.
+  /** @param {{from?: string, to?: string, subordinate_id?: string}} [params] */
+  getTeamScheduleAgenda: (params = {}) => request(`/attendance/manager/schedule/team-agenda${qs(params)}`),
+
   /** Takes NO parameters — a `year` is silently ignored. Filter client-side. */
   getUpcomingHolidays: () => request('/attendance/holidays'),
 

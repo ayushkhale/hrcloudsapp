@@ -122,6 +122,16 @@ const ATTENDANCE_ERROR_MESSAGES = {
   // Registration's own OTP — a different context from sign-in's, same words.
   OTP_INVALID: "That code isn't right. Send a new code and try again.",
   OTP_EXPIRED: "That code has expired. Send a new one.",
+
+  /* My Schedule — the forward agenda (2026-10-22, md_updates/2026-10-22_
+     frontend_my_schedule_forward_view_integration_guide.md §8). The three
+     range/include codes are bugs in OUR window picker, which never asks for
+     more than 92 days; the copy is a calm fallback, not an explanation. */
+  SCHEDULE_RANGE_INVALID: "That date range doesn't work. Pick a shorter window and try again.",
+  SCHEDULE_RANGE_TOO_LARGE: "That window is too long. Your schedule shows up to 90 days at a time.",
+  SCHEDULE_INCLUDE_INVALID: "We couldn't load your schedule. Please try again.",
+  TEAM_TOO_LARGE: "Your team is too large to show at once. Pick one person to see their schedule.",
+  CANNOT_ACCESS_OUTSIDE_HIERARCHY: "You don't have access to that person's schedule.",
 };
 
 // Joi / shape rejections: the server `message` is more specific than any copy we could write.

@@ -251,7 +251,11 @@ export function CardShell({ onPress, accessibilityLabel, children, style }) {
    earned day. A tinted icon identifies the KIND, the badge carries the state,
    the meta row carries the two or three numbers that matter, and an action —
    when there is one — sits under a divider where it can't be mis-tapped
-   instead of the card itself. */
+   instead of the card itself.
+
+   `children` (2026-10-22) is a body under the same divider, below the meta
+   row — a short list that belongs to the record, like the things falling due
+   on a schedule day. Still one card, one hairline; never a card in a card. */
 
 export function RecordCard({
   icon: Icon,
@@ -265,6 +269,7 @@ export function RecordCard({
   onPress,
   accessibilityLabel,
   highlight = false,
+  children,
 }) {
   const t = toneOf(tone);
 
@@ -304,30 +309,39 @@ export function RecordCard({
         {badge ? <View style={{ marginTop: 1 }}>{badge}</View> : null}
       </View>
 
-      {meta.length || action ? (
+      {meta.length || action || children ? (
         <View
           style={{
             marginTop: space[3],
             paddingTop: space[3],
             borderTopWidth: 1,
             borderTopColor: color.borderSubtle,
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'space-between',
             gap: space[3],
           }}
         >
-          <View style={{ flex: 1, minWidth: 0, flexDirection: 'row', flexWrap: 'wrap', gap: space[3] }}>
-            {meta.map((m) => (
-              <View key={m.label} style={{ minWidth: 0 }}>
-                <Text style={[text.label, { fontSize: 9, color: color.textMuted }]}>{m.label}</Text>
-                <Text numberOfLines={1} style={[text.smallStrong, { fontVariant: ['tabular-nums'] }]}>
-                  {m.value}
-                </Text>
+          {meta.length || action ? (
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: space[3],
+              }}
+            >
+              <View style={{ flex: 1, minWidth: 0, flexDirection: 'row', flexWrap: 'wrap', gap: space[3] }}>
+                {meta.map((m) => (
+                  <View key={m.label} style={{ minWidth: 0 }}>
+                    <Text style={[text.label, { fontSize: 9, color: color.textMuted }]}>{m.label}</Text>
+                    <Text numberOfLines={1} style={[text.smallStrong, { fontVariant: ['tabular-nums'] }]}>
+                      {m.value}
+                    </Text>
+                  </View>
+                ))}
               </View>
-            ))}
-          </View>
-          {action}
+              {action}
+            </View>
+          ) : null}
+          {children}
         </View>
       ) : null}
     </CardShell>

@@ -20,6 +20,7 @@ not need to open the web file — but when you do, it names which one.
 | 05 | [05-pay.md](05-pay.md) | PayHome · Salary · BankAccount · Payslips · Claims · ClaimForm · Loans · Tax · DeclarationForm | 6 |
 | 06 | [06-documents.md](06-documents.md) | DocumentsHome · MyDocuments · UploadDocument · CompanyDocuments · DocumentRequests · Forms | 7 |
 | 07 | [07-org-and-profile.md](07-org-and-profile.md) | More · Company · OrgChart · Directory · Profile · Settings | 8 |
+| 08 | [08-schedules.md](08-schedules.md) | Schedules (Agenda · Due · My rules) | — |
 
 Build order is [00-plan/03-build-sequence.md](../00-plan/03-build-sequence.md).
 Don't build them in the order above — build Home and the punch card first,
