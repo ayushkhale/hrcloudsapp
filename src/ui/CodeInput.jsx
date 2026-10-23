@@ -19,6 +19,7 @@
 
 import React, { forwardRef, useState } from 'react';
 import { Platform, Pressable, Text, TextInput, View } from 'react-native';
+import { useReveal } from './KeyboardAware';
 import { color, radius, space, text } from '../theme/tokens';
 
 function CodeBoxes({ value, length, invalid, focused }) {
@@ -76,6 +77,10 @@ export const CodeInput = forwardRef(function CodeInput({
   accessibilityHint = 'Enter the code we emailed you',
 }, ref) {
   const [focused, setFocused] = useState(false);
+  /* The boxes are 58pt tall and sit low on the OTP screen, so on a short
+     phone they went under the keyboard. The hidden input is the real one, so
+     it is the one the scroller is told to reveal (ui/KeyboardAware.jsx). */
+  const reveal = useReveal();
 
   return (
     <View>
@@ -92,7 +97,7 @@ export const CodeInput = forwardRef(function CodeInput({
         ref={ref}
         value={value}
         onChangeText={(v) => onChangeText?.(String(v).replace(/\D/g, '').slice(0, length))}
-        onFocus={() => setFocused(true)}
+        onFocus={() => { setFocused(true); reveal?.(ref?.current); }}
         onBlur={() => setFocused(false)}
         maxLength={length}
         keyboardType="number-pad"

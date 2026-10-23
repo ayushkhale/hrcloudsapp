@@ -500,3 +500,39 @@ On success emit **both** `COMP_OFF` and `LEAVE`.
 Three new entries across a five-tab screen, under the 4-per-screen-state cap
 (each strip tab is its own screen state, so the cap is per tab). Every one has
 an Ask Maya question; none names an amount, a date or a person.
+
+---
+
+# Section · Location checks (added 2026-10-23)
+
+## 1 · What it's for
+
+Who asked for this person's location during a shift, when, and why — the
+employee's right to know. The asking and answering happen with no taps in
+`features/attendance/liveLocation.js`; this section is the record afterwards.
+Contract: `NativeRef/10-api/06-location-requests.md`.
+
+## 3 · Data
+
+`GET /attendance/locations/mine?page&limit` → `{ requests[], pagination }`.
+Rows: `id · reason · requested_by · requester_role · created_at · responded_at · fix_returned`.
+No `spoof_flagged`, by design.
+
+## 4 · Layout
+
+Last item in the strip, `icons.locationCheck` (distinct from Locations' pin).
+A card per request — requester as title, reason as written as subtitle, When +
+Location (Reported / No location sent) in the meta strip. Tap → `RecordSheet`.
+Until acknowledged, a notice card with **I acknowledge** sits in the list
+header (`POST /attendance/locations/consent`, flag kept per user on the phone).
+
+## 5 · States
+
+`CardsSkeleton` first load · empty = "Nobody has asked for your location." ·
+`ErrorState` + retry on a failed read · a 404 / disabled feature at the probe in
+`useTimeSections` drops the section; a network error keeps it.
+
+## 8 · Traps
+
+`fix_returned: false` is "No location sent" in slate — never rose, never
+"missed". The word is Reported, never Verified.

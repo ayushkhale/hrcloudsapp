@@ -10,6 +10,12 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 export { Screen, ScreenTitle } from './Screen';
+// The keyboard. Screen and FormSheet already use these — a SCREEN should not
+// need them, and reaching for one is usually a sign the screen is missing its
+// shell (ui/KeyboardAware.jsx).
+export {
+  KeyboardAwareScrollView, useKeyboardInset, useKeyboardLift, useKeyboardAware, useReveal,
+} from './KeyboardAware';
 export { PageHeader, HeroChip } from './PageHeader';
 export { Card, CardHeader } from './Card';
 export { Divider, Spacer } from './Divider';

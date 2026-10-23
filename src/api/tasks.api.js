@@ -42,8 +42,18 @@
 import { request } from './client';
 import { qs, seg } from './attendance.api';
 
+/**
+ * The deadline window the schedule's task-lane recovery asks for
+ * (`2026-10-22_my_schedule_forward_view_api_delivery.md` §4.1). `due_from` /
+ * `due_to` are whole calendar days in the response's zone, and `sort=due_date`
+ * defaults to ASC with a stable tiebreaker. A deployment that predates these
+ * four refuses the whole request with a 400 rather than ignoring them, which
+ * is why the caller falls back to the plain list — see useAgenda.js.
+ */
+const DUE_WINDOW_FILTERS = ['due_from', 'due_to', 'sort', 'order'];
+
 /** #249 GET /tasks/me — my work queue. */
-const MY_FILTERS = ['status', 'priority', 'category', 'is_overdue', 'search', 'is_viewed', 'page', 'limit'];
+const MY_FILTERS = ['status', 'priority', 'category', 'is_overdue', 'search', 'is_viewed', 'page', 'limit', ...DUE_WINDOW_FILTERS];
 
 /**
  * The discussion feed's own query (#254). Its schema allow-lists these four

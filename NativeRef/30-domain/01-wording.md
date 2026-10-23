@@ -327,3 +327,50 @@ exactly what the `workspaces` gate is for.
 5. If it's a term with a single source, put it in `DICTIONARY.TERMS` rather than
    typing it on the screen.
 6. If it needs explaining, it needs an ⓘ — and probably a simpler label too.
+
+---
+
+## 14. The port inventory — what came from the web, and what hasn't yet
+
+**CLAUDE.md §10 is the rule; this is the ledger.** Before writing a formatter, a
+status map, a metadata table or a term, look here first, then `grep` the web's
+`C:\Freelance Projects\HR Clouds\src\shared\`. If it exists there, **port it** —
+same name, same signature, same header comment — and add a row below. Change one
+side → change both in the same sitting, and say so in both header comments.
+
+### Already ported
+
+| This app | From the web's `src/shared/` | Carries |
+|---|---|---|
+| `lib/format.js` | `utils/formatUtils.js` | `formatDayCount`, money, Indian grouping |
+| `lib/dates.js` | `attendance/dates.js` | `fmtMinutes`, `fmtClockTime`, `addDaysYMD`, `ymdInZone`, `formatInZone` |
+| `lib/normalize.js` | `attendance/normalize.js` | `unwrap`, `toList`, `normalizePaginated` |
+| `lib/enums.js` | `attendance/enums.js` | status maps, `humanize`, tone keys |
+| `lib/dayStatus.js` | `attendance/dayStatus.js` | how a recorded day is labelled |
+| `lib/liveHours.js` | `attendance/liveHours.js` | the open-break / worked-so-far clock |
+| `lib/validation.js` | `attendance/validation.js` | form rules |
+| `lib/monthChart.js` | `attendance/trendChartMeta.jsx` | the month chart's bands |
+| `lib/errors/*` | `utils/*Errors.js` | one error map per domain |
+| **`lib/policyRules.js`** | **`attendance/policyRules.js`** | **`policyOf`, `shiftOf`, the two threshold spellings, `ruleLines`, `correctionWindow`, `weeklyOffNames` — ported 2026-10-23** |
+| **`features/schedules/scheduleMeta.js`** | **`attendance/agendaMeta.js`** | **`DAY_KINDS`, `dayHeadline`, `itemHeadline`, `summaryTiles`, `weeklyOffRule`, `employeeTargeting`, the lane helpers — ported 2026-10-23** |
+| **`features/schedules/useAgenda.js`** | **`attendance/useAgenda.js`** | **the agenda read, the v2 fields, the tasks-lane recovery — ported 2026-10-23** |
+
+### What the 2026-10-23 schedules port cost, and why this ledger exists
+
+My Schedules was built on 2026-10-22 without checking this list, and drifted from
+the web inside a day. It read the policy from one of its three possible places,
+so the rules section vanished on a payload the web renders; it invented a second
+vocabulary for the same rules ("Grace", "Auto clock-out" against the web's
+"Arriving late", "Forgotten clock-out"); and it hand-rolled `dayFigure()` to
+print "20½" where the web prints "20d" — a second disagreeing copy of
+`formatDayCount`, the helper §10 already names as its worked example. None of it
+was visible without opening both products side by side.
+
+### Still only on the web
+
+| On the web | Will be needed by |
+|---|---|
+| `attendance/ScheduleAgenda.jsx` `AgendaWeek` | nothing — the week TABLE is a web shape; this app's day cards replace it (§1) |
+| `attendance/TeamCoverageStrip.jsx` + `useTeamAgenda` | the manager app's "Who's in" (`getTeamAgenda` is already in `attendance.api.js`) |
+| `attendance/policyRules.js` `arrivalState` / `wallClockMinutes` | the punch card, when it says “you’re late” before a clock-in. Left out of the 2026-10-23 port on purpose: no caller here yet, and an unused export is one more thing to keep in step |
+| `attendance/agendaMeta.js` `taskRowFromItem` | opening the real task record off a Due row. Its inverse `agendaItemFromTaskRow` IS ported, because the tasks-lane recovery needs it |

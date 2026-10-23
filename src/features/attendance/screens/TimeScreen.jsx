@@ -18,6 +18,9 @@
 //   My Flags            → section 'flags'       (AttendanceAnomaliesPage)
 //   My Earned Leave     → section 'earned'      (EmployeeCompOffsPage)
 //   Holidays            → section 'holidays'    (the leave page's widget)
+//   Location checks     → section 'locationChecks' (2026-10-23 — no web menu
+//                         entry; who asked for this person's location, and why.
+//                         Gated like overtime: absent where the org lacks it)
 //
 // ALL EIGHT ARE SECTIONS OF THIS SCREEN, because they are eight views of the
 // same months of the same person's time, which people compare against each
@@ -113,6 +116,7 @@ import { EarnedLeaveTab } from '../components/EarnedLeaveTab';
 import { LocationsTab } from '../components/LocationsTab';
 import { LeaveTab } from '../components/LeaveTab';
 import { HolidaysTab } from '../components/HolidaysTab';
+import { LocationChecksTab } from '../components/LocationChecksTab';
 import { CategoryStrip } from '../../../ui/ListCards';
 import { AppTopBar } from '../../../navigation/AppTopBar';
 
@@ -125,7 +129,7 @@ import { AppTopBar } from '../../../navigation/AppTopBar';
    timeout or no signal leaves it alone; the section's own error state is where
    a failed read belongs. */
 function useTimeSections() {
-  const [available, setAvailable] = useState({ overtime: null, earnedLeave: null });
+  const [available, setAvailable] = useState({ overtime: null, earnedLeave: null, locationChecks: null });
 
   useEffect(() => {
     let cancelled = false;
@@ -140,6 +144,9 @@ function useTimeSections() {
     // section fetches its own first page when it opens.
     probe('overtime', () => attendanceAPI.getMyOvertime({ page: 1, limit: 1 }));
     probe('earnedLeave', () => attendanceAPI.getMyCompOffSummary());
+    // Behind three server-side switches the app can't read (06-location-
+    // requests.md §7); this read is the only probe there is.
+    probe('locationChecks', () => attendanceAPI.getMyLocationRequests({ page: 1, limit: 1 }));
 
     return () => { cancelled = true; };
   }, []);
@@ -202,7 +209,12 @@ export default function TimeScreen({ navigation, route }) {
     { value: 'flags', label: 'Flags', icon: icons.flag, badge: openFlags },
     available.earnedLeave !== false && { value: 'earned', label: TERMS.COMP_OFF, icon: icons.earnedLeave },
     { value: 'holidays', label: 'Holidays', icon: icons.holiday },
-  ].filter(Boolean), [available.overtime, available.earnedLeave, openFlags]);
+    // Last, not beside Locations: it is a privacy record, not a working view
+    // people compare against the others — and it has no web menu entry to
+    // keep the order of.
+    available.locationChecks !== false
+      && { value: 'locationChecks', label: TERMS.LOCATION_CHECKS, icon: icons.locationCheck },
+  ].filter(Boolean), [available.overtime, available.earnedLeave, available.locationChecks, openFlags]);
 
   // A section that disappears under somebody standing on it sends them back to
   // the default rather than leaving the strip pointing at nothing.
@@ -273,6 +285,8 @@ export default function TimeScreen({ navigation, route }) {
           <FlagsTab />
         ) : section === 'holidays' ? (
           <HolidaysTab />
+        ) : section === 'locationChecks' ? (
+          <LocationChecksTab />
         ) : (
           <EarnedLeaveTab />
         )}

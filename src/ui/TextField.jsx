@@ -19,6 +19,17 @@
 //   • EMAIL is `autoComplete="email"` + `autoCapitalize="none"`. A capitalised
 //     first letter is the single commonest login failure on a phone.
 //
+// ── IT REPORTS ITS OWN FOCUS, SO THE SCREEN DOESN'T HAVE TO ──────────────────
+//
+// `onFocus` tells the enclosing keyboard-aware scroller which field to bring
+// above the keyboard (ui/KeyboardAware.jsx). It is wired HERE, once, because
+// the alternative is an onFocus on every field in every form — forty call
+// sites, and the one that gets forgotten is the bug the user reported on
+// 2026-10-23. `useReveal()` is null outside such a scroller (a TextField in a
+// gorhom sheet), so this must stay optional.
+//
+// A caller's own `onFocus` still runs: it is called after ours, never instead.
+//
 // ── MULTILINE ────────────────────────────────────────────────────────────────
 //
 // A reason box is `multiline` with a real `maxLength` matching the API's, and
@@ -28,6 +39,7 @@
 
 import React, { useEffect, useRef } from 'react';
 import { Pressable, Text, TextInput, View } from 'react-native';
+import { useReveal } from './KeyboardAware';
 import { color, iconSize, radius, space, text } from '../theme/tokens';
 import { icons } from '../theme/icons';
 
@@ -58,9 +70,11 @@ export function TextField({
   inputStyle,
   left,
   right,
+  onFocus,
   ...rest
 }) {
   const ref = useRef(null);
+  const reveal = useReveal();
 
   // Hand focus() to the form guard. The guard holds the function, not the ref,
   // so it never reaches into a component's internals.
@@ -70,6 +84,13 @@ export function TextField({
 
   const kindProps = KINDS[kind] || KINDS.text;
   const nearLimit = maxLength && typeof value === 'string' && value.length > maxLength * 0.9;
+
+  /* Ours first, then the caller's. The reveal is scheduled, not immediate, so
+     running it before a caller's onFocus cannot starve it. */
+  const handleFocus = (e) => {
+    reveal?.(ref.current);
+    onFocus?.(e);
+  };
 
   const handleChangeText = (val) => {
     if (kind === 'email') {
@@ -103,6 +124,7 @@ export function TextField({
           ref={ref}
           value={value == null ? '' : String(value)}
           onChangeText={handleChangeText}
+          onFocus={handleFocus}
           placeholder={placeholder}
           placeholderTextColor={color.textMuted}
           editable={editable}

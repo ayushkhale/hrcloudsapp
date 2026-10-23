@@ -60,10 +60,11 @@ export function buildOrgIndex(data) {
   const deptCounts = new Map();
 
   const visit = (raw, parentId, level, fallbackKey) => {
-    const id = clean(raw?.user_id) || fallbackKey;
+    const id = clean(raw?.user_id) || clean(raw?.id) || clean(raw?._id) || clean(raw?.employee_id) || fallbackKey;
     if (seen.has(id)) return null;
     seen.add(id);
     const role = ['hr', 'manager', 'employee'].includes(raw?.role) ? raw.role : 'employee';
+    const reportingToId = clean(raw?.reporting_to_id);
     const node = {
       id,
       name: displayNameOf(raw),
@@ -77,7 +78,8 @@ export function buildOrgIndex(data) {
       work_location: clean(raw?.work_location),
       gender: raw?.gender,
       parentId,
-      formerManager: !parentId && !!clean(raw?.reporting_to_id),
+      reporting_to_id: reportingToId,
+      formerManager: !parentId && !!reportingToId,
       level,
       children: [],
       teamSize: 0,
@@ -100,7 +102,26 @@ export function buildOrgIndex(data) {
   };
 
   const rawRoots = Array.isArray(data?.roots) ? data.roots : [];
-  const roots = rawRoots.map((r, i) => visit(r, null, 0, `root:${i}`)).filter(Boolean);
+  let roots = rawRoots.map((r, i) => visit(r, null, 0, `root:${i}`)).filter(Boolean);
+
+  // Link any roots that actually report to an active member in the hierarchy
+  // so an individual is never shown at the wrong place (e.g. at the top of the chart)
+  const trueRoots = [];
+  for (const r of roots) {
+    if (r.reporting_to_id && byId.has(r.reporting_to_id) && r.reporting_to_id !== r.id) {
+      const manager = byId.get(r.reporting_to_id);
+      r.parentId = manager.id;
+      r.formerManager = false;
+      r.level = manager.level + 1;
+      if (!manager.children.some((c) => c.id === r.id)) {
+        manager.children.push(r);
+        manager.teamSize += 1 + r.teamSize;
+      }
+    } else {
+      trueRoots.push(r);
+    }
+  }
+  roots = trueRoots.length ? trueRoots : roots;
 
   const deptNames = new Map();
   for (const node of flat) {

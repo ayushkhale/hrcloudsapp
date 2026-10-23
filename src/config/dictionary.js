@@ -45,6 +45,14 @@ export const TERMS = Object.freeze({
    * action is "pay out", never "encash".
    */
   ENCASHMENT: 'Leave Payout',
+
+  /**
+   * An on-demand location request, seen from the employee's side — the My
+   * Time section and the record it lists. A CHECK, never "tracking": one fix
+   * on one ask (features/attendance/liveLocation.js). Pluralises normally.
+   */
+  LOCATION_CHECK: 'Location check',
+  LOCATION_CHECKS: 'Location checks',
 });
 
 export default { TERMS, NAV };

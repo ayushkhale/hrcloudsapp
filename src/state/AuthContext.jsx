@@ -24,6 +24,7 @@ import {
 import { showToast } from '../ui/Toast';
 import { clearMemoryCache } from '../lib/memoryCache';
 import { clearImageCache } from '../lib/imageCache';
+import { deregisterThisDevice } from '../features/notifications/pushDevice';
 
 const AuthContext = createContext(null);
 
@@ -140,6 +141,13 @@ export function AuthProvider({ children }) {
       setRole(null);
       setOrgId(null);
     }, SHELL_FADE_MS);
+
+    // Unbind this handset from push BEFORE the token goes: `request()` reads
+    // it on the way to the fetch, so clearing first sends an unauthenticated
+    // DELETE. Skipped when the session expired — that token is already dead,
+    // the DELETE would only 401, and the server's row lapses on its own.
+    // Bounded at 4s inside, so a dead network cannot hold a sign-out open.
+    if (!expired) await deregisterThisDevice();
 
     // Safely clear persistent session data in background
     try {

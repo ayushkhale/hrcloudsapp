@@ -1,3 +1,7 @@
 <resources>
-    <color name="bootsplash_background">#ffffff</color>
+    <!-- The launch window's colour. It is theme/tokens.js `color.bg` (#F7F5FC),
+         NOT white, because the Lottie splash that takes over from it
+         (src/features/splash/LottieSplash.jsx) draws on that same canvas. Any
+         other value here is a visible flash at the handover. -->
+    <color name="bootsplash_background">#F7F5FC</color>
 </resources>

@@ -3,7 +3,9 @@
 //
 // Ported from the web's ChatbotWidget, re-shaped for a phone: a slide-up Modal
 // with a message list and a pinned composer, not a corner popover. A chat has a
-// keyboard open most of the time, so it is a Modal/KeyboardAvoidingView, never a
+// keyboard open most of the time, so it is a Modal with its own keyboard lift
+// (ui/KeyboardAware.jsx — a KeyboardAvoidingView here did nothing on Android
+// once edgeToEdgeEnabled=true stopped the window resizing), never a
 // draggable bottom sheet (RecordSheet's header explains why a keyboard and a
 // drag gesture fight).
 //
@@ -21,7 +23,7 @@ import React, {
   useEffect, useMemo, useRef, useState,
 } from 'react';
 import {
-  ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, View,
+  ActivityIndicator, Platform, Pressable, ScrollView, Text, View,
 // A chat is neither a data record (RecordSheet) nor a form (FormSheet) — it is a
 // full-height conversation with a pinned composer and a keyboard open most of
 // the time, so it uses a raw Modal like FormSheet itself does.
@@ -32,6 +34,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { color, font, gutter, radius, space, text } from '../../theme/tokens';
 import { icons } from '../../theme/icons';
 import { IconButton, TextField } from '../../ui';
+import { useKeyboardLift } from '../../ui/KeyboardAware';
 import { useMayaChat } from './useMayaChat';
 import { MayaMarkdown } from './MayaMarkdown';
 import { mayaInstructions } from './mayaInstructions';
@@ -77,6 +80,8 @@ function Bubble({ message }) {
 
 export function MayaSheet({ visible, onClose, prefill }) {
   const insets = useSafeAreaInsets();
+  // The composer sits on the bottom edge, so it is the thing the keyboard hides.
+  const { lift, safeBottom } = useKeyboardLift();
   const { prefs } = useMayaPrefs();
   const { config, messages, isStreaming, send, stop, reset } = useMayaChat();
   const [input, setInput] = useState('');
@@ -114,7 +119,7 @@ export function MayaSheet({ visible, onClose, prefill }) {
 
   return (
     <Modal visible={visible} animationType="slide" transparent={false} onRequestClose={onClose} presentationStyle={Platform.OS === 'ios' ? 'pageSheet' : undefined}>
-      <KeyboardAvoidingView style={{ flex: 1, backgroundColor: color.bg }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <View style={{ flex: 1, backgroundColor: color.bg }}>
         {/* ── Header ── */}
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[3], paddingHorizontal: gutter, paddingTop: Platform.OS === 'ios' ? space[3] : insets.top + space[2], paddingBottom: space[3], backgroundColor: color.surface, borderBottomWidth: 1, borderBottomColor: color.borderSubtle }}>
           <View style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: color.brandChipBg, alignItems: 'center', justifyContent: 'center' }}>
@@ -168,7 +173,7 @@ export function MayaSheet({ visible, onClose, prefill }) {
         </ScrollView>
 
         {/* ── Composer ── */}
-        <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: space[2], paddingHorizontal: gutter, paddingTop: space[2], paddingBottom: space[2] + insets.bottom, backgroundColor: color.surface, borderTopWidth: 1, borderTopColor: color.borderSubtle }}>
+        <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: space[2], paddingHorizontal: gutter, paddingTop: space[2], paddingBottom: space[2] + safeBottom, marginBottom: lift, backgroundColor: color.surface, borderTopWidth: 1, borderTopColor: color.borderSubtle }}>
           <View style={{ flex: 1 }}>
             <TextField
               value={input}
@@ -194,7 +199,7 @@ export function MayaSheet({ visible, onClose, prefill }) {
             </Pressable>
           )}
         </View>
-      </KeyboardAvoidingView>
+      </View>
       {/* Toasts draw ABOVE this window while it is the top one (ui/Toast.jsx). */}
       <ToastLayer />
     </Modal>

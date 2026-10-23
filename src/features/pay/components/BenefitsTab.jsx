@@ -36,14 +36,14 @@ import { EmptyState, ErrorState, StatusBadge } from '../../../ui';
 import { CardsSkeleton, RecordCard, StatCards, cardListStyle } from '../../../ui/ListCards';
 import { benefitTypeLabel, num, NO_PRORATION_NOTE, NO_TAX_EFFECT_NOTE } from '../payMeta';
 
-const planOf = (e) => e?.benefit_plan || e?.plan || e;
-const planName = (e) => planOf(e)?.name || benefitTypeLabel(planOf(e)?.benefit_type);
-const employeeShare = (e) => e?.employee_contribution ?? planOf(e)?.employee_contribution ?? 0;
-const employerShare = (e) => e?.employer_contribution ?? planOf(e)?.employer_contribution ?? 0;
+const planOf = (e) => e?.benefit_plan || e?.plan || e?.benefit || e;
+const planName = (e) => planOf(e)?.name || planOf(e)?.plan_name || benefitTypeLabel(planOf(e)?.benefit_type);
+const employeeShare = (e) => e?.employee_contribution ?? planOf(e)?.employee_contribution ?? e?.employee_share ?? 0;
+const employerShare = (e) => e?.employer_contribution ?? planOf(e)?.employer_contribution ?? e?.employer_share ?? 0;
 
 export function BenefitsTab() {
   const benefits = useResource(() => payrollAPI.getMyBenefits(), {
-    select: (data) => toList(data, ['enrollments', 'benefits', 'records']),
+    select: (data) => toList(data, ['enrollments', 'benefits', 'records', 'items']),
     initial: [],
   });
 

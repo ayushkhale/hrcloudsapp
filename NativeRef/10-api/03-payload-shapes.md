@@ -203,13 +203,28 @@ const logs = Array.isArray(payload) ? payload
 `type` values: `clock_in` · `clock_out` · `break_start` · `break_end`
 (→ `PUNCH_TYPE_LABELS`).
 
-### `GET /attendance/schedule/agenda` — **dense days, resolved server-side** (not deployed yet)
+### `GET /attendance/schedule/agenda` — **dense days, resolved server-side** (v2)
 
-The full contract is the web's `public/ref docs/md_updates/2026-10-22_frontend_my_schedule_forward_view_integration_guide.md`.
+The full contract is the web's `public/ref docs/md_updates/` —
+`2026-10-22_frontend_my_schedule_forward_view_integration_guide.md` for v1 and
+`2026-10-22_my_schedule_enriched_agenda_and_policy_provenance_integration_guide.md`
+for **v2**, which is what `features/schedules/` reads. v2 is purely additive —
+`range`, `summary`, `lanes` and `days[]` kept their shape — so a v1 payload still
+renders, with the four additions simply absent.
+
 The traps, each one tested in `__tests__/scheduleMeta.test.js`:
 
 ```jsonc
 {
+  // ── v2, all four optional: absent on a v1 payload, and on a tenant mid-deploy ──
+  "employee":   { "department": "Engineering", "designation": "Senior Engineer",
+                  "employment_type": "full_time", "joining_date": "2020-01-01",
+                  "location_id": "loc-303" },   // NO location NAME beside it — §4
+  "attendance_policy": { "name": "…", "grace_minutes": 15, "half_day_min_hours": 4.0,
+                  "full_day_min_hours": 8.0, "regularization_window_days": 7, … },
+  "weekly_off_policy": { "rule_name": "Tech & Product 5-Day Work Week",
+                  "days_of_week": [0, 6], "matched_by": "department",
+                  "matched_entity_name": "Engineering", "priority": 10 },
   "range":   { "from": "2026-10-22", "to": "2026-11-20", "timezone": "Asia/Kolkata" },
   "summary": { "working_days": 20.5, "weekly_offs": 8, "holidays": 1, "leave_days": 1.5,
                "unassigned_days": 0, "items_due": 4, "next_day_off": "2026-10-25",
@@ -217,7 +232,8 @@ The traps, each one tested in `__tests__/scheduleMeta.test.js`:
   "lanes":   { "shift": "ok", "holidays": "ok", "leave": "ok", "tasks": "ok",
                "documents": "unavailable", "comp_offs": "ok", "shift_changes": "ok" },
   "days": [ { "date": "2026-10-22", "day_kind": "working", "shift": { … }, "holiday": null,
-              "leave": null, "items": [ … ], "status_source": "derived", "status_reason": "pending_clock_in" } ]
+              "leave": null, "weekly_off": null, "items": [ … ],
+              "status_source": "derived", "status_reason": "pending_clock_in" } ]
 }
 ```
 
@@ -228,6 +244,16 @@ The traps, each one tested in `__tests__/scheduleMeta.test.js`:
 - **Only `task_due` has `due_at`** (ISO with offset). The other item kinds carry `due_date` only — never print a time on them.
 - **`lanes`**: `ok · unavailable · truncated · excluded`. An `unavailable` lane with no items is NOT "nothing due".
 - **`awaiting_absent_cron` is provisional** — never render it as Absent.
+- **`attendance_policy` is the SAME resolved policy `/attendance/shift` sends.** Two sources for one
+  policy is deliberate: the rules survive either read failing. `policyOf(shiftData) || agenda.policy`,
+  preferring the shift read only because it is the older, more exercised path.
+- **`weekly_off_policy.matched_by` and `.priority` are INTERNAL.** `matched_by` is a targeting enum and
+  `priority` is how the backend breaks a tie between two matching rules; neither means anything to the
+  person whose Saturday it is. `weeklyOffAudience()` says the provenance in words instead (§4).
+- **`employee.location_id` has NO name beside it** — so the work location is not shown anywhere on the
+  screen. An id never reaches the UI (§4).
+- **The window is 7 days, fixed.** The 92-day cap can no longer be reached from the UI at all, so
+  `SCHEDULE_RANGE_TOO_LARGE` is now only provokable by a hand-built request.
 
 ### `GET /attendance/shift` — **wrapper** (T10)
 
@@ -241,8 +267,23 @@ The traps, each one tested in `__tests__/scheduleMeta.test.js`:
 }
 ```
 
-`shift: null` is valid → "No shift assigned". `policy.full_day_threshold_minutes`
-drives the progress ring's target.
+`shift: null` is valid → "No shift assigned" — a new joiner, not an error.
+
+**Two deviations, both found on 2026-10-23 and both handled rather than "corrected" (§9):**
+
+1. **The policy arrives in three places**, not one: `policy_snapshot` (frozen onto a historical day),
+   `policy` beside the shift, or `shift.policy` nested inside it as drawn above. Read it through
+   `policyOf()` in `lib/policyRules.js` — never one spelling. My Schedules read `data.policy` alone
+   for a day, and its whole rules section was absent whenever the server nested it.
+2. **The thresholds arrive in two spellings.** This doc drew `full_day_threshold_minutes`; the live
+   schema is `full_day_min_hours` / `half_day_min_hours`, **decimal hours, often as strings** ("8.00").
+   `fullDayMinutes()` / `halfDayMinutes()` accept both, so whichever lands, the figure appears. The
+   web's punch-card ring drew nothing for a while because it believed this doc.
+
+**`weekly_offs` also arrives in two shapes**: the flat `[0, 6]` drawn above, and the web's list of
+rules (`[{ days_of_week: [0, 6], … }]`). `weeklyOffRules()` in `features/schedules/scheduleMeta.js`
+normalises either into the second before `weeklyOffNames()` sees it — handed the flat form, that
+shared helper answers `[]`, which reads as "no day off" for somebody who has two.
 
 ### `GET /attendance/my-field-assignments` — **observed**
 

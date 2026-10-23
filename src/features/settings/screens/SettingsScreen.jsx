@@ -12,6 +12,20 @@
 // value on the right. Still "only kaam ki chize": no row for a setting that
 // doesn't exist yet.
 //
+// ── DELETE ACCOUNT IS A LINK, NOT AN ACTION (user, 2026-10-23) ──────────────
+//
+// The row opens hrclouds.in/legal/account-deletion in the phone's browser.
+// There is NO self-serve delete endpoint on this API, and inventing a button
+// that only looks like one is exactly what CLAUDE.md §6 forbids ("a capability
+// the API lacks is ABSENT, not broken"). Deletion is a request a human
+// processes, the web page is where it is raised, and the row says so before it
+// leaves the app rather than dumping somebody into a browser unannounced.
+//
+// The row is still styled destructive, because that is what the person is
+// setting out to do and a grey chevron would understate it. If a real
+// DELETE endpoint ever lands, this becomes a confirm + a write + a sign-out,
+// and the URL goes away.
+//
 // Maya's group is absent when no assistant is configured (no DocMind key) —
 // absent, not a dead switch (CLAUDE.md §2). Shake-to-open was removed at the
 // user's request (2026-10-20); Maya opens from the floating button, the drawer
@@ -19,7 +33,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useEffect, useState } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { Linking, Pressable, ScrollView, Text, View } from 'react-native';
 import { color, gutter, iconSize, radius, space, text } from '../../../theme/tokens';
 import { icons } from '../../../theme/icons';
 import { OptionSheet, showToast, useConfirm } from '../../../ui';
@@ -31,6 +45,10 @@ import { useMayaPrefs } from '../../maya/mayaPrefs';
 import { VOICE_LANGS, languageLabel } from '../../maya/mayaInstructions';
 import { SettingsGroup, SettingsRow } from '../components/SettingsParts';
 import { confirmIdentity, usePayPrivacy } from '../../../lib/payPrivacy';
+
+/* The web page that takes an account-deletion request. One place, because it
+   is also the URL the store listings point at. */
+const ACCOUNT_DELETION_URL = 'https://hrclouds.in/legal/account-deletion';
 
 export default function SettingsScreen({ navigation }) {
   const confirm = useConfirm();
@@ -65,6 +83,26 @@ export default function SettingsScreen({ navigation }) {
     if (!ok) return;
     logout();
     showToast('Signed out', 'info');
+  };
+
+  /* Says where it is going BEFORE it goes. A row named "Delete account" that
+     silently swaps to a browser reads as the deletion having happened. */
+  const deleteAccount = async () => {
+    const ok = await confirm({
+      title: 'Delete your account?',
+      message:
+        'We’ll open hrclouds.in so you can raise the request. Your account and your data stay as they are until it’s processed.',
+      confirmText: 'Continue',
+      destructive: true,
+      icon: icons.delete,
+    });
+    if (!ok) return;
+    try {
+      await Linking.openURL(ACCOUNT_DELETION_URL);
+    } catch {
+      // A write-shaped failure the person is looking at → toast (CLAUDE.md §3).
+      showToast('We couldn’t open the page. Visit hrclouds.in/legal/account-deletion in your browser.', 'error');
+    }
   };
 
   return (
@@ -116,6 +154,13 @@ export default function SettingsScreen({ navigation }) {
 
       <SettingsGroup>
         <SettingsRow icon={icons.logout} label="Sign out" destructive onPress={signOut} />
+        <SettingsRow
+          icon={icons.delete}
+          label="Delete account"
+          caption="Raise a deletion request on hrclouds.in."
+          destructive
+          onPress={deleteAccount}
+        />
       </SettingsGroup>
 
       <OptionSheet

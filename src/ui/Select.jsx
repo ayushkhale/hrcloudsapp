@@ -26,6 +26,7 @@ import { PickerBox } from './TextField';
 import { EmptyState } from './EmptyState';
 import { haptic } from './haptics';
 import { SheetShell } from './SheetShell';
+import { useKeyboardInset } from './KeyboardAware';
 
 /**
  * @param {object} props
@@ -138,6 +139,7 @@ export function OptionSheet({
   const count = Math.max(1, data.length);
   const wanted = 22 + 60 + (header ? 64 : 0) + count * rowHeight + insets.bottom + space[5];
   const detent = Math.round(Math.min(windowHeight * 0.75, Math.max(wanted, 220)));
+  const keyboardInset = useKeyboardInset();
 
   return (
     <SheetShell visible={visible} onClose={onClose} snap={detent} background={color.surface}>
@@ -179,7 +181,17 @@ export function OptionSheet({
             renderItem={({ item }) => renderRow(item)}
             keyboardShouldPersistTaps="handled"
             ListEmptyComponent={<EmptyState title="Nothing here" message={emptyMessage} />}
-            contentContainerStyle={{ paddingBottom: insets.bottom + space[4] }}
+            /* ── THE SEARCH FIELD IS AT THE TOP, AND THAT IS THE FIX ─────────
+               A picker's search box sits in `header`, right under the title, so
+               an open keyboard never covers the thing being typed in — which is
+               why ui/SheetShell.jsx is deliberately left alone here. Changing
+               gorhom's keyboardBehavior would reach every sheet in the app,
+               including the fitted ones whose height reporting that file's
+               header spends forty lines on.
+
+               What the keyboard DOES cover is the list. So the list gets its
+               height back as scrollable room (ui/KeyboardAware.jsx). */
+            contentContainerStyle={{ paddingBottom: insets.bottom + space[4] + keyboardInset }}
             overScrollMode="never"
           />
         </>

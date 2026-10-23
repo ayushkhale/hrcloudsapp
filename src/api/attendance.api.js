@@ -9,6 +9,11 @@
 // Contract source of truth:
 //   public/ref docs/md_attendance/ATTENDANCE_API_CONTRACT.md
 //
+// The ON-DEMAND LOCATION endpoints below are the newest example of that rule:
+// the requester's half (`/attendance/hr/employees/:id/locate`, the 2 s result
+// poll, the org policy) is deliberately ABSENT, because this app is never the
+// requester. Only the three the SUBJECT calls are here.
+//
 // Every query goes through qs() so a cleared filter never reaches the URL as
 // `?status=` — which is a 400 on several endpoints. Unknown keys are SILENTLY
 // STRIPPED server-side (stripUnknown wins over allowUnknown), so a 200 is not
@@ -116,16 +121,23 @@ export const attendanceAPI = {
 
   // ── My Schedule — the forward agenda (2026-10-22) ───────────────────────────
   // Web ref docs: md_updates/2026-10-22_frontend_my_schedule_forward_view_
-  // integration_guide.md. One request per visible window: a DENSE day per
-  // date from `from` to `to` (inclusive), each with a server-resolved
-  // `day_kind`. Range cap 92 days — a refusal (SCHEDULE_RANGE_TOO_LARGE),
-  // never a truncation. No `user_id`: the subject is the token.
-  /** @param {{from?: string, to?: string, include?: string}} [params] */
-  getScheduleAgenda: (params = {}) => request(`/attendance/schedule/agenda${qs(params)}`),
+  // integration_guide.md (v1) and ..._my_schedule_enriched_agenda_and_policy_
+  // provenance_integration_guide.md (v2, which the screen reads). One request
+  // per visible window: a DENSE day per date from `from` to `to` (inclusive),
+  // each with a server-resolved `day_kind`. Range cap 92 days — a refusal
+  // (SCHEDULE_RANGE_TOO_LARGE), never a truncation. No `user_id`: the subject
+  // is the token.
+  /**
+   * Named `getMyAgenda` to match the web's api module exactly (§10). It was
+   * `getScheduleAgenda` here for a day, which is how one call ends up with
+   * two names.
+   * @param {{from?: string, to?: string, include?: string}} [params]
+   */
+  getMyAgenda: (params = {}) => request(`/attendance/schedule/agenda${qs(params)}`),
   // The manager plane's coverage view over DIRECT reports (HR included —
   // never org-wide). Not used by the employee app; here for the manager app.
   /** @param {{from?: string, to?: string, subordinate_id?: string}} [params] */
-  getTeamScheduleAgenda: (params = {}) => request(`/attendance/manager/schedule/team-agenda${qs(params)}`),
+  getTeamAgenda: (params = {}) => request(`/attendance/manager/schedule/team-agenda${qs(params)}`),
 
   /** Takes NO parameters — a `year` is silently ignored. Filter client-side. */
   getUpcomingHolidays: () => request('/attendance/holidays'),
@@ -181,6 +193,78 @@ export const attendanceAPI = {
    */
   getMyCompOffs: (params = {}) => request(`/attendance/comp-offs/mine${qs(params)}`),
   getMyCompOffSummary: () => request('/attendance/comp-offs/mine/summary'),
+
+  // ── On-demand location tracking, SUBJECT SIDE (2026-10-23) ─────────────────
+  // Ref: NativeRef/10-api/06-location-requests.md, from the backend's
+  // 2026-10-23 frontend + mobile integration guides.
+  //
+  // HR (or a reporting manager) can ask where an employee is during an open
+  // shift. The ask arrives as a silent FCM data push, this app reads a fresh
+  // GPS fix and posts it back, and the requester POLLS for the result. There
+  // is no socket and nothing for the employee to tap — see
+  // features/attendance/liveLocation.js for the whole cycle.
+  //
+  // THREE CALLS, AND THE APP IS NEVER THE REQUESTER. Registering the push
+  // device (api/notifications.api.js) is a hard prerequisite for any of it.
+
+  /**
+   * Report this phone's coordinates for one request. → 200 { logged: true }.
+   *
+   * body: { request_id, latitude, longitude, accuracy_meters, is_mock,
+   *         battery_level?, captured_at, platform }
+   *
+   * THE FIX MUST BE FRESH. `captured_at` is the hardware `position.timestamp`
+   * and the fix must come from a `maximumAge: 0` read: the server runs a
+   * six-signal anti-spoof pass, and a cached coordinate older than the request
+   * trips its `stale_fix` signal. Faking the timestamp to get round that trips
+   * `future_fix` instead. Send what the GPS said.
+   *
+   * `is_mock` is `position.mocked` passed straight through. The server RECORDS
+   * it and does not reject on it (same rule as a punch — lib/location.js), so
+   * there is nothing to gain by hiding it and a flagged-but-present fix is
+   * worth more to everyone than no fix.
+   *
+   * IDEMPOTENT: re-posting the same `request_id` after a success returns
+   * `{ logged: true }` again, so a retry on a flaky network is safe.
+   *
+   * Errors: 404 LOCATION_REQUEST_NOT_FOUND (unknown or someone else's),
+   *         409 LOCATION_REQUEST_EXPIRED (the ~60 s TTL elapsed). BOTH ARE
+   *         DEAD ENDS — discard the request, never retry it.
+   */
+  reportLiveLocation: (payload) => post('/attendance/locations/live-ping', payload),
+
+  /**
+   * Acknowledge the location-verification notice. → 200
+   * { acknowledged_at, consent_version }.
+   *
+   * Required ONCE where the org policy is in `acknowledgement` mode; until it
+   * lands, every locate against this person fails `422
+   * EMPLOYEE_CONSENT_PENDING` — on the REQUESTER's screen, which the employee
+   * never sees. There is no employee-readable policy endpoint, so the app
+   * cannot tell the two consent modes apart and does not try: it shows the
+   * notice either way and sends this when it is acknowledged. Harmless in
+   * `notice_only`, and the difference between working and not in the other.
+   *
+   * body: { version } — optional; features/attendance/liveLocation.js owns the
+   * string so there is one of it.
+   */
+  acknowledgeLocationNotice: (payload) => post('/attendance/locations/consent', payload),
+
+  /**
+   * WHO LOOKED, WHEN, AND WHY — this person's own audit trail. The GDPR Art.
+   * 15 / DPDP 2023 right to know, and the My Time › Location checks section
+   * (features/attendance/components/LocationChecksTab.jsx).
+   *
+   * Rows: { id, reason, requested_by, requester_role, created_at,
+   *         responded_at, fix_returned }.
+   *
+   * `spoof_flagged` IS DELIBERATELY ABSENT from this endpoint and present on
+   * the requester's history — the subject is not told which heuristic fired,
+   * so nobody can tune a spoof against it. Don't go looking for the field.
+   *
+   * @param {{page?: number, limit?: number}} params
+   */
+  getMyLocationRequests: (params = {}) => request(`/attendance/locations/mine${qs(params)}`),
 
   // ── Device trust & my trusted devices (D1–D7) ──────────────────────────────
   // What the organisation asks for at punch time, and the devices this person

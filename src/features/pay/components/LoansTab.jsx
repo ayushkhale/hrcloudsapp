@@ -51,6 +51,16 @@ const INTEREST_METHOD = {
   none: 'Interest free',
 };
 
+const loanStartPeriod = (l, rows = []) =>
+  l?.start_period_month || l?.start_period || l?.first_due_period_month || rows[0]?.due_period_month || rows[0]?.period_month || null;
+
+const loanNextPeriod = (l, rows = []) => {
+  if (l?.next_due_period_month) return l.next_due_period_month;
+  if (l?.next_due_period) return l.next_due_period;
+  const nextScheduled = rows.find((r) => r.status === 'scheduled');
+  return nextScheduled?.due_period_month || nextScheduled?.period_month || null;
+};
+
 /* ─── One loan ───────────────────────────────────────────────────────────── */
 
 export function LoanSheet({ loan, onClose }) {
@@ -69,6 +79,12 @@ export function LoanSheet({ loan, onClose }) {
   }, [loan.id]);
 
   const pending = normalizeStatusKey(loan.status) === 'pending';
+  const startP = loanStartPeriod(loan, schedule.rows);
+  const nextP = loanNextPeriod(loan, schedule.rows);
+  const tenure = loan?.tenure_months ?? loan?.tenure ?? (schedule.rows.length || 0);
+  const subtitle = startP
+    ? `First payment ${formatPeriod(startP)}${tenure ? ` · ${tenure} months` : ''}`
+    : (tenure ? `${tenure} months` : '');
 
   return (
     <RecordSheet
@@ -77,14 +93,14 @@ export function LoanSheet({ loan, onClose }) {
       eyebrow="Loan"
       icon={icons.cash}
       title={loanTitle(loan)}
-      subtitle={`First payment ${formatPeriod(loan.start_period_month)} · ${loan.tenure_months ?? 0} months`}
+      subtitle={subtitle}
       badge={<StatusBadge kind="loan" status={loan.status} />}
     >
       <SheetStats
         items={[
           { icon: icons.down, label: 'Still to repay', value: formatPay(outstanding(loan)) },
-          { icon: icons.calendar, label: 'Every month', value: formatPay(loan.emi_amount) },
-          { icon: icons.cash, label: 'Borrowed', value: formatPay(loan.principal_amount) },
+          { icon: icons.calendar, label: 'Every month', value: formatPay(loan.emi_amount ?? loan.installment_amount) },
+          { icon: icons.cash, label: 'Borrowed', value: formatPay(loan.principal_amount ?? loan.amount) },
           { icon: icons.check, label: 'Repaid so far', value: formatPay(loan.recovered_amount ?? loan.total_recovered) },
         ]}
       />
@@ -99,9 +115,9 @@ export function LoanSheet({ loan, onClose }) {
               wide: true,
               help: { surface: 'payroll.loans', field: 'interest_method', label: 'how interest is worked out' },
             },
-            ['Over', loan.tenure_months ? `${loan.tenure_months} months` : null],
-            ['First payment', formatPeriod(loan.start_period_month)],
-            ['Next payment', loan.next_due_period_month ? formatPeriod(loan.next_due_period_month) : null],
+            ['Over', tenure ? `${tenure} months` : null],
+            ['First payment', startP ? formatPeriod(startP) : null],
+            ['Next payment', nextP ? formatPeriod(nextP) : null],
           ]}
         />
       </SheetSection>
@@ -114,10 +130,12 @@ export function LoanSheet({ loan, onClose }) {
           <CardsSkeleton rows={3} height={32} />
         ) : (
           <SheetTable
+            layout="fit"
             columns={[
-              { header: '#', render: (r) => String(r.installment_number ?? ''), flex: 0.4 },
-              { header: 'Month', render: (r) => formatPeriod(r.period_month) },
-              { header: 'Payment', align: 'right', render: (r) => formatPay(r.total_amount ?? r.amount) },
+              { header: '#', render: (r) => String(r.installment_number ?? ''), flex: 0.35 },
+              { header: 'Month', render: (r) => formatPeriod(r.due_period_month || r.period_month || r.period), flex: 1.1 },
+              { header: 'Payment', align: 'right', render: (r) => formatPay(r.total_amount ?? r.amount ?? r.installment_amount), flex: 1.1 },
+              { header: 'Status', align: 'right', render: (r) => <StatusBadge kind="instalment" status={r.status} dense />, flex: 0.9 },
             ]}
             rows={schedule.rows}
             empty={
@@ -202,25 +220,32 @@ export function LoansTab() {
         />
       ) : null}
 
-      {rows.map((loan, i) => (
-        <RecordCard
-          key={String(loan.id || i)}
-          icon={icons.cash}
-          tone={normalizeStatusKey(loan.status) === 'active' ? 'purple' : 'slate'}
-          title={loanTitle(loan)}
-          subtitle={`${loan.tenure_months ?? 0} months from ${formatPeriod(loan.start_period_month)}`}
-          value={formatPay(outstanding(loan))}
-          badge={<StatusBadge kind="loan" status={loan.status} />}
-          onPress={() => setOpen(loan)}
-          accessibilityLabel={`${loanTitle(loan)}. Open it.`}
-          meta={[
-            { label: 'Every month', value: formatPay(loan.emi_amount) },
-            loan.next_due_period_month
-              ? { label: 'Next', value: formatPeriod(loan.next_due_period_month) }
-              : null,
-          ].filter(Boolean)}
-        />
-      ))}
+      {rows.map((loan, i) => {
+        const startP = loanStartPeriod(loan);
+        const tenure = loan?.tenure_months ?? loan?.tenure ?? 0;
+        const sub = startP
+          ? `${tenure ? `${tenure} months from ` : ''}${formatPeriod(startP)}`
+          : tenure ? `${tenure} months` : '';
+        const nextP = loanNextPeriod(loan);
+        const emi = loan?.emi_amount ?? loan?.installment_amount;
+        return (
+          <RecordCard
+            key={String(loan.id || i)}
+            icon={icons.cash}
+            tone={normalizeStatusKey(loan.status) === 'active' ? 'purple' : 'slate'}
+            title={loanTitle(loan)}
+            subtitle={sub || undefined}
+            value={formatPay(outstanding(loan))}
+            badge={<StatusBadge kind="loan" status={loan.status} />}
+            onPress={() => setOpen(loan)}
+            accessibilityLabel={`${loanTitle(loan)}. Open it.`}
+            meta={[
+              emi != null ? { label: 'Every month', value: formatPay(emi) } : null,
+              nextP ? { label: 'Next', value: formatPeriod(nextP) } : null,
+            ].filter(Boolean)}
+          />
+        );
+      })}
 
     </ScrollView>
   );

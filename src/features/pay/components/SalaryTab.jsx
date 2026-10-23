@@ -82,6 +82,16 @@ export function RevisionSheet({ revision, onClose }) {
         />
       </SheetSection>
 
+      {b.contributions?.length > 0 ? (
+        <SheetSection icon={icons.heart} title="Company contributions">
+          <SheetTable
+            columns={COMPONENT_COLUMNS}
+            rows={b.contributions}
+            empty="Nothing."
+          />
+        </SheetSection>
+      ) : null}
+
       {b.deductions.length > 0 ? (
         <SheetSection icon={icons.down} title="Taken off every month">
           <SheetTable columns={COMPONENT_COLUMNS} rows={b.deductions} empty="Nothing." />
@@ -104,9 +114,6 @@ export function SalaryTab() {
     initial: [],
   });
 
-  const structure = current.data?.structure || current.data;
-  const b = useMemo(() => salaryBreakdown(structure), [structure]);
-
   // Newest first. `version` is authoritative and `effective_from` breaks a tie,
   // which is the web's order (MySalaryPage.jsx) — two revisions can share a day.
   const revisions = useMemo(() => [...(history.data || [])].sort(
@@ -114,25 +121,31 @@ export function SalaryTab() {
       || String(z.effective_from).localeCompare(String(a.effective_from)),
   ), [history.data]);
 
+  const structure = current.data?.structure
+    || (Array.isArray(current.data) ? current.data[0] : current.data)
+    || revisions[0]
+    || null;
+  const b = useMemo(() => salaryBreakdown(structure), [structure]);
+
   const { refreshControl } = useListRefresh(
     () => { current.reload(); history.reload(); },
     current.loading || history.loading,
   );
 
-  if (current.error) {
+  if (current.error && !structure) {
     return (
       <View style={{ padding: space[4] }}>
         <ErrorState
           error={current.error}
           domain="payroll"
-          onRetry={current.reload}
+          onRetry={() => { current.reload(); history.reload(); }}
           fallback="We couldn’t load your salary."
         />
       </View>
     );
   }
 
-  if (current.loading && !current.data) return <CardsSkeleton rows={3} height={96} />;
+  if (current.loading && !structure) return <CardsSkeleton rows={3} height={96} />;
 
   if (!structure) {
     return (
@@ -208,8 +221,11 @@ export function SalaryTab() {
         icon={icons.chart}
         tone="purple"
         title="What makes up your pay"
-        subtitle={`${b.earnings.length} earning${b.earnings.length === 1 ? '' : 's'}`
-          + `${b.deductions.length ? `, ${b.deductions.length} deduction${b.deductions.length === 1 ? '' : 's'}` : ''}`}
+        subtitle={[
+          `${b.earnings.length} earning${b.earnings.length === 1 ? '' : 's'}`,
+          b.contributions?.length ? `${b.contributions.length} contribution${b.contributions.length === 1 ? '' : 's'}` : null,
+          b.deductions.length ? `${b.deductions.length} deduction${b.deductions.length === 1 ? '' : 's'}` : null,
+        ].filter(Boolean).join(', ')}
         onPress={() => setOpen(structure)}
         accessibilityLabel="Open the full salary breakdown."
       />

@@ -267,6 +267,30 @@ export async function getPunchLocation({ prompt = false, timeout = 12000 } = {})
 }
 
 /**
+ * ONE FRESH FIX, NEVER A CACHED ONE. NEVER rejects, NEVER prompts.
+ *
+ * The opposite trade from `getPunchLocation()`, and for the opposite reason:
+ * an on-demand location request (features/attendance/liveLocation.js) is
+ * checked server-side for plausibility, and a cached coordinate older than
+ * the request trips its `stale_fix` signal. So `maximumAge: 0`, high accuracy,
+ * and no cached-first shortcut — waiting ten seconds costs nobody anything
+ * here, because nobody is standing at a button.
+ *
+ * It never prompts because it runs from a push, often with the screen off: a
+ * permission sheet there is either invisible or a surprise. No permission is
+ * simply no fix, which the requester sees as "No location sent".
+ *
+ * @returns {Promise<{status: string, coords?: object}>}
+ */
+export async function getFreshLocation({ timeout = 10000 } = {}) {
+  const permission = await checkLocationPermission();
+  if (permission !== GEO_STATUS.GRANTED && permission !== GEO_STATUS.COARSE_ONLY) {
+    return { status: permission };
+  }
+  return getPosition({ timeout, maximumAge: 0, enableHighAccuracy: true });
+}
+
+/**
  * The punch payload's location fields, or `{}` when there is nothing to send.
  *
  * THE PUNCH SCHEMA HAS EXACTLY TWO COORDINATE FIELDS — `latitude` and

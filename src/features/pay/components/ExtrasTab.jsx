@@ -52,30 +52,73 @@ import { encashSourceLabel, extraAmount, extraTitle, isExtraDeduction } from '..
 
 const periodOf = (x) => x?.period_month || x?.applies_to_period || '';
 
+export function selectExtras(data) {
+  if (Array.isArray(data)) return data;
+  if (!data || typeof data !== 'object') return [];
+
+  const items = [];
+  if (Array.isArray(data.earned)) items.push(...data.earned.map((it) => ({ ...it, _stage: 'earned' })));
+  if (Array.isArray(data.upcoming)) items.push(...data.upcoming.map((it) => ({ ...it, _stage: 'upcoming' })));
+  if (Array.isArray(data.bonuses)) items.push(...data.bonuses);
+  if (Array.isArray(data.adjustments)) items.push(...data.adjustments);
+  if (Array.isArray(data.encashments)) items.push(...data.encashments);
+  if (Array.isArray(data.records)) items.push(...data.records);
+
+  if (items.length > 0) {
+    const seen = new Set();
+    return items.filter((item) => {
+      const id = item?.id;
+      if (!id) return true;
+      if (seen.has(id)) return false;
+      seen.add(id);
+      return true;
+    });
+  }
+
+  return toList(data, ['bonuses', 'adjustments', 'encashments', 'records', 'items', 'rows', 'data']);
+}
+
 export function ExtrasTab() {
   const bonuses = useResource(() => payrollAPI.getMyBonuses(), {
-    select: (data) => toList(data, ['bonuses', 'records']),
+    select: selectExtras,
     initial: [],
   });
   const adjustments = useResource(() => payrollAPI.getMyAdjustments(), {
-    select: (data) => toList(data, ['adjustments', 'records']),
+    select: selectExtras,
     initial: [],
   });
 
   const payouts = useResource(() => payrollAPI.getMyEncashments(), {
-    select: (data) => toList(data, ['encashments', 'records']),
+    select: selectExtras,
     initial: [],
   });
 
   const rows = useMemo(() => {
     const all = [
       ...(bonuses.data || []).map((b) => ({ raw: b, kind: 'bonus' })),
-      ...(adjustments.data || []).map((a) => ({ raw: a, kind: 'adjustment' })),
+      ...(adjustments.data || []).map((a) => ({
+        raw: a,
+        kind: a.category === 'bonus' ? 'bonus' : 'adjustment',
+      })),
       ...(payouts.data || []).map((p) => ({ raw: p, kind: 'payout' })),
     ];
+
+    // Deduplicate rows across endpoints by ID so identical records returned by
+    // both bonuses and adjustments (e.g. backend querying the same adjustments table) don't duplicate
+    const seen = new Set();
+    const unique = [];
+    for (const item of all) {
+      const id = item.raw?.id;
+      if (id) {
+        if (seen.has(id)) continue;
+        seen.add(id);
+      }
+      unique.push(item);
+    }
+
     // Newest period first; no period sorts last rather than first, because an
     // undated row at the top reads as the most recent one.
-    return all.sort((a, z) => String(periodOf(z.raw)).localeCompare(String(periodOf(a.raw))));
+    return unique.sort((a, z) => String(periodOf(z.raw)).localeCompare(String(periodOf(a.raw))));
   }, [bonuses.data, adjustments.data, payouts.data]);
 
   const loading = (bonuses.loading && !bonuses.data?.length)
@@ -134,7 +177,7 @@ export function ExtrasTab() {
                 title={TERMS.ENCASHMENT}
                 subtitle={encashSourceLabel(raw, TERMS.COMP_OFF)}
                 value={formatPay(raw.amount)}
-                badge={<StatusBadge kind="extra" status={raw.status} />}
+                badge={<StatusBadge kind="extra" status={raw.status || raw.run_status || 'paid'} />}
                 meta={[
                   { label: 'Leave', value: formatDayCount(raw.days) },
                   raw.per_day_amount != null ? { label: 'Per day', value: formatPay(raw.per_day_amount) } : null,
@@ -144,18 +187,21 @@ export function ExtrasTab() {
             );
           }
           const off = kind === 'adjustment' && isExtraDeduction(raw);
+          const status = raw.status || raw.run_status || (raw._stage === 'upcoming' ? 'upcoming' : raw.applied_run_id ? 'paid' : 'upcoming');
+          const title = extraTitle(raw);
           return (
             <RecordCard
               key={`${kind}-${raw.id || i}`}
               icon={off ? icons.down : icons.up}
               tone={off ? 'rose' : 'emerald'}
-              title={extraTitle(raw)}
+              title={title}
               subtitle={off ? 'Taken off your pay' : kind === 'bonus' ? 'Bonus' : 'Added to your pay'}
               value={formatPay(extraAmount(raw))}
-              badge={<StatusBadge kind="extra" status={raw.status} />}
+              badge={<StatusBadge kind="extra" status={status} />}
               meta={[
                 periodOf(raw) ? { label: 'With', value: formatPeriod(periodOf(raw)) } : null,
                 raw.category ? { label: 'Kind', value: humanize(raw.category) } : null,
+                raw.reason && raw.reason !== title ? { label: 'Reason', value: raw.reason } : null,
               ].filter(Boolean)}
             />
           );

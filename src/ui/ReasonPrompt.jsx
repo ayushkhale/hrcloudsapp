@@ -34,12 +34,13 @@
 
 import React, { useState } from 'react';
 import {
-  KeyboardAvoidingView, Modal, Platform, Pressable, Text, View,
+  Modal, Pressable, Text, View,
 } from 'react-native';
 import { color, elevate, gutter, layer, radius, space, text } from '../theme/tokens';
 import { Button } from './Button';
 import { TextField } from './TextField';
 import { FieldError } from './InlineAlert';
+import { useKeyboardInset } from './KeyboardAware';
 import { ToastLayer } from './Toast';
 
 /**
@@ -73,6 +74,17 @@ export function ReasonPrompt({
   const problem = required && !reason.trim() ? 'Please say why — your manager sees this.' : null;
   const error = attempted ? problem : null;
 
+  /* ── IT IS CENTRED, SO IT CLEARS THE KEYBOARD BY SHRINKING ────────────────
+     (2026-10-23) The dialog used to sit in a KeyboardAvoidingView, which on
+     Android did nothing at all once edgeToEdgeEnabled=true stopped the window
+     resizing — and this prompt AUTOFOCUSES its box, so the keyboard is always
+     up and the box was always under it.
+
+     A centred dialog needs no padding trick: take the keyboard's height off
+     the bottom of the area it centres in and it re-centres itself in what is
+     left. ui/KeyboardAware.jsx. */
+  const keyboardInset = useKeyboardInset();
+
   const submit = () => {
     if (busy) return;
     // The press does the checking. Nothing goes out from an unfinished form.
@@ -85,10 +97,7 @@ export function ReasonPrompt({
 
   return (
     <Modal visible transparent animationType="fade" onRequestClose={onCancel} statusBarTranslucent>
-      <KeyboardAvoidingView
-        style={{ flex: 1, zIndex: layer.reasonPrompt }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
+      <View style={{ flex: 1, zIndex: layer.reasonPrompt }}>
         <Pressable
           accessibilityLabel="Close"
           onPress={onCancel}
@@ -97,6 +106,10 @@ export function ReasonPrompt({
             backgroundColor: color.backdrop,
             justifyContent: 'center',
             paddingHorizontal: gutter,
+            // The keyboard's height, taken off the bottom of the centring
+            // area — so the dialog centres in the part of the screen that is
+            // still visible. The backdrop itself stays full-bleed.
+            paddingBottom: keyboardInset,
           }}
         >
           <Pressable
@@ -144,7 +157,7 @@ export function ReasonPrompt({
             </View>
           </Pressable>
         </Pressable>
-      </KeyboardAvoidingView>
+      </View>
       {/* Toasts draw ABOVE this window while it is the top one (ui/Toast.jsx). */}
       <ToastLayer />
     </Modal>

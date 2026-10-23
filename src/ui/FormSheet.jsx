@@ -24,6 +24,16 @@
 // adjustments, leave payouts, exits, document requests and attendance
 // corrections, all the same way.
 //
+// ── …WHICH MEANS IT HAS TO CLEAR THE KEYBOARD (2026-10-23) ───────────────────
+//
+// The pinned footer was pinned to the bottom of the WINDOW, and since
+// `edgeToEdgeEnabled=true` (android/gradle.properties) Android stopped
+// resizing that window for the keyboard — so on every one of these forms the
+// Submit button sat underneath the keys, and the fields near it did too, with
+// nothing scrolling. The KeyboardAvoidingView that used to wrap this is gone;
+// ui/KeyboardAware.jsx reads the keyboard's height and this file spends it
+// twice: as scrollable room in the body, and as a margin under the footer.
+//
 // ── AND FOUR OR MORE FIELDS MEANS GRIDDED ────────────────────────────────────
 //
 // Use <FormGrid> (ui/Field.jsx) and let the short fields pair up two across;
@@ -47,10 +57,9 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useRef } from 'react';
-import {
-  KeyboardAvoidingView, Modal, Platform, ScrollView, Text, View,
-} from 'react-native';
+import { Modal, Platform, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { KeyboardAwareScrollView, useKeyboardLift } from './KeyboardAware';
 import { icons } from '../theme/icons';
 import { color, gutter, space, text } from '../theme/tokens';
 import { IconButton } from './Button';
@@ -75,6 +84,7 @@ export function FormSheet({
   children,
 }) {
   const insets = useSafeAreaInsets();
+  const { lift, safeBottom } = useKeyboardLift();
   const ownRef = useRef(null);
   const ref = scrollRef || ownRef;
   const Close = icons.close;
@@ -89,17 +99,18 @@ export function FormSheet({
       presentationStyle={Platform.OS === 'ios' ? 'pageSheet' : undefined}
       onRequestClose={onClose}
     >
-      <KeyboardAvoidingView
+      <View
         // THE CANVAS, not white (2026-10-20). A form is a PAGE, and the
         // reference forms are white field slabs on the app's wash — which is
         // what makes each field read as a thing to fill rather than a line on
         // a sheet. The header and the pinned footer sit on the same wash. A
         // record being READ (RecordSheet) stays white; this is not one.
+        //
+        // A plain View, NOT a KeyboardAvoidingView: it measures its own frame,
+        // and inside a native Modal with a translucent status bar that
+        // measurement is wrong by the top inset. The body and the footer each
+        // handle the keyboard themselves below.
         style={{ flex: 1, backgroundColor: color.bg }}
-        // iOS needs the padding; Android's windowSoftInputMode="adjustResize"
-        // in AndroidManifest already handles it, and doing both double-shifts
-        // the footer off the top of the keyboard.
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         {/* ── Header ───────────────────────────────────────────────────── */}
         <View
@@ -121,7 +132,11 @@ export function FormSheet({
         </View>
 
         {/* ── Body ─────────────────────────────────────────────────────── */}
-        <ScrollView
+        {/* The ref forwarded here is the ScrollView's own, so §11's
+            travel-to-the-first-problem (hooks/useFormFocus.js) still scrolls
+            this body exactly as it did. keyboardShouldPersistTaps and
+            keyboardDismissMode are set inside KeyboardAwareScrollView. */}
+        <KeyboardAwareScrollView
           ref={ref}
           contentContainerStyle={{
             paddingHorizontal: gutter,
@@ -129,13 +144,9 @@ export function FormSheet({
             paddingBottom: space[6],
             gap: space[4],
           }}
-          keyboardShouldPersistTaps="handled"
-          // Dismissing the keyboard on a drag is what people expect, and it is
-          // what lets them see the pinned footer while scrolling.
-          keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
         >
           {typeof children === 'function' ? children(ref) : children}
-        </ScrollView>
+        </KeyboardAwareScrollView>
 
         {/* ── Footer: PINNED. Never scrolled away from. ─────────────────── */}
         {footer ? (
@@ -145,7 +156,12 @@ export function FormSheet({
               gap: space[2],
               paddingHorizontal: gutter,
               paddingTop: space[3],
-              paddingBottom: space[3] + insets.bottom,
+              // safeBottom is 0 while the keyboard is up — the keys cover the
+              // navigation bar, and padding for both leaves a white band.
+              paddingBottom: space[3] + safeBottom,
+              // MARGIN, so the bar itself keeps its height and simply sits on
+              // top of the keyboard.
+              marginBottom: lift,
               backgroundColor: color.bg,
               borderTopWidth: 1,
               borderTopColor: color.borderSubtle,
@@ -154,7 +170,7 @@ export function FormSheet({
             {footer}
           </View>
         ) : null}
-      </KeyboardAvoidingView>
+      </View>
       {/* Toasts draw ABOVE this window while it is the top one (ui/Toast.jsx). */}
       <ToastLayer />
     </Modal>

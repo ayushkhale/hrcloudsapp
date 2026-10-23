@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A DELIBERATELY EMPTY LAUNCH ICON.
+
+     THERE IS ONE SPLASH IN THIS APP AND IT IS THE LOTTIE ONE (user,
+     2026-10-23: "remove default splash screen, we are using a custom one with
+     lotte json"). The app used to show two in a row: this native window with
+     the HR Clouds logo, and then features/splash/LottieSplash.jsx.
+
+     The native window cannot simply be deleted. Android 12+ ALWAYS draws a
+     launch screen from the activity's theme — with no theme of our own it
+     draws the launcher icon, which is a default splash by another name. So
+     the window stays and shows NOTHING but @color/bootsplash_background, and
+     the Lottie animation is the only splash anybody sees.
+
+     Do not put the logo back here. Change the animation instead. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <solid android:color="@android:color/transparent" />
+    <size android:width="1dp" android:height="1dp" />
+</shape>

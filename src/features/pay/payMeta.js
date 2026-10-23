@@ -90,6 +90,8 @@ export const componentName = (c) => c?.component_name || c?.name || c?.component
 export const componentAmount = (c) => c?.monthly_amount ?? c?.amount ?? c?.calculated_amount ?? 0;
 export const isEarning = (c) => c?.component_type === 'earning';
 export const isDeduction = (c) => c?.component_type === 'deduction';
+export const isContribution = (c) =>
+  c?.component_type === 'employer_contribution' || c?.component_type === 'contribution';
 
 /**
  * Gross, deductions and take-home for a structure.
@@ -104,6 +106,7 @@ export function salaryBreakdown(structure) {
   const comps = Array.isArray(structure?.components) ? structure.components : [];
   const earnings = comps.filter(isEarning);
   const deductions = comps.filter(isDeduction);
+  const contributions = comps.filter(isContribution);
   const sum = (rows) => rows.reduce((t, c) => t + num(componentAmount(c)), 0);
 
   const statutory = structure?.statutory_breakdown || {};
@@ -111,13 +114,16 @@ export function salaryBreakdown(structure) {
 
   const gross = num(structure?.monthly_gross) || sum(earnings);
   const compDeductions = sum(deductions);
+  const contributionsTotal = sum(contributions);
 
   return {
     earnings,
     deductions,
+    contributions,
     gross,
     deductionsTotal: compDeductions + statutoryTotal,
     statutoryTotal,
+    contributionsTotal,
     net: gross - compDeductions - statutoryTotal,
   };
 }
@@ -125,9 +131,9 @@ export function salaryBreakdown(structure) {
 /* ─── Loans ───────────────────────────────────────────────────────────────── */
 
 export const outstanding = (l) =>
-  l?.outstanding_principal ?? l?.outstanding_balance ?? l?.remaining_balance ?? 0;
+  l?.outstanding_principal ?? l?.outstanding_balance ?? l?.remaining_balance ?? l?.outstanding_amount ?? 0;
 
-export const loanTitle = (l) => humanize(l?.loan_type) || 'Loan';
+export const loanTitle = (l) => l?.title || l?.name || l?.loan_name || humanize(l?.loan_type) || 'Loan';
 
 /* Status LABELS and TONES are not here. Every payroll status lives in
    `lib/enums.js` beside attendance's and leave's, read through
@@ -170,7 +176,7 @@ export const NO_PRORATION_NOTE = 'A month is charged in full if cover is active 
    term for a bonus and an arrear — it tells you which ledger the money came
    out of, not what it is. 30-domain/01-wording.md §2. */
 export const extraTitle = (x) =>
-  x?.title || x?.name || x?.reason || humanize(x?.category) || humanize(x?.bonus_type) || 'Extra';
+  x?.component_name || x?.title || x?.name || x?.reason || humanize(x?.category) || humanize(x?.bonus_type) || 'Extra';
 
 export const extraAmount = (x) => x?.amount ?? x?.gross_amount ?? 0;
 

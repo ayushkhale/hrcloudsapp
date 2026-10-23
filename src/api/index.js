@@ -29,6 +29,7 @@ export { payrollAPI, payrollFiles } from './payroll.api';
 export { documentsAPI } from './documents.api';
 export { organizationAPI } from './organization.api';
 export { tasksAPI } from './tasks.api';
+export { notificationsAPI } from './notifications.api';
 
 export {
   downloadFile,

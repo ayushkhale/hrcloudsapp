@@ -18,6 +18,20 @@
 // every list. The list's own `refreshControl` then does the refreshing — which
 // is why `onRefresh` here is wired only in the scroll case.
 //
+// ── THE KEYBOARD IS NOT OPTIONAL ANY MORE (2026-10-23) ───────────────────────
+//
+// It used to be: `keyboard` was a prop, off by default, and the one place that
+// passed it was AuthScreen. That was fine while Android resized its own window
+// for the keyboard. It does not any more — `edgeToEdgeEnabled=true` in
+// android/gradle.properties made `windowSoftInputMode="adjustResize"` inert, so
+// every field in the bottom half of every screen went under the keyboard with
+// nothing scrolling. ui/KeyboardAware.jsx has the whole diagnosis.
+//
+// So a scrolling Screen is ALWAYS keyboard-aware now, and the pinned `footer`
+// always lifts clear of the keys. The `keyboard` prop is still accepted and
+// still ignored — removing it would mean touching every caller for no change
+// in behaviour.
+//
 // ── SAFE AREAS ───────────────────────────────────────────────────────────────
 //
 // `edges` defaults to top+bottom, but a screen inside the tab navigator must
@@ -28,10 +42,9 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React from 'react';
-import {
-  KeyboardAvoidingView, Platform, RefreshControl, ScrollView, StyleSheet, View,
-} from 'react-native';
+import { Platform, RefreshControl, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { KeyboardAwareScrollView, useKeyboardLift } from './KeyboardAware';
 import { color, elevate, gutter, space } from '../theme/tokens';
 
 export function Screen({
@@ -48,11 +61,18 @@ export function Screen({
   /** Extra bottom padding so the last row clears a pinned footer. */
   contentStyle,
   background = color.bg,
-  /** Avoid the keyboard. Off by default; FormSheet turns it on. */
+  /**
+   * IGNORED, and kept only so existing callers still compile — a scrolling
+   * Screen avoids the keyboard unconditionally now. See the header.
+   */
+  // eslint-disable-next-line no-unused-vars
   keyboard = false,
   style,
 }) {
   const insets = useSafeAreaInsets();
+  // `lift` clears the keys; `safeBottom` is 0 while the keyboard is up, because
+  // the keys already cover the navigation bar (ui/KeyboardAware.jsx).
+  const { lift, safeBottom } = useKeyboardLift();
   const padTop = edges.includes('top') ? insets.top : 0;
   const padBottom = edges.includes('bottom') && !footer ? insets.bottom : 0;
 
@@ -68,7 +88,10 @@ export function Screen({
   ) : undefined;
 
   const body = scroll ? (
-    <ScrollView
+    // Keyboard-aware, always: it adds the scrollable room the keyboard needs
+    // and scrolls the focused field above it. keyboardShouldPersistTaps and
+    // keyboardDismissMode come from there too, so they are not repeated here.
+    <KeyboardAwareScrollView
       style={{ flex: 1 }}
       contentContainerStyle={[
         gutters && { paddingHorizontal: gutter },
@@ -76,13 +99,12 @@ export function Screen({
         contentStyle,
       ]}
       refreshControl={refreshControl}
-      keyboardShouldPersistTaps="handled"
       // Android's overscroll glow on a white background looks like a rendering
       // fault; iOS's bounce is expected and stays.
       overScrollMode={Platform.OS === 'android' ? 'never' : 'auto'}
     >
       {children}
-    </ScrollView>
+    </KeyboardAwareScrollView>
   ) : (
     <View style={[{ flex: 1 }, gutters && { paddingHorizontal: gutter }, contentStyle]}>
       {children}
@@ -96,7 +118,12 @@ export function Screen({
         <View
           style={[
             styles.footer,
-            { paddingBottom: space[3] + (edges.includes('bottom') ? insets.bottom : 0) },
+            {
+              paddingBottom: space[3] + (edges.includes('bottom') ? safeBottom : 0),
+              // MARGIN, not padding: padding would grow the bar itself and
+              // leave the button sitting at the top of a tall white block.
+              marginBottom: lift,
+            },
             elevate('md'),
           ]}
         >
@@ -106,18 +133,7 @@ export function Screen({
     </View>
   );
 
-  if (!keyboard) return content;
-
-  return (
-    <KeyboardAvoidingView
-      style={{ flex: 1 }}
-      // 'padding' is correct on iOS; on Android the window softInputMode in
-      // AndroidManifest already resizes, and adding behaviour here double-shifts.
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
-      {content}
-    </KeyboardAvoidingView>
-  );
+  return content;
 }
 
 /**

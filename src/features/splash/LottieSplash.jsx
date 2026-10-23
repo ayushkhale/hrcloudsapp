@@ -1,11 +1,17 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // features/splash/LottieSplash.jsx — the animated launch screen.
 //
-// The native BootSplash shows the instant the OS opens the app (before JS is
-// even running); it hides the moment React mounts, and THIS takes over — the
-// Lottie animation the user added (android/hr_clouds_splash.json, copied to
-// assets) — so the brand animation plays over the real UI while it settles,
-// then fades out. One cover, start to interactive.
+// THE ONLY SPLASH IN THE APP (user, 2026-10-23: "remove default splash screen,
+// we are using a custom one with lotte json"). There used to be two in a row —
+// the native launch window with the static HR Clouds logo, then this. The
+// native window survives, because Android 12+ always draws one, but it is now
+// blank: just #F7F5FC, the canvas below. src/assets/bootsplash/README.md says
+// which two files keep it that way, and warns off the regenerator that would
+// put the logo back.
+//
+// So: the OS shows a bare canvas before JS is running, React mounts, and THIS
+// takes over on the same colour — the brand animation plays over the real UI
+// while it settles, then fades out. One cover, start to interactive.
 //
 // It never traps the app behind itself: `onAnimationFinish` ends it, and a hard
 // ceiling ends it anyway if the animation is long or the callback never fires.

@@ -86,9 +86,14 @@ export default function OrgChartScreen() {
     : false;
   const meOnChart = !!(index && myId && index.byId.has(myId));
 
+  const onOpenPerson = useCallback((id) => {
+    setSelectedId(id);
+    setOpenId(id);
+  }, []);
+
   const ctx = useMemo(() => ({
-    expanded, onToggle, onOpen: setOpenId, selectedId, pathIds, deptFilter: null, myId,
-  }), [expanded, onToggle, selectedId, pathIds, myId]);
+    expanded, onToggle, onOpen: onOpenPerson, selectedId, pathIds, deptFilter: null, myId,
+  }), [expanded, onToggle, onOpenPerson, selectedId, pathIds, myId]);
 
   if (hierarchy.loading && !index) {
     return <View style={{ flex: 1, backgroundColor: color.bg }}><Skeleton type="dashboard" /></View>;
@@ -171,7 +176,7 @@ export default function OrgChartScreen() {
           index={index}
           personId={openId}
           myId={myId}
-          onNavigate={(id) => setOpenId(id)}
+          onNavigate={(id) => onOpenPerson(id)}
           onClose={() => setOpenId(null)}
         />
       ) : null}

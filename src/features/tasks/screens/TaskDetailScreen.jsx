@@ -32,7 +32,7 @@ import React, {
   useCallback, useEffect, useRef, useState,
 } from 'react';
 import {
-  KeyboardAvoidingView, Linking, Platform, ScrollView, Text, View,
+  Linking, Platform, Text, View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
@@ -47,6 +47,7 @@ import {
   Button, InlineAlert, Pill, Skeleton, StatusBadge, TabStrip,
   SheetGrid, SheetSection, SheetStats, SheetText, showToast,
 } from '../../../ui';
+import { KeyboardAwareScrollView, useKeyboardLift } from '../../../ui/KeyboardAware';
 import { AttachedFileRow, LinksEditor } from '../components/TaskAttachments';
 import { TaskDiscussion } from '../components/TaskDiscussion';
 import { SubmitTaskSheet } from '../components/SubmitTaskSheet';
@@ -98,6 +99,8 @@ export default function TaskDetailScreen({ navigation, route }) {
   const [busy, setBusy] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const insets = useSafeAreaInsets();
+  // The action bar and the discussion composer both sit on the bottom edge.
+  const { lift, safeBottom } = useKeyboardLift();
   const mounted = useRef(true);
 
   const load = useCallback(async () => {
@@ -178,11 +181,11 @@ export default function TaskDetailScreen({ navigation, route }) {
 
   return (
     <View style={{ flex: 1, backgroundColor: color.bg }}>
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top + 44 : 0}
-      >
+      {/* A plain View: the keyboard is handled by the scroller below and by
+          the action bar's own lift (ui/KeyboardAware.jsx). The
+          KeyboardAvoidingView that was here needed a hand-tuned
+          keyboardVerticalOffset and still did nothing on Android. */}
+      <View style={{ flex: 1 }}>
         {/* ── Title block (2026-10-20) ───────────────────────────────────
             User: "task info screen … just text thrown, no structure". It was
             an 11px TASK, a title and a sentence on a white band. Now the
@@ -232,11 +235,9 @@ export default function TaskDetailScreen({ navigation, route }) {
 
         <TabStrip tabs={tabs} value={tab} onChange={setTab} />
 
-        <ScrollView
+        <KeyboardAwareScrollView
           style={{ flex: 1 }}
           contentContainerStyle={{ padding: gutter, paddingBottom: space[10], gap: space[4] }}
-          keyboardShouldPersistTaps="handled"
-          keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
         >
           {error ? <InlineAlert tone="rose">{error}</InlineAlert> : null}
 
@@ -331,7 +332,7 @@ export default function TaskDetailScreen({ navigation, route }) {
               </SheetSection>
             </View>
           )}
-        </ScrollView>
+        </KeyboardAwareScrollView>
 
         {/* ── Actions, or the note saying why there are none. Overview only:
             the Discussion tab's composer is its own bottom bar. ─────────── */}
@@ -342,7 +343,8 @@ export default function TaskDetailScreen({ navigation, route }) {
               gap: space[2],
               paddingHorizontal: gutter,
               paddingTop: space[3],
-              paddingBottom: space[3] + insets.bottom,
+              paddingBottom: space[3] + safeBottom,
+              marginBottom: lift,
               backgroundColor: color.bg,
               borderTopWidth: 1,
               borderTopColor: color.borderSubtle,
@@ -376,7 +378,7 @@ export default function TaskDetailScreen({ navigation, route }) {
             )}
           </View>
         ) : null}
-      </KeyboardAvoidingView>
+      </View>
 
       {submitting ? (
         <SubmitTaskSheet task={task} onSubmit={handIn} onClose={() => setSubmitting(false)} />

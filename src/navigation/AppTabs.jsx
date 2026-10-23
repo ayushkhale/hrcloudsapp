@@ -58,6 +58,7 @@ import { AppDrawer } from './AppDrawer';
 import { ActionSheet } from './ActionSheet';
 import { MayaProvider } from '../features/maya/MayaProvider';
 import { setupPush } from '../features/notifications/push';
+import { requestAllAppPermissions } from '../lib/permissions';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -312,11 +313,11 @@ export function AppTabs() {
     elevation: 0,
   };
 
-  // Push is set up once the person is in the app (signed in): ask for the
-  // notification permission, log the FCM token, listen for messages. A no-op if
-  // Firebase isn't built in yet (push.js). Unsubscribes on sign-out/unmount.
+  // Request all permissions upfront (camera, photos/media, location, notifications)
+  // and set up push once the person is signed into the app.
   useEffect(() => {
     let cleanup = () => {};
+    requestAllAppPermissions().catch(() => {});
     setupPush().then((fn) => { cleanup = fn || (() => {}); });
     return () => cleanup();
   }, []);

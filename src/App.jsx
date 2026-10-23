@@ -51,8 +51,17 @@ import { LottieSplash } from './features/splash/LottieSplash';
 import { color } from './theme/tokens';
 
 export default function App() {
-  // The native BootSplash hands straight over to the Lottie animation — no gap,
-  // no flash of the app underneath (features/splash/LottieSplash.jsx).
+  /* ── ONE SPLASH, AND IT IS THE LOTTIE ONE (user, 2026-10-23) ──────────────
+     The native launch window is still here and still hidden by hand, but it
+     no longer draws a logo: it is the bare #F7F5FC canvas the animation draws
+     on (android res/values/styles.xml + drawable/bootsplash_blank.xml, and
+     hidden="YES" on the iOS storyboard's imageView). It cannot be deleted —
+     Android 12+ always draws a launch screen from the activity theme and with
+     no theme of ours it draws the launcher icon, which is the default splash
+     by another name. See src/assets/bootsplash/README.md.
+
+     So the order is: blank OS window → LottieSplash → the app, with no second
+     logo and no flash in between. */
   const [splashDone, setSplashDone] = useState(false);
 
   useEffect(() => {

@@ -258,6 +258,9 @@ export const LOAN_STATUS = {
 export const INSTALMENT_STATUS = {
   pending: { label: "Due", tone: "amber" },
   scheduled: { label: "Due", tone: "amber" },
+  due: { label: "Due", tone: "amber" },
+  active: { label: "Due", tone: "amber" },
+  deducted: { label: "Paid", tone: "emerald" },
   recovered: { label: "Paid", tone: "emerald" },
   paid: { label: "Paid", tone: "emerald" },
   waived: { label: "Waived", tone: "slate" },
@@ -288,6 +291,7 @@ export const ENROLMENT_STATUS = {
 // A bonus or an adjustment — My Pay calls the pair "Extras".
 export const EXTRA_STATUS = {
   pending: { label: "Waiting for approval", short: "Waiting", tone: "amber" },
+  upcoming: { label: "Upcoming", short: "Upcoming", tone: "blue" },
   approved: { label: "Approved", tone: "emerald" },
   applied: { label: "Paid with your salary", short: "Paid", tone: "purple" },
   paid: { label: "Paid with your salary", short: "Paid", tone: "purple" },

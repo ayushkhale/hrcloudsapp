@@ -57,7 +57,10 @@ export function OrgPersonSheet({ index, personId, companyName, myId, onNavigate,
 
   const t = toneOf(roleToneOf(node.role));
   const chain = ancestorsOf(index, node.id);
-  const manager = chain[chain.length - 1] || null;
+  let manager = chain[chain.length - 1] || null;
+  if (!manager && node.reporting_to_id && index?.byId?.has(node.reporting_to_id)) {
+    manager = index.byId.get(node.reporting_to_id);
+  }
   const isMe = node.id === myId;
   const reports = node.children;
   const reportsTo = manager ? manager.name
@@ -69,7 +72,7 @@ export function OrgPersonSheet({ index, personId, companyName, myId, onNavigate,
       visible
       onClose={onClose}
       eyebrow={roleLabel(node.role)}
-      icon={icons.profile}
+      avatar={<Avatar person={node} size={48} />}
       title={node.name}
       subtitle={[node.designation, node.department].filter(Boolean).join(' · ') || 'No job title yet'}
       badge={isMe ? <Pill>You</Pill> : null}
@@ -83,9 +86,8 @@ export function OrgPersonSheet({ index, personId, companyName, myId, onNavigate,
         />
       ) : null}
     >
-      {/* Who this is, at a glance. */}
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[3], backgroundColor: color.brandSoftBg, borderRadius: radius.lg, padding: space[3] }}>
-        <Avatar person={node} size={56} />
+      {/* Role, Department & Location Summary */}
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: color.brandSoftBg, borderRadius: radius.lg, padding: space[3], gap: space[2] }}>
         <View style={{ flex: 1, minWidth: 0, gap: space[1] }}>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space[1] }}>
             <View style={{ paddingHorizontal: space[2], paddingVertical: 2, borderRadius: radius.full, backgroundColor: t.bg, borderWidth: 1, borderColor: t.border }}>
@@ -104,7 +106,7 @@ export function OrgPersonSheet({ index, personId, companyName, myId, onNavigate,
 
       <SheetStats
         items={[
-          { label: 'Direct reports', value: String(reports.length), icon: icons.people },
+          { label: 'Under Me', value: String(reports.length), icon: icons.people },
           { label: 'Whole team', value: String(node.teamSize), icon: icons.people },
           { label: 'Place in chart', value: levelLabel(node), icon: icons.chart },
         ]}
@@ -132,7 +134,7 @@ export function OrgPersonSheet({ index, personId, companyName, myId, onNavigate,
       </SheetSection>
 
       {reports.length > 0 ? (
-        <SheetSection icon={icons.people} title={`Direct reports (${reports.length})`} defaultOpen={reports.length <= 10}>
+        <SheetSection icon={icons.people} title={`Under Me (${reports.length})`} defaultOpen={reports.length <= 10}>
           <View style={{ gap: 2 }}>
             {reports.map((c) => (
               <PersonLine

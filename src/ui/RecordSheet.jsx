@@ -114,6 +114,7 @@ function RecordSheetPanel({
   onClose,
   eyebrow,
   icon: Icon,
+  avatar,
   title,
   subtitle,
   badge,
@@ -142,19 +143,8 @@ function RecordSheetPanel({
       visible={visible}
       onClose={onClose}
       fit
-      /* ONE SURFACE, TOP TO BOTTOM (user decision, 2026-10-18: "either go for
-         full grey or white"). This was `color.bg` — slate-50 — under a white
-         header and a white footer, so a sheet read as three slabs: a white
-         band, a grey middle, a white band, with white cards floating in the
-         grey. The panel is now white like `Select` and `TimeField` already
-         were, and the BLOCKS inside it went grey instead (SheetParts.jsx).
-         White page → grey block → white rows, one alternation, no patches. */
       background={color.bg}
     >
-      {/* `close` springs the panel down and THEN reports back, so the X button
-          leaves the same way a drag does. Wiring the button to `onClose`
-          directly would tear the sheet off the screen mid-air, which next to a
-          dragged dismissal reads as a glitch. */}
       {({ close }) => (
         <>
           {/* ── Header ─────────────────────────────────────────────────── */}
@@ -169,13 +159,13 @@ function RecordSheetPanel({
               paddingBottom: space[3],
             }}
           >
-            {Icon ? (
+            {avatar ? (
+              <View style={{ marginRight: 2 }}>{avatar}</View>
+            ) : Icon ? (
               <View
                 accessibilityElementsHidden
                 importantForAccessibility="no-hide-descendants"
                 style={{
-                  // The CHIP shade, at the reference size (2026-10-20): a
-                  // purple-50 tile behind a 20pt glyph was invisible (§1).
                   width: 48,
                   height: 48,
                   borderRadius: radius.md + 2,

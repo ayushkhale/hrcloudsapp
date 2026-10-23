@@ -17,7 +17,7 @@
                         <rect key="frame" x="0.0" y="0.0" width="375" height="667"/>
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                         <subviews>
-                            <imageView autoresizesSubviews="NO" clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleAspectFit" image="BootSplashLogo-55de38" translatesAutoresizingMaskIntoConstraints="NO" id="3lX-Ut-9ad">
+                            <imageView hidden="YES" autoresizesSubviews="NO" clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleAspectFit" image="BootSplashLogo-55de38" translatesAutoresizingMaskIntoConstraints="NO" id="3lX-Ut-9ad">
                                 <rect key="frame" x="122.5" y="289" width="130" height="89"/>
                                 <accessibility key="accessibilityConfiguration">
                                     <accessibilityTraits key="traits" image="YES" notEnabled="YES"/>
@@ -40,7 +40,7 @@
     <resources>
         <image name="BootSplashLogo-55de38" width="130" height="89"/>
         <namedColor name="BootSplashBackground-55de38">
-            <color red="1.00000000000000" green="1.00000000000000" blue="1.00000000000000" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
+            <color red="0.96862745098039" green="0.96078431372549" blue="0.98823529411765" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
         </namedColor>
     </resources>
 </document>

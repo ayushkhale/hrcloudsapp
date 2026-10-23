@@ -358,6 +358,26 @@ export function zoneMinutesFrom(ymd, iso, timeZone) {
   return minutes + Math.round((actual - base) / 86400000) * 1440;
 }
 
+/**
+ * The calendar date an instant falls on IN `timeZone`, as YYYY-MM-DD. Ported
+ * from the web's attendance/dates.js (§10) for the schedule's task-lane
+ * recovery: a deadline has to be filed under the day the AGENDA calls it, not
+ * the day the phone is having, or the recovered row lands under the wrong
+ * heading for anyone whose shift zone isn't their device's.
+ */
+export function ymdInZone(iso, timeZone) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  const opts = { year: 'numeric', month: '2-digit', day: '2-digit' };
+  try {
+    // en-CA formats as YYYY-MM-DD, which is the wire format already.
+    return new Intl.DateTimeFormat('en-CA', { ...opts, timeZone: timeZone || undefined }).format(d);
+  } catch {
+    return new Intl.DateTimeFormat('en-CA', opts).format(d);
+  }
+}
+
 /** Format an instant in a specific IANA zone (falls back to the device zone). */
 export function formatInZone(iso, timeZone) {
   if (!iso) return 'N/A';

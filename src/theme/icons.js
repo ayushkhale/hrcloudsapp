@@ -90,6 +90,8 @@ export const icons = {
       the installed package, 2026-10-17), so Flags no longer borrows `warn`. */
   flag: s('FlagIcon'),
   location: s('LocationMarkerIcon', 'MapPinIcon'),
+  /** My Time › Location checks — somebody asked where you were. NOT `location`, which the Locations section (where you may punch from) already wears. */
+  locationCheck: s('ViewfinderCircleIcon', 'LocationMarkerIcon'),
   /** "View on map" — opens a site in the phone's maps app. A folded map, not
       the pin: the pin is the site itself, this is the way to get there. */
   map: s('MapIcon'),
@@ -112,6 +114,13 @@ export const icons = {
   sparkles: s('SparklesIcon'),
   /** Earned Leave (comp-off). Never say "comp-off" in the UI — §6. */
   earnedLeave: s('GiftIcon'),
+  /**
+   * The rules attendance is MEASURED against — My Schedules' "How days count".
+   * The same glyph the web's My Schedule tab wears (HiScale). Shares a
+   * Heroicon with `tax` below on purpose: they are different destinations, and
+   * each keeps its own semantic name so either can be re-pointed alone.
+   */
+  rules: s('ScaleIcon'),
 
   // ── Pay ───────────────────────────────────────────────────────────────────
   rupee: s('CurrencyRupeeIcon', 'CurrencyDollarIcon', 'BanknotesIcon'),
