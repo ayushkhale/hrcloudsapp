@@ -275,8 +275,12 @@ export const fetchFileToCache = (endpoint, options = {}) => fetchBinary(endpoint
  *
  * MISS STEP 3 and the file exists in storage but not on the record — which
  * looks, to everyone, like the upload silently did nothing.
+ *
+ * `signal` is an optional AbortSignal: when it fires mid-PUT, the fetch task
+ * is cancelled and this rejects with an `AbortError`. The caller must stop
+ * before step 3 — a confirmed attachment is attached to the record.
  */
-export async function uploadToPresignedUrl(uploadUrl, localPath, contentType, requiredHeaders) {
+export async function uploadToPresignedUrl(uploadUrl, localPath, contentType, requiredHeaders, signal) {
   // `required_headers` from step 1 are echoed back, EXCEPT Content-Length
   // (the native layer derives it from the file) and Content-Type (set once,
   // from the value declared in step 1). Same rule as the web's putToSignedUrl.
@@ -287,12 +291,37 @@ export async function uploadToPresignedUrl(uploadUrl, localPath, contentType, re
       headers[key] = value;
     });
   }
-  const res = await ReactNativeBlobUtil.fetch(
+  if (signal?.aborted) {
+    const err = new Error('Upload cancelled.');
+    err.name = 'AbortError';
+    throw err;
+  }
+  const task = ReactNativeBlobUtil.fetch(
     'PUT',
     uploadUrl,
     headers,
     ReactNativeBlobUtil.wrap(decodeURI(localPath.replace('file://', ''))),
   );
+  const onAbort = () => { try { task.cancel(); } catch { /* ignore */ } };
+  if (signal) signal.addEventListener('abort', onAbort);
+  let res;
+  try {
+    res = await task;
+  } catch (err) {
+    if (signal?.aborted) {
+      const aborted = new Error('Upload cancelled.');
+      aborted.name = 'AbortError';
+      throw aborted;
+    }
+    throw err;
+  } finally {
+    if (signal) signal.removeEventListener('abort', onAbort);
+  }
+  if (signal?.aborted) {
+    const err = new Error('Upload cancelled.');
+    err.name = 'AbortError';
+    throw err;
+  }
   const status = res.info().status;
   if (status < 200 || status >= 300) {
     const error = new Error('The file couldn’t be uploaded. Please try again.');

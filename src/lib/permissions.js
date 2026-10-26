@@ -79,31 +79,51 @@ export async function requestAllAppPermissions({ force = false } = {}) {
     if (__DEV__) console.log(`${TAG} Requesting all permissions upfront...`);
 
     if (Platform.OS === 'android') {
-      const toRequest = [
-        PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
-        PermissionsAndroid.PERMISSIONS.ACCESS_COARSE_LOCATION,
-        PermissionsAndroid.PERMISSIONS.CAMERA,
-      ];
+      const toRequest = [];
 
-      if (Platform.Version >= 33) {
-        toRequest.push(
-          PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS,
-          PermissionsAndroid.PERMISSIONS.READ_MEDIA_IMAGES,
-          PermissionsAndroid.PERMISSIONS.READ_MEDIA_VIDEO,
-        );
-      } else {
-        toRequest.push(PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE);
+      const fineGranted = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION);
+      if (!fineGranted) {
+        toRequest.push(PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION);
+        toRequest.push(PermissionsAndroid.PERMISSIONS.ACCESS_COARSE_LOCATION);
       }
 
-      const results = await PermissionsAndroid.requestMultiple(toRequest);
-      if (__DEV__) console.log(`${TAG} Multi-permission results:`, results);
+      const cameraGranted = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.CAMERA);
+      if (!cameraGranted) {
+        toRequest.push(PermissionsAndroid.PERMISSIONS.CAMERA);
+      }
+
+      if (Platform.Version >= 33) {
+        const notifGranted = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS);
+        if (!notifGranted) {
+          toRequest.push(PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS);
+        }
+        const mediaGranted = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.READ_MEDIA_IMAGES);
+        if (!mediaGranted) {
+          toRequest.push(PermissionsAndroid.PERMISSIONS.READ_MEDIA_IMAGES);
+          toRequest.push(PermissionsAndroid.PERMISSIONS.READ_MEDIA_VIDEO);
+        }
+      } else {
+        const storageGranted = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE);
+        if (!storageGranted) {
+          toRequest.push(PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE);
+        }
+      }
+
+      let results = {};
+      if (toRequest.length > 0) {
+        results = await PermissionsAndroid.requestMultiple(toRequest);
+        if (__DEV__) console.log(`${TAG} Multi-permission results:`, results);
+      }
 
       // If fine location was granted, on Android 10+ optionally ask for background location
-      const fineGranted = results[PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION] === PermissionsAndroid.RESULTS.GRANTED;
-      if (fineGranted && Platform.Version >= 29) {
+      const fineNowGranted = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION);
+      if (fineNowGranted && Platform.Version >= 29) {
         try {
-          const bgResult = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.ACCESS_BACKGROUND_LOCATION);
-          if (__DEV__) console.log(`${TAG} Background location result:`, bgResult);
+          const bgCheck = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.ACCESS_BACKGROUND_LOCATION);
+          if (!bgCheck) {
+            const bgResult = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.ACCESS_BACKGROUND_LOCATION);
+            if (__DEV__) console.log(`${TAG} Background location result:`, bgResult);
+          }
         } catch (bgErr) {
           if (__DEV__) console.warn(`${TAG} Background location request error:`, bgErr);
         }

@@ -34,7 +34,7 @@ import { fullDayMinutes, halfDayMinutes, graceMinutes } from '../../../lib/polic
 import { color, radius, space, text, toneOf } from '../../../theme/tokens';
 import { icons } from '../../../theme/icons';
 import { InlineAlert, LinkButton, Pill, SkeletonBlock } from '../../../ui';
-import { CardShell, RecordCard } from '../../../ui/ListCards';
+import { RecordCard } from '../../../ui/ListCards';
 import { dayTitle, presentDay, presentItem, summaryTiles } from '../scheduleMeta';
 
 /* ─── ScheduleHero ─────────────────────────────────────────────────────────── */
@@ -235,12 +235,8 @@ export function WeekdayOffRow({ days }) {
 /* ─── GradingLadder ────────────────────────────────────────────────────────── */
 
 /**
- * How many hours make how much of a day, as bands whose WIDTH is the hours
- * they cover — so "stop at three hours and the day counts for nothing" is
- * something you can see rather than infer from two numbers in a row.
- *
- * Hidden entirely when the policy publishes neither threshold: a missing
- * backend figure degrades to a hidden control, never a guess (§6).
+ * Minimal, clutter-free visual grading ladder for work hours.
+ * Proportional 3-tier track with clean labels inspired by Attendance tabs.
  */
 export function GradingLadder({ policy }) {
   const half = halfDayMinutes(policy);
@@ -248,53 +244,70 @@ export function GradingLadder({ policy }) {
   if (half === null && full === null) return null;
 
   const t = toneOf('purple');
-  // The axis runs two hours past the top threshold, so the last band has room
-  // to be a band rather than a sliver at the end.
-  const top = (full ?? half * 2) + 120;
-  const bands = [];
+  const tiers = [];
   if (half !== null) {
-    bands.push({ key: 'none', from: 0, to: half, label: 'No Attendance', bg: color.surfaceSubtle, fg: color.textMuted });
-    if (full !== null) {
-      bands.push({ key: 'half', from: half, to: full, label: 'Half Day', bg: t.chip, fg: t.fg });
-    } else {
-      bands.push({ key: 'half', from: half, to: top, label: 'Half Day +', bg: color.brand, fg: color.textOnBrand });
-    }
-  } else {
-    bands.push({ key: 'none', from: 0, to: full, label: 'Below Full Day', bg: color.surfaceSubtle, fg: color.textMuted });
+    tiers.push({
+      key: 'none',
+      label: 'None',
+      sub: `< ${fmtMinutes(half)}`,
+      color: color.borderSubtle,
+    });
+    tiers.push({
+      key: 'half',
+      label: 'Half Day',
+      sub: full !== null ? `${fmtMinutes(half)} – ${fmtMinutes(full)}` : `≥ ${fmtMinutes(half)}`,
+      color: t.chip,
+    });
   }
   if (full !== null) {
-    bands.push({ key: 'full', from: full, to: top, label: 'Full Day', bg: color.brand, fg: color.textOnBrand });
+    tiers.push({
+      key: 'full',
+      label: 'Full Day',
+      sub: `≥ ${fmtMinutes(full)}`,
+      color: color.brand,
+    });
   }
 
   return (
     <View style={{ gap: space[2] }}>
-      {/* Visual threshold bands */}
-      <View style={{ flexDirection: 'row', gap: 3 }}>
-        {bands.map((b) => (
+      {/* Sleek proportional visual track */}
+      <View
+        style={{
+          flexDirection: 'row',
+          height: 6,
+          borderRadius: radius.full,
+          overflow: 'hidden',
+          backgroundColor: color.surfaceSubtle,
+          gap: 3,
+        }}
+      >
+        {tiers.map((tier) => (
           <View
-            key={b.key}
+            key={tier.key}
             style={{
-              width: `${((b.to - b.from) / top) * 100}%`,
-              height: 36,
-              borderRadius: radius.md,
-              backgroundColor: b.bg,
-              alignItems: 'center',
-              justifyContent: 'center',
-              overflow: 'hidden',
-              paddingHorizontal: 2,
+              flex: 1,
+              backgroundColor: tier.color,
+              borderRadius: radius.full,
             }}
-          >
-            <Text numberOfLines={1} style={[text.label, { fontSize: 9.5, color: b.fg, fontWeight: '700' }]}>{b.label}</Text>
-          </View>
+          />
         ))}
       </View>
 
-      {/* Boundary time markers */}
-      <View style={{ flexDirection: 'row', gap: 3 }}>
-        {bands.map((b) => (
-          <View key={b.key} style={{ width: `${((b.to - b.from) / top) * 100}%` }}>
-            <Text numberOfLines={1} style={[text.caption, { textAlign: 'right', fontSize: 10.5, color: color.textSecondary, fontWeight: '600' }]}>
-              {b.to === top ? '' : fmtMinutes(b.to)}
+      {/* Tier labels strip */}
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+        {tiers.map((tier, idx) => (
+          <View
+            key={tier.key}
+            style={{
+              flex: 1,
+              alignItems: idx === 0 ? 'flex-start' : idx === tiers.length - 1 ? 'flex-end' : 'center',
+            }}
+          >
+            <Text style={[text.label, { fontSize: 10, color: color.ink, fontWeight: '700' }]}>
+              {tier.label}
+            </Text>
+            <Text style={[text.caption, { fontSize: 10, color: color.textMuted, marginTop: 1 }]}>
+              {tier.sub}
             </Text>
           </View>
         ))}
@@ -305,10 +318,25 @@ export function GradingLadder({ policy }) {
 
 /* ─── PolicyHeroCard ──────────────────────────────────────────────────────── */
 
+/**
+ * Attendance-style hero card for How days count.
+ * Minimal, divided metrics inspired by MonthHero in Attendance tab.
+ */
 export function PolicyHeroCard({ policy, targeting, ladderShown }) {
   const half = halfDayMinutes(policy);
   const full = fullDayMinutes(policy);
   const grace = graceMinutes(policy);
+
+  const facts = [
+    { label: 'FULL DAY', value: full !== null ? fmtMinutes(full) : '—' },
+    { label: 'HALF DAY', value: half !== null ? fmtMinutes(half) : '—' },
+    { label: 'GRACE TIME', value: grace !== null ? (grace === 0 ? '0m' : fmtMinutes(grace)) : '—' },
+  ];
+
+  const headline = full !== null ? `${fmtMinutes(full)} Full Day` : (policy.name || 'Attendance Policy');
+  const caption = half !== null
+    ? `Half day at ${fmtMinutes(half)}${grace ? ` · ${fmtMinutes(grace)} grace` : ''}`
+    : (targeting || (policy.is_default ? 'Organisation standard rules' : 'Assigned rule set'));
 
   return (
     <LinearGradient
@@ -320,86 +348,42 @@ export function PolicyHeroCard({ policy, targeting, ladderShown }) {
         borderWidth: 1,
         borderColor: color.heroSoftBorder,
         padding: space[4],
-        gap: space[3.5],
+        gap: space[4],
       }}
     >
-      <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: space[2] }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[2.5], flex: 1, minWidth: 0 }}>
-          <View
-            style={{
-              width: 40,
-              height: 40,
-              borderRadius: radius.md,
-              backgroundColor: color.brandSoftBg,
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            {icons.rules ? <icons.rules size={20} color={color.brand} /> : null}
-          </View>
-          <View style={{ flex: 1, minWidth: 0 }}>
-            <Text numberOfLines={1} style={[text.h2, { fontSize: 18, lineHeight: 22, color: color.ink }]}>
-              {policy.name || 'Attendance Policy'}
-            </Text>
-            <Text numberOfLines={1} style={[text.caption, { color: color.textMuted }]}>
-              {targeting || (policy.is_default ? 'Organisation Standard Rules' : 'Assigned Rule Set')}
-            </Text>
-          </View>
-        </View>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: space[2] }}>
+        <Text style={[text.label, { color: color.brandSoftFg }]}>
+          {policy.name ? policy.name.toUpperCase() : 'ATTENDANCE POLICY'}
+        </Text>
         <Pill variant="soft" tone="purple">
-          {policy.is_default ? 'Default' : 'Assigned'}
+          {policy.is_default ? 'Standard' : 'Assigned'}
         </Pill>
       </View>
 
-      {/* Quick Threshold Highlights Row */}
-      <View
-        style={{
-          flexDirection: 'row',
-          backgroundColor: color.surface,
-          borderRadius: radius.lg,
-          paddingVertical: space[2.5],
-          paddingHorizontal: space[3],
-          borderWidth: 1,
-          borderColor: color.borderSubtle,
-        }}
-      >
-        <View style={{ flex: 1, alignItems: 'center', gap: 2 }}>
-          <Text numberOfLines={1} style={[text.smallStrong, { fontSize: 13, color: color.ink }]}>
-            {full !== null ? fmtMinutes(full) : '—'}
-          </Text>
-          <Text numberOfLines={1} style={[text.label, { fontSize: 9, color: color.textMuted }]}>
-            FULL DAY
-          </Text>
+      <View style={{ gap: space[3.5] }}>
+        {/* Divided, not boxed — matching MonthHero in Attendance tab */}
+        <View style={{ flexDirection: 'row', paddingTop: space[1] }}>
+          {facts.map((f, i) => (
+            <React.Fragment key={f.label}>
+              {i > 0 ? <View style={{ width: 1, backgroundColor: color.brandSoftBorder }} /> : null}
+              <View style={{ flex: 1, minWidth: 0, alignItems: 'center', gap: 2 }}>
+                <Text numberOfLines={1} style={[text.smallStrong, { fontSize: 16, color: color.ink }]}>
+                  {f.value}
+                </Text>
+                <Text numberOfLines={1} style={[text.label, { fontSize: 9.5, color: color.textMuted }]}>
+                  {f.label}
+                </Text>
+              </View>
+            </React.Fragment>
+          ))}
         </View>
-        <View style={{ width: 1, backgroundColor: color.borderSubtle }} />
-        <View style={{ flex: 1, alignItems: 'center', gap: 2 }}>
-          <Text numberOfLines={1} style={[text.smallStrong, { fontSize: 13, color: color.ink }]}>
-            {half !== null ? fmtMinutes(half) : '—'}
-          </Text>
-          <Text numberOfLines={1} style={[text.label, { fontSize: 9, color: color.textMuted }]}>
-            HALF DAY
-          </Text>
-        </View>
-        <View style={{ width: 1, backgroundColor: color.borderSubtle }} />
-        <View style={{ flex: 1, alignItems: 'center', gap: 2 }}>
-          <Text numberOfLines={1} style={[text.smallStrong, { fontSize: 13, color: color.ink }]}>
-            {grace !== null ? (grace === 0 ? '0m' : fmtMinutes(grace)) : '—'}
-          </Text>
-          <Text numberOfLines={1} style={[text.label, { fontSize: 9, color: color.textMuted }]}>
-            GRACE TIME
-          </Text>
-        </View>
-      </View>
 
-      {/* Visual Ladder */}
-      {ladderShown ? (
-        <View style={{ gap: space[2], marginTop: space[1] }}>
-          <Text style={[text.label, { fontSize: 10, color: color.brandSoftFg, letterSpacing: 0.5 }]}>
-            WORK HOURS GRADING LADDER
-          </Text>
-          <GradingLadder policy={policy} />
-        </View>
-      ) : null}
+        {ladderShown ? (
+          <View style={{ paddingTop: space[1] }}>
+            <GradingLadder policy={policy} />
+          </View>
+        ) : null}
+      </View>
     </LinearGradient>
   );
 }
@@ -410,98 +394,52 @@ const RULE_CONFIGS = {
   grace_minutes: {
     icon: icons.clock,
     tone: 'amber',
-    category: 'Punctuality',
   },
   full_day_min_hours: {
     icon: icons.rules,
     tone: 'purple',
-    category: 'Day Grading',
   },
   max_break_duration_minutes: {
     icon: icons.pause,
     tone: 'blue',
-    category: 'Breaks',
   },
   regularization_window_days: {
     icon: icons.clipboardCheck,
     tone: 'indigo',
-    category: 'Corrections',
   },
   overtime_enabled: {
     icon: icons.overtime,
-    tone: 'fuchsia',
-    category: 'Overtime',
+    tone: 'purple',
   },
   auto_clock_out_enabled: {
     icon: icons.clockOut,
     tone: 'rose',
-    category: 'Auto Close',
   },
 };
 
 /**
- * One published rule: rendered as a modern, distinct Card with a semantic icon chip,
- * category badge, prominent value pill, and a clear consequence callout.
+ * One published rule: rendered as a minimal, clutter-free RecordCard matching DayCard in Attendance tab.
  */
 export function RuleCard({ rule }) {
   const config = RULE_CONFIGS[rule.key] || {
     icon: icons.info,
-    tone: 'slate',
-    category: 'Policy Rule',
+    tone: 'purple',
   };
-  const t = toneOf(config.tone);
   const Icon = config.icon;
 
   return (
-    <CardShell style={{ padding: space[3.5], gap: space[2.5] }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[3] }}>
-        <View
-          style={{
-            width: 42,
-            height: 42,
-            borderRadius: radius.md,
-            backgroundColor: t.chip,
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          {Icon ? <Icon size={21} color={t.fg} /> : null}
-        </View>
-
-        <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
-          <Text numberOfLines={1} style={[text.label, { fontSize: 9.5, color: color.textMuted, letterSpacing: 0.5 }]}>
-            {config.category.toUpperCase()}
-          </Text>
-          <Text numberOfLines={1} style={[text.bodyStrong, { fontSize: 15, color: color.ink }]}>
-            {rule.label}
-          </Text>
-        </View>
-
-        <View style={{ alignSelf: 'center' }}>
-          <Pill variant="soft" tone={config.tone}>
-            {rule.value}
-          </Pill>
-        </View>
-      </View>
-
-      {/* Explanation callout */}
-      {rule.note ? (
-        <View
-          style={{
-            backgroundColor: color.surfaceSubtle,
-            borderRadius: radius.md,
-            paddingHorizontal: space[3],
-            paddingVertical: space[2],
-            borderLeftWidth: 3,
-            borderLeftColor: t.fg,
-          }}
-        >
-          <Text style={[text.small, { color: color.textSecondary, lineHeight: 18 }]}>
-            {rule.note}
-          </Text>
-        </View>
-      ) : null}
-    </CardShell>
+    <RecordCard
+      icon={Icon}
+      tone={config.tone || 'purple'}
+      title={rule.label}
+      subtitle={rule.note}
+      badge={(
+        <Pill variant="soft" tone={config.tone || 'purple'}>
+          {rule.value}
+        </Pill>
+      )}
+      accessibilityLabel={`${rule.label}. ${rule.value}`}
+    />
   );
 }
 

@@ -59,7 +59,7 @@ import { useConfirm, useToast } from '../ui';
 import { mayaAvailable, openMaya } from '../features/maya/mayaBridge';
 import { useGo, useRouteTarget } from './routes';
 
-const LOGO_GREY = require('../assets/brand/logogrey.png');
+const LOGO_COLORED = require('../assets/brand/logocolored.png');
 
 const WIDTH_FRACTION = 0.86;
 const MAX_WIDTH = 340;
@@ -708,7 +708,7 @@ export function AppDrawer({ open, onClose, inbox = 0 }) {
             </View>
           </ScrollView>
 
-          {/* ── Desaturated Logo & Copyright at the foot ──────────── */}
+          {/* ── Brand Logo & Copyright at the foot ──────────── */}
           <View
             style={{
               paddingHorizontal: space[4],
@@ -723,8 +723,8 @@ export function AppDrawer({ open, onClose, inbox = 0 }) {
             }}
           >
             <Image
-              source={LOGO_GREY}
-              style={{ width: 88, height: 28, opacity: 0.7 }}
+              source={LOGO_COLORED}
+              style={{ width: 92, height: 28 }}
               resizeMode="contain"
               accessibilityRole="image"
               accessibilityLabel="HR Clouds"

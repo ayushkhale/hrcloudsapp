@@ -1,5 +1,5 @@
-import React, { useCallback, useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { AppState, Pressable, Text, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../state/AuthContext';
@@ -10,8 +10,13 @@ import { Avatar } from '../ui';
 import { DrawerButton } from './AppDrawer';
 import { useDrawer } from './DrawerContext';
 import { useGo, useRouteTarget } from './routes';
-import { unreadCount } from '../features/notifications/notifications.data';
+import {
+  cachedUnreadCount, refreshUnreadCount, subscribeInbox,
+} from '../features/notifications/notifications.data';
 import { mayaAvailable, openMaya } from '../features/maya/mayaBridge';
+
+/** Keep the bell honest when the app is open and nothing else refreshed it. */
+const POLL_MS = 60000;
 
 const firstNameOf = (user) =>
   user?.first_name || user?.firstName || (user?.name ? String(user.name).trim().split(/\s+/)[0] : '') || null;
@@ -22,13 +27,31 @@ export function AppTopBar() {
   const { openDrawer } = useDrawer();
   const go = useGo();
   const profileTarget = useRouteTarget('profile');
-  const [unread, setUnread] = useState(() => unreadCount());
+  const [badge, setBadge] = useState(() => cachedUnreadCount());
+  const pollRef = useRef(null);
+
+  // Every mutation inside notifications.data pushes a fresh { unread, disabled }
+  // through this subscription, so the dot clears without a reload.
+  useEffect(() => subscribeInbox(setBadge), []);
 
   useFocusEffect(
     useCallback(() => {
-      setUnread(unreadCount());
+      refreshUnreadCount().catch(() => {});
     }, []),
   );
+
+  useEffect(() => {
+    const tick = () => refreshUnreadCount().catch(() => {});
+    tick();
+    pollRef.current = setInterval(tick, POLL_MS);
+    const sub = AppState.addEventListener('change', (next) => {
+      if (next === 'active') tick();
+    });
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current);
+      sub.remove();
+    };
+  }, []);
 
   const openNotifications = useCallback(() => {
     go(['HomeTab', 'Notifications']);
@@ -95,40 +118,52 @@ export function AppTopBar() {
           </Pressable>
         ) : null}
 
-        <Pressable
-          onPress={openNotifications}
-          accessibilityRole="button"
-          accessibilityLabel={unread ? `Notifications, ${unread} unread` : 'Notifications'}
-          hitSlop={8}
-          style={({ pressed }) => ({
-            width: 40,
-            height: 40,
-            borderRadius: radius.full,
-            alignItems: 'center',
-            justifyContent: 'center',
-            backgroundColor: pressed ? color.brandSoftBg : color.surface,
-            borderWidth: 1,
-            borderColor: color.borderSubtle,
-            ...elevate('xs'),
-          })}
-        >
-          {Bell ? <Bell size={iconSize.md} color={color.textSecondary} /> : null}
-          {unread ? (
-            <View
-              style={{
-                position: 'absolute',
-                top: 7,
-                right: 8,
-                width: 10,
-                height: 10,
-                borderRadius: 5,
-                backgroundColor: color.brand,
-                borderWidth: 2,
-                borderColor: color.surface,
-              }}
-            />
-          ) : null}
-        </Pressable>
+        {/* 503 FEATURE_DISABLED → the bell quietly vanishes until the engine
+            is turned back on. The badge shows "99+" when the server capped the
+            count. */}
+        {badge.disabled ? null : (
+          <Pressable
+            onPress={openNotifications}
+            accessibilityRole="button"
+            accessibilityLabel={badge.unread ? `Notifications, ${badge.unread} unread` : 'Notifications'}
+            hitSlop={8}
+            style={({ pressed }) => ({
+              width: 40,
+              height: 40,
+              borderRadius: radius.full,
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: pressed ? color.brandSoftBg : color.surface,
+              borderWidth: 1,
+              borderColor: color.borderSubtle,
+              ...elevate('xs'),
+            })}
+          >
+            {Bell ? <Bell size={iconSize.md} color={color.textSecondary} /> : null}
+            {badge.unread ? (
+              <View
+                style={{
+                  position: 'absolute',
+                  top: -2,
+                  right: -2,
+                  minWidth: 18,
+                  height: 18,
+                  paddingHorizontal: 4,
+                  borderRadius: 9,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  backgroundColor: color.brand,
+                  borderWidth: 2,
+                  borderColor: color.surface,
+                }}
+              >
+                <Text style={[text.caption, { color: '#fff', fontWeight: '700', fontSize: 10, lineHeight: 12 }]}>
+                  {badge.isCapped ? `${badge.unread}+` : (badge.unread > 99 ? '99+' : String(badge.unread))}
+                </Text>
+              </View>
+            ) : null}
+          </Pressable>
+        )}
 
         <Pressable
           onPress={openProfile}

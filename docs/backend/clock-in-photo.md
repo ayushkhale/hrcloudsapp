@@ -30,7 +30,7 @@ When an employee clocks in from the app, the phone's camera opens and they take 
 | `captured_at` | ISO-8601 | Same as `photo_captured_at` |
 | `width`, `height` | number | Size of the **original camera image**, not of the JPEG that was sent |
 | `location_stamped` | boolean | `true` when the location stamp was burned in; `false` if stamping failed and the plain photo was sent |
-| `address` | string | Present only when a street address was found (OpenStreetMap Nominatim, looked up on the phone) |
+| `address` | string | Present only when a street address was found (Google Geocoding, falling back to OpenStreetMap Nominatim, looked up on the phone) |
 | `attached` | boolean | Whether `photo` is in this body. It can be `false`: see "When there is no photo" |
 
 ### Example

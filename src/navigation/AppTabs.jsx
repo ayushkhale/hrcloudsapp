@@ -317,8 +317,11 @@ export function AppTabs() {
   // and set up push once the person is signed into the app.
   useEffect(() => {
     let cleanup = () => {};
-    requestAllAppPermissions().catch(() => {});
-    setupPush().then((fn) => { cleanup = fn || (() => {}); });
+    requestAllAppPermissions()
+      .catch(() => {})
+      .finally(() => {
+        setupPush().then((fn) => { cleanup = fn || (() => {}); });
+      });
     return () => cleanup();
   }, []);
 

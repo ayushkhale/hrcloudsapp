@@ -122,7 +122,7 @@ export const linkingConfig = {
             },
           },
         },
-        TimeTab: { screens: { Time: { path: 'attendance', alias: ['leaves'] } } },
+        TimeTab: { screens: { Time: { path: 'attendance', alias: ['leaves', 'location-checks'] } } },
         PayTab: { screens: { PayHome: 'payslips' } },
         SchedulesTab: { screens: { Schedules: 'schedules' } },
       },

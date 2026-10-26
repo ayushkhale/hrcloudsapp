@@ -48,6 +48,11 @@ export const ENV = {
   // new .env key needs a rebuild — a JS default works on a Metro reload.
   DOCMIND_ORIGIN: cleanUrl(Config.DOCMIND_ORIGIN, 'https://hrclouds.in'),
 
+  // Google Geocoding v4 — address <-> coordinates (lib/geocoding.js). No key ->
+  // OpenStreetMap only, exactly as before. Today a Maps DEMO key (no billing,
+  // a small daily allowance), so it's public by nature — see the note above.
+  GOOGLE_MAPS_API_KEY: clean(Config.GOOGLE_MAPS_API_KEY),
+
   // Build identity, for the Settings screen and crash reports.
   APP_VERSION: clean(Config.APP_VERSION, '1.0.0'),
   SENTRY_DSN: clean(Config.SENTRY_DSN),
@@ -55,8 +60,8 @@ export const ENV = {
 
 if (__DEV__) {
   if (!ENV.API_BASE_URL) console.error('[CONFIG] API_BASE_URL is not set.');
-  if (!ENV.DOCMIND_API_KEY) console.warn('[CONFIG] No DocMind key — Maya will be hidden from every ⓘ.');
-  if (!ENV.GOOGLE_WEB_CLIENT_ID) console.warn('[CONFIG] No Google client id — SSO will be disabled.');
+  if (!ENV.DOCMIND_API_KEY) console.log('[CONFIG] No DocMind key — Maya will be hidden from every ⓘ.');
+  if (!ENV.GOOGLE_WEB_CLIENT_ID) console.log('[CONFIG] No Google client id — SSO will be disabled.');
 }
 
 export default ENV;

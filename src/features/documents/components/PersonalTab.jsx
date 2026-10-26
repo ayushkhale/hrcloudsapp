@@ -37,8 +37,8 @@ import { ATTENDANCE_EVENTS, emitAttendanceChanged, useAttendanceChanged } from '
 import { color, space, text } from '../../../theme/tokens';
 import { icons } from '../../../theme/icons';
 import {
-  Button, EmptyState, ErrorState, FilterTabs, LinkButton, RecordSheet, SheetGrid, SheetSection,
-  SheetStats, SheetText, StatusBadge, showToast, useConfirm,
+  Button, EmptyState, ErrorState, FilterTabs, FloatingAction, FLOATING_CLEARANCE, LinkButton,
+  RecordSheet, SheetGrid, SheetSection, SheetStats, SheetText, StatusBadge, showToast, useConfirm,
 } from '../../../ui';
 import { CardsSkeleton, RecordCard, cardListStyle } from '../../../ui/ListCards';
 import {
@@ -373,14 +373,22 @@ export function PersonalTab({ onUpload }) {
   };
 
   return (
-    <ScrollView contentContainerStyle={cardListStyle} refreshControl={refreshControl}>
-      <FilterTabs options={options} value={current} onChange={setFilter} />
-      {current !== 'types' ? (
-        <Button title="Upload a document" icon={icons.upload} onPress={() => onUpload({})} fullWidth />
-      ) : null}
-      {current === 'types' ? renderTypes() : renderDocs()}
+    <View style={{ flex: 1 }}>
+      <ScrollView
+        contentContainerStyle={[cardListStyle, { paddingBottom: FLOATING_CLEARANCE }]}
+        refreshControl={refreshControl}
+      >
+        <FilterTabs options={options} value={current} onChange={setFilter} />
+        {current === 'types' ? renderTypes() : renderDocs()}
+      </ScrollView>
 
-    </ScrollView>
+      <FloatingAction
+        title="Upload a document"
+        icon={icons.upload}
+        onPress={() => onUpload({})}
+        overTabBar={false}
+      />
+    </View>
   );
 }
 

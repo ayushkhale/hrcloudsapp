@@ -71,6 +71,7 @@ import { attendanceAPI, getToken } from '../../api';
 import { loadSession } from '../../state/session';
 import { getFreshLocation, GEO_STATUS } from '../../lib/location';
 import { THIS_PLATFORM } from '../devices/deviceMeta';
+import { ATTENDANCE_EVENTS, emitAttendanceChanged } from '../../lib/events';
 
 const TAG = '[live-location]';
 const ACTION = 'REQUEST_LOCATION';
@@ -93,7 +94,7 @@ const isLive = (expiresAt) => {
   return !Number.isFinite(t) || t > Date.now();
 };
 
-async function notifyRequested() {
+export async function notifyRequested(requestId) {
   try {
     // REQUIRED LAZILY, NEVER AT MODULE SCOPE. @notifee/react-native throws from
     // its constructor the moment it is imported on a build where the native
@@ -103,9 +104,7 @@ async function notifyRequested() {
     // rebuild — not merely make this one feature a no-op. The require lives
     // inside this try so that same "not linked" case is caught and logged, and
     // the fix below is still taken and reported.
-    // eslint-disable-next-line global-require
     const notifee = require('@notifee/react-native').default;
-    // eslint-disable-next-line global-require
     const { AndroidImportance } = require('@notifee/react-native');
     await notifee.createChannel({
       id: CHANNEL_ID,
@@ -113,13 +112,52 @@ async function notifyRequested() {
       importance: AndroidImportance.HIGH,
     });
     await notifee.displayNotification({
+      id: requestId ? `location_${requestId}` : 'location_check',
       title: 'Location requested',
       body: 'Your workplace has requested your current location.',
-      android: { channelId: CHANNEL_ID, smallIcon: 'ic_launcher', pressAction: { id: 'default' } },
+      data: {
+        type: 'location_check',
+        section: 'locationChecks',
+        requestId: requestId || '',
+      },
+      android: {
+        channelId: CHANNEL_ID,
+        smallIcon: 'ic_launcher',
+        pressAction: { id: 'default' },
+      },
     });
   } catch (err) {
     // Before the native rebuild notifee isn't linked. Never a reason to drop the fix.
     if (__DEV__) console.warn(`${TAG} notification not shown:`, err?.message || err);
+  }
+}
+
+export async function notifyFetched(requestId) {
+  try {
+    const notifee = require('@notifee/react-native').default;
+    const { AndroidImportance } = require('@notifee/react-native');
+    await notifee.createChannel({
+      id: CHANNEL_ID,
+      name: 'Location requests',
+      importance: AndroidImportance.HIGH,
+    });
+    await notifee.displayNotification({
+      id: requestId ? `location_${requestId}` : 'location_check',
+      title: 'Location fetched',
+      body: 'Your workplace verified your current location. Tap to view.',
+      data: {
+        type: 'location_check',
+        section: 'locationChecks',
+        requestId: requestId || '',
+      },
+      android: {
+        channelId: CHANNEL_ID,
+        smallIcon: 'ic_launcher',
+        pressAction: { id: 'default' },
+      },
+    });
+  } catch (err) {
+    if (__DEV__) console.warn(`${TAG} fetched notification not shown:`, err?.message || err);
   }
 }
 
@@ -154,7 +192,7 @@ export async function handleLocationRequest(data) {
     if (!getToken()) await loadSession();
     if (!getToken()) return; // signed out on this phone — nobody to answer for
 
-    await notifyRequested();
+    await notifyRequested(requestId);
 
     const fix = await getFreshLocation({ timeout: 10000 });
     const c = fix?.coords;
@@ -177,6 +215,12 @@ export async function handleLocationRequest(data) {
       platform: THIS_PLATFORM,
     }, expiresAt);
     if (__DEV__) console.log(`${TAG} reported:`, requestId);
+
+    // Notify user that location has been fetched/verified and reported
+    await notifyFetched(requestId);
+
+    // Signal any active screens (like LocationChecksTab) to reload their list
+    emitAttendanceChanged(ATTENDANCE_EVENTS.LOCATION_CHECK, { requestId });
   } catch (err) {
     if (__DEV__) console.warn(`${TAG} not reported:`, err?.status || '', err?.message || err);
   } finally {
@@ -207,4 +251,11 @@ export async function acknowledgeNotice(userId) {
   AsyncStorage.setItem(noticeKey(userId), 'true').catch(() => {});
 }
 
-export default { handleLocationRequest, isLocationRequest, noticeAcknowledged, acknowledgeNotice };
+export default {
+  handleLocationRequest,
+  isLocationRequest,
+  notifyRequested,
+  notifyFetched,
+  noticeAcknowledged,
+  acknowledgeNotice,
+};

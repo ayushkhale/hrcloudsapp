@@ -62,7 +62,7 @@ import { Animated, Image, StyleSheet, Text, View } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import BootSplash from 'react-native-bootsplash';
-import { navigationRef } from './navigationRef';
+import { flushPendingNavigation, navigationRef } from './navigationRef';
 import { useOnboarding } from '../features/onboarding/useOnboarding';
 import { useAuth } from '../state/AuthContext';
 import { wrongWorkspaceCopy } from '../state/session';
@@ -289,7 +289,10 @@ export function RootNavigator() {
   const signOutCover = useSignOutCover(isAuthenticated);
 
   // Deep links wait for a session rather than being dropped — see linking.js.
-  useEffect(() => { setLinkingAuthed(isAuthenticated); }, [isAuthenticated]);
+  useEffect(() => {
+    setLinkingAuthed(isAuthenticated);
+    if (isAuthenticated) flushPendingNavigation();
+  }, [isAuthenticated]);
 
   // A refused account's held link is dropped. The gate already stops it from
   // resolving (AppTabs never mounts), but it must not fire at the next person
@@ -301,6 +304,7 @@ export function RootNavigator() {
     // reports ready without ever laying out (it has happened on a cold Android
     // start under a slow debugger), the splash still comes down.
     if (!isLoading && !checking) hideSplash();
+    flushPendingNavigation();
   };
 
   const hideSplash = () => {

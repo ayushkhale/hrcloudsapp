@@ -26,6 +26,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { prefetchOnboardingImages } from './onboardingImages';
 
 /* Versioned. Changing the tour's content and wanting it shown again is a
    matter of bumping the suffix, which is cheaper and clearer than a migration
@@ -40,13 +41,27 @@ export function useOnboarding() {
   useEffect(() => {
     let alive = true;
     const timer = setTimeout(() => {
-      if (alive && seen === null) setSeen(false);
+      if (alive && seen === null) {
+        setSeen(false);
+        prefetchOnboardingImages();
+      }
     }, 1500);
 
     AsyncStorage.getItem(ONBOARDING_KEY)
-      .then((value) => { if (alive) setSeen(value === '1'); })
+      .then((value) => {
+        if (alive) {
+          const hasSeen = value === '1';
+          setSeen(hasSeen);
+          if (!hasSeen) prefetchOnboardingImages();
+        }
+      })
       // Storage unavailable: show the tour. See the header.
-      .catch(() => { if (alive) setSeen(false); })
+      .catch(() => {
+        if (alive) {
+          setSeen(false);
+          prefetchOnboardingImages();
+        }
+      })
       .finally(() => clearTimeout(timer));
 
     return () => {

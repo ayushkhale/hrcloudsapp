@@ -354,7 +354,7 @@ export function PunchCard({ today, shift: shiftData, contract, refresh }) {
         width: photo.width,
         height: photo.height,
         location_stamped: !!photo.stamp,
-        // The place printed on the photo (OpenStreetMap), when one was found.
+        // The place printed on the photo (Google, else OpenStreetMap), when one was found.
         ...(photo.stamp?.address ? { address: photo.stamp.address } : null),
         attached: !!photo.base64,
       };

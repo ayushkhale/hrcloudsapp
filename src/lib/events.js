@@ -59,6 +59,8 @@ export const ATTENDANCE_EVENTS = Object.freeze({
   // inbox kind for an employee — they have no device queue — but a device of
   // their own that was waiting for HR leaves that queue when they shut it off.
   DEVICE: "device",
+  // On-demand location requests: a fresh fix was captured and posted to the server.
+  LOCATION_CHECK: "location_check",
 });
 
 /**

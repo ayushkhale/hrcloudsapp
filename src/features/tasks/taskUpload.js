@@ -88,15 +88,32 @@ export function taskUploadErrorMessage(err) {
   return taskErrorMessage(err, 'Couldn’t upload the file. Try again.');
 }
 
+const isAbort = (err) => err?.name === 'AbortError' || err?.message === 'Upload cancelled.';
+
 /**
  * Upload one file against an existing task (Mode B), end to end.
  *
- * @param {{ file: {uri,name,type,size}, taskId: string, context?: 'submission'|'comment' }} opts
+ * `signal` is an optional AbortSignal. When it fires BEFORE step 3 the
+ * handshake stops and no attachment row is written on the server — the
+ * uploaded bytes sit in storage orphaned, which the server reaps on its own.
+ * Once step 3 runs the row exists; aborting after confirm has no undo.
+ *
+ * @param {{ file: {uri,name,type,size}, taskId: string, context?: 'submission'|'comment', signal?: AbortSignal }} opts
  * @returns {Promise<{ id, file_name, file_size_bytes, content_type }>} the saved row
  */
-export async function uploadTaskFile({ file, taskId, context = 'submission' }) {
+export async function uploadTaskFile({ file, taskId, context = 'submission', signal }) {
   const content_type = taskContentType(file);
   const file_name = trimFileName(file.name);
+
+  const assertLive = () => {
+    if (signal?.aborted) {
+      const err = new Error('Upload cancelled.');
+      err.name = 'AbortError';
+      throw err;
+    }
+  };
+
+  assertLive();
 
   let issued;
   try {
@@ -109,8 +126,10 @@ export async function uploadTaskFile({ file, taskId, context = 'submission' }) {
     });
     issued = res?.data ?? res;
   } catch (err) {
+    if (isAbort(err) || signal?.aborted) throw err;
     throw new TaskUploadError('issue', err);
   }
+  assertLive();
 
   const uploadUrl = issued?.upload_url;
   const token = issued?.attachment_token;
@@ -119,10 +138,15 @@ export async function uploadTaskFile({ file, taskId, context = 'submission' }) {
   }
 
   try {
-    await uploadToPresignedUrl(uploadUrl, file.uri, content_type, issued?.required_headers);
+    await uploadToPresignedUrl(uploadUrl, file.uri, content_type, issued?.required_headers, signal);
   } catch (err) {
+    if (isAbort(err)) throw err;
     throw new TaskUploadError('put', err);
   }
+  // Aborted mid-PUT or just after the bytes landed? Stop before confirm so no
+  // row is written. This is what the "I pressed back but the file still got
+  // attached" report was about.
+  assertLive();
 
   try {
     const res = await tasksAPI.confirmTaskAttachment(token);
@@ -135,6 +159,7 @@ export async function uploadTaskFile({ file, taskId, context = 'submission' }) {
       content_type: attachment?.content_type || content_type,
     };
   } catch (err) {
+    if (isAbort(err) || signal?.aborted) throw err;
     throw new TaskUploadError('confirm', err);
   }
 }

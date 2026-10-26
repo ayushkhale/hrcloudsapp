@@ -48,6 +48,7 @@ import { ToastProvider } from './ui/Toast';
 import { ConfirmProvider } from './ui/ConfirmProvider';
 import { RootNavigator } from './navigation/RootNavigator';
 import { LottieSplash } from './features/splash/LottieSplash';
+import { checkForAppUpdate } from './lib/inAppUpdate';
 import { color } from './theme/tokens';
 
 export default function App() {
@@ -67,6 +68,12 @@ export default function App() {
   useEffect(() => {
     BootSplash.hide({ fade: false }).catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (splashDone) {
+      checkForAppUpdate();
+    }
+  }, [splashDone]);
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>

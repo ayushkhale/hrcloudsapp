@@ -354,6 +354,7 @@ side → change both in the same sitting, and say so in both header comments.
 | **`lib/policyRules.js`** | **`attendance/policyRules.js`** | **`policyOf`, `shiftOf`, the two threshold spellings, `ruleLines`, `correctionWindow`, `weeklyOffNames` — ported 2026-10-23** |
 | **`features/schedules/scheduleMeta.js`** | **`attendance/agendaMeta.js`** | **`DAY_KINDS`, `dayHeadline`, `itemHeadline`, `summaryTiles`, `weeklyOffRule`, `employeeTargeting`, the lane helpers — ported 2026-10-23** |
 | **`features/schedules/useAgenda.js`** | **`attendance/useAgenda.js`** | **the agenda read, the v2 fields, the tasks-lane recovery — ported 2026-10-23** |
+| **`lib/geocoding.js`** | **`utils/geocoding.js`** | **`normalizePlace`, `searchPlaces`, `reverseGeocode` — Google Geocoding v4 first, Nominatim behind it, both sides switched 2026-10-24 (demo key; rests until midnight when the day's allowance runs out)** |
 
 ### What the 2026-10-23 schedules port cost, and why this ledger exists
 

@@ -24,7 +24,7 @@
 // screen with no way forward.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   FlatList,
   Image,
@@ -37,13 +37,15 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { icons } from '../../../theme/icons';
 import { color, iconSize, radius, space, text } from '../../../theme/tokens';
 import { AuthBackdrop, BrandMark } from '../../auth/components/AuthScreen';
+import {
+  ONBOARDING_1,
+  ONBOARDING_2,
+  ONBOARDING_3,
+  ONBOARDING_IMAGES,
+  prefetchOnboardingImages,
+} from '../onboardingImages';
 
 const ArrowRight = icons.arrowRight;
-
-// Onboarding illustrations for the three tour slides (all 3:2 ratio)
-const ONBOARDING_1 = require('../../../assets/screens/onboarding/onboarding1.png');
-const ONBOARDING_2 = require('../../../assets/screens/onboarding/onboarding2.png');
-const ONBOARDING_3 = require('../../../assets/screens/onboarding/onboarding3.png');
 
 /* ── The three slides ──────────────────────────────────────────────────────── */
 
@@ -132,6 +134,10 @@ export default function OnboardingScreen({ navigation, route }) {
   const listRef = useRef(null);
   const [index, setIndex] = useState(0);
 
+  useEffect(() => {
+    prefetchOnboardingImages();
+  }, []);
+
   /* Finishing is TWO things, and both are needed.
      `onDone` (RootNavigator's markSeen) stops the tour coming back on the next
      launch — but it cannot move anyone off this screen, because the stack's
@@ -171,6 +177,23 @@ export default function OnboardingScreen({ navigation, route }) {
     <View style={{ flex: 1, backgroundColor: color.bg }}>
       <AuthBackdrop />
 
+      {/* Invisible cache keeper: keeps all onboarding illustrations decoded in native memory */}
+      <View
+        style={{ position: 'absolute', width: 0, height: 0, opacity: 0 }}
+        pointerEvents="none"
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+      >
+        {ONBOARDING_IMAGES.map((img, i) => (
+          <Image
+            key={`onboarding-preload-${i}`}
+            source={img}
+            style={{ width: 1, height: 1 }}
+            fadeDuration={0}
+          />
+        ))}
+      </View>
+
       {/* Top bar: the wordmark on the left, Skip on the right. Skip is on
           every slide, including the last, so the way out never moves. */}
       <View
@@ -208,6 +231,10 @@ export default function OnboardingScreen({ navigation, route }) {
         showsHorizontalScrollIndicator={false}
         onScroll={onScroll}
         scrollEventThrottle={16}
+        initialNumToRender={3}
+        maxToRenderPerBatch={3}
+        windowSize={3}
+        removeClippedSubviews={false}
         // Every page is exactly the window wide, so the list never has to
         // measure one to know where it is.
         getItemLayout={(_, i) => ({ length: width, offset: width * i, index: i })}
@@ -223,7 +250,13 @@ export default function OnboardingScreen({ navigation, route }) {
                 marginBottom: space[10],
               }}
             >
-              {item.art}
+              <Image
+                source={item.image}
+                style={{ width: '100%', height: 220 }}
+                resizeMode="contain"
+                fadeDuration={0}
+                resizeMethod="resize"
+              />
             </View>
 
             <Text accessibilityRole="header" style={text.display}>

@@ -39,27 +39,55 @@ import messaging from '@react-native-firebase/messaging';
 import { showToast } from '../../ui/Toast';
 import { registerThisDevice } from './pushDevice';
 import { handleLocationRequest, isLocationRequest } from '../attendance/liveLocation';
+import { navigateToLocationChecks, navigationRef } from '../../navigation/navigationRef';
+import { bumpUnread, refreshUnreadCount } from './notifications.data';
+import { navigateFromPushData } from './deepLink';
 
 const TAG = '[FCM]';
 
-/** Android 13+ needs the POST_NOTIFICATIONS runtime grant; earlier Android and iOS don't. */
+/** Is this notification or push payload related to location checks? */
+export function isLocationNotification(data, notification) {
+  if (!data && !notification) return false;
+  if (
+    data?.type === 'location_check'
+    || data?.section === 'locationChecks'
+    || data?.action === 'REQUEST_LOCATION'
+  ) {
+    return true;
+  }
+  const title = (notification?.title || '').toLowerCase();
+  const body = (notification?.body || '').toLowerCase();
+  return title.includes('location') || body.includes('location');
+}
+
+/**
+ * A VISIBLE message from the notification engine (the inbox + push shape added
+ * on 2026-10-24). FCM carries a top-level `notification` block for these; the
+ * silent location-request shape is data-only and has none.
+ */
+function isEngineNotification(msg) {
+  if (!msg?.notification) return false;
+  if (isLocationRequest(msg)) return false;
+  return true;
+}
+
+/** Check notification permission status. Upfront requesting is handled by lib/permissions.js. */
 async function askNotificationPermission() {
   try {
     if (Platform.OS === 'android') {
       if (Platform.Version >= 33) {
-        const res = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS);
-        return res === PermissionsAndroid.RESULTS.GRANTED;
+        return await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS);
       }
       return true;
     }
     // iOS (and Firebase's own permission on both platforms).
-    const status = await messaging().requestPermission();
+    const status = await messaging().hasPermission();
     return (
       status === messaging.AuthorizationStatus.AUTHORIZED
       || status === messaging.AuthorizationStatus.PROVISIONAL
     );
   } catch (err) {
-    if (__DEV__) console.warn(`${TAG} permission request failed:`, err?.message || err);
+    if (__DEV__) console.warn(`${TAG} permission check failed:`, err?.message || err);
     return false;
   }
 }
@@ -109,24 +137,87 @@ export async function setupPush() {
         handleLocationRequest(msg.data);
         return;
       }
+      // Engine notification: the row is already written server-side, so just
+      // bump the badge and refresh the real count — a toast is the only way
+      // the person sees it while the app is in front.
+      if (isEngineNotification(msg)) {
+        bumpUnread(1);
+        refreshUnreadCount().catch(() => {});
+        const n = msg?.notification;
+        const line = [n?.title, n?.body].filter(Boolean).join(' — ');
+        if (line) showToast(line, 'info');
+        return;
+      }
       const n = msg?.notification;
       const line = [n?.title, n?.body].filter(Boolean).join(' — ');
       if (line) showToast(line, 'info');
     });
 
-    // The app was opened by TAPPING a notification (from background or cold).
-    messaging().onNotificationOpenedApp((msg) => {
-      // eslint-disable-next-line no-console
-      console.log(`${TAG} opened from background:`, JSON.stringify(msg?.data || {}));
+    const openFromPush = (msg) => {
+      // Location checks keep their own deep-link path (notifee-posted channel).
+      if (isLocationNotification(msg?.data, msg?.notification)) {
+        navigateToLocationChecks();
+        return;
+      }
+      // Engine notification tap: data carries { screen, id, event_key }.
+      if (msg?.data?.screen) {
+        if (navigateFromPushData(msg.data)) return;
+      }
+      // Fall back to the inbox for an unknown screen name.
+      try {
+        if (navigationRef.isReady()) {
+          navigationRef.navigate('HomeTab', { screen: 'Notifications' });
+        }
+      } catch { /* no-op */ }
+    };
+
+    const unsubFcmOpened = messaging().onNotificationOpenedApp((msg) => {
+      if (__DEV__) console.log(`${TAG} opened from background:`, JSON.stringify(msg?.data || {}));
+      refreshUnreadCount().catch(() => {});
+      openFromPush(msg);
     });
+
     messaging().getInitialNotification().then((msg) => {
       if (msg) {
-        // eslint-disable-next-line no-console
-        console.log(`${TAG} opened from quit:`, JSON.stringify(msg?.data || {}));
+        if (__DEV__) console.log(`${TAG} opened from quit:`, JSON.stringify(msg?.data || {}));
+        refreshUnreadCount().catch(() => {});
+        openFromPush(msg);
       }
     }).catch(() => {});
 
-    return () => { unsubRefresh?.(); unsubForeground?.(); };
+    // Notifee local notification events (when user taps transparency or location fetched notification)
+    let unsubNotifee = () => {};
+    try {
+      const notifee = require('@notifee/react-native').default;
+      const { EventType } = require('@notifee/react-native');
+
+      unsubNotifee = notifee.onForegroundEvent(({ type, detail }) => {
+        if (type === EventType.PRESS && detail?.notification) {
+          if (__DEV__) console.log(`${TAG} notifee pressed in foreground:`, detail.notification.title);
+          if (isLocationNotification(detail.notification.data, detail.notification)) {
+            navigateToLocationChecks();
+          }
+        }
+      });
+
+      notifee.getInitialNotification().then((initial) => {
+        if (initial?.notification) {
+          if (__DEV__) console.log(`${TAG} notifee opened from quit:`, initial.notification.title);
+          if (isLocationNotification(initial.notification.data, initial.notification)) {
+            navigateToLocationChecks();
+          }
+        }
+      }).catch(() => {});
+    } catch (notifeeErr) {
+      if (__DEV__) console.warn(`${TAG} notifee listener skipped:`, notifeeErr?.message || notifeeErr);
+    }
+
+    return () => {
+      unsubRefresh?.();
+      unsubForeground?.();
+      unsubFcmOpened?.();
+      unsubNotifee?.();
+    };
   } catch (err) {
     // No Firebase native module (rebuild not done) → push is simply off.
     if (__DEV__) console.warn(`${TAG} setup skipped:`, err?.message || err);
@@ -146,5 +237,20 @@ export function registerPushBackgroundHandler() {
     });
   } catch (err) {
     if (__DEV__) console.warn(`${TAG} background handler not registered:`, err?.message || err);
+  }
+}
+
+/** Register the Notifee background event listener. Run at module scope in index.js. */
+export function registerNotifeeBackgroundHandler() {
+  try {
+    const notifee = require('@notifee/react-native').default;
+    const { EventType } = require('@notifee/react-native');
+    notifee.onBackgroundEvent(async ({ type, detail }) => {
+      if (type === EventType.PRESS && detail?.notification) {
+        if (__DEV__) console.log('[notifee] background press:', detail.notification.title);
+      }
+    });
+  } catch (err) {
+    if (__DEV__) console.warn('[notifee] background handler skipped:', err?.message || err);
   }
 }

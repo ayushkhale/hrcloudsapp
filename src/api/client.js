@@ -194,16 +194,32 @@ async function send(endpoint, options, token) {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
+  // A caller-supplied signal is forwarded ALONGSIDE the timeout: either firing
+  // aborts the fetch. The two must be told apart on the way out — a caller's
+  // abort is their intent (a user cancelled an upload, a screen unmounted),
+  // and masking it as a timeout trips the caller's own "it was cancelled"
+  // guard. The timeout stays a timeout.
+  const callerSignal = options.signal;
+  const onCallerAbort = () => controller.abort();
+  if (callerSignal) {
+    if (callerSignal.aborted) controller.abort();
+    else callerSignal.addEventListener('abort', onCallerAbort);
+  }
+
   const path = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
   let response;
   try {
     response = await fetch(`${BASE_URL}${path}`, {
       ...options,
       headers,
-      signal: options.signal || controller.signal,
+      signal: controller.signal,
     });
   } catch (err) {
     if (err.name === 'AbortError') {
+      if (callerSignal?.aborted) {
+        // Preserve the external abort — the caller is handling it.
+        throw err;
+      }
       const error = new Error('Request timed out. Please try again.');
       error.status = 408;
       error.isTimeout = true;
@@ -215,6 +231,7 @@ async function send(endpoint, options, token) {
     throw err;
   } finally {
     clearTimeout(timeoutId);
+    if (callerSignal) callerSignal.removeEventListener('abort', onCallerAbort);
   }
 
   const data = await safeParseBody(response);

@@ -67,6 +67,7 @@ export const ROUTES = {
     overtime: ['TimeTab', 'Time', { section: 'overtime' }],
     flags: ['TimeTab', 'Time', { section: 'flags' }],
     earnedLeave: ['TimeTab', 'Time', { section: 'earned' }],
+    locationChecks: ['TimeTab', 'Time', { section: 'locationChecks' }],
 
     // Tasks — matching web MY TASKS. Overdue is a SECTION of My Tasks, not a
     // screen of its own (the web's "Overdue Tasks" route folded in), so the

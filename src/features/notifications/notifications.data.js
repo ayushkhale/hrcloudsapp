@@ -1,219 +1,214 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// features/notifications/notifications.data.js — PLACEHOLDER CONTENT.
+// features/notifications/notifications.data.js — the inbox, real API.
 //
-// THERE IS NO NOTIFICATIONS ENDPOINT YET. The gateway has no /notifications
-// route and no announcements route (api/*.api.js is the full surface), so this
-// module stands in for one and the screens are built against the shape we WANT
-// the API to return, not against whatever is convenient to render.
+// Was placeholder in-memory data; now a thin wrapper over
+// `notificationsAPI` (api/notifications.api.js). Backend contract:
+// public/md_notifications/notification_api_contract.md.
 //
-// ── WHY FAKE DATA LIVES IN ITS OWN MODULE AND NOT IN THE SCREEN ──────────────
+// The engine ships behind a kill switch. A 503 `FEATURE_DISABLED` means the
+// bell icon and the whole screen quietly hide (CLAUDE.md §3) — this module
+// exposes `isFeatureDisabledError()` so callers can tell that apart from a
+// real failure.
 //
-// So that wiring the real endpoint is a one-file change. `listNotifications()`
-// and `getNotification(id)` are already async and already return the envelope
-// the rest of the app's reads return, which means the screens handle loading
-// and failure today — the two states that are always bolted on last and always
-// wrong. Swapping the body of those two functions for a `request()` call is
-// then the whole job.
+// ── THE SHAPE WE RENDER AGAINST ──────────────────────────────────────────────
 //
-// ── THE SHAPE ────────────────────────────────────────────────────────────────
+//   id          UUID
+//   event_key   e.g. "leave.approved" — the catalog key (icon fallback)
+//   category    one of CATEGORIES below (drives filter strip and tone)
+//   title       one line
+//   message     the full display-ready text (names/dates interpolated)
+//   actor_name  who did the thing, or null
+//   metadata    { screen, id, event_key, ... } — the deep-link target
+//   is_read     boolean
+//   read_at     ISO or null
+//   created_at  ISO
 //
-//   id          string
-//   category    one of CATEGORIES below — drives the filter strip and the icon
-//   title       one line, sentence case
-//   preview     the two-line body shown in the list
-//   body        the full text, paragraphs separated by a blank line
-//   created_at  ISO instant. The list groups and formats from THIS, never from
-//               a pre-formatted "10:30 AM" string — a server that sends display
-//               text decides the reader's timezone for them.
-//   read        boolean — the unread dot
-//   attachment  { name, size_label } | null
+// ── CATEGORIES ───────────────────────────────────────────────────────────────
 //
-// EVERY DATE IS COMPUTED RELATIVE TO NOW so the screen always has a believable
-// "Today / Yesterday / last week" spread instead of dates from whenever this
-// file was written.
+// The server's catalog has eight: leave, attendance, payroll, task, document,
+// shift, employee, system. The filter strip only lists the ones the employee
+// app actually surfaces today; the rest still render (via `metaFor`'s
+// fallback) when they arrive, so adding a new category server-side never
+// breaks the screen.
+//
+// ── BADGE / INBOX RE-READ ───────────────────────────────────────────────────
+//
+// `subscribeInbox(cb)` fires whenever something here changes the unread set:
+// a successful mark-read, a dismiss, a mark-all, or a cached count update
+// from a push. AppTopBar's bell uses it so the dot clears without a reload.
 // ─────────────────────────────────────────────────────────────────────────────
+
+import { notificationsAPI } from '../../api';
 
 /** The filter strip, in order. `all` is not a category — it is the absence of one. */
 export const CATEGORIES = [
   { value: 'all', label: 'All' },
-  { value: 'announcement', label: 'Announcements' },
-  { value: 'hr', label: 'HR Updates' },
   { value: 'leave', label: 'Leave' },
-  { value: 'payroll', label: 'Payroll' },
   { value: 'attendance', label: 'Attendance' },
+  { value: 'payroll', label: 'Payroll' },
+  { value: 'task', label: 'Tasks' },
+  { value: 'document', label: 'Documents' },
 ];
 
 /**
- * category → the semantic icon name from theme/icons.js plus the tone key from
- * theme/tokens.js. A category the data invents resolves through `metaFor()`
- * below rather than rendering a blank tile.
+ * category → semantic icon from theme/icons.js plus the tone key from
+ * theme/tokens.js. The catalog's keys (`leave`, `attendance`, `payroll`,
+ * `task`, `document`, `shift`, `employee`, `system`) each resolve; anything
+ * else falls through `metaFor`.
  */
 export const CATEGORY_META = {
-  announcement: { icon: 'info', tone: 'purple', label: 'Announcement' },
-  hr: { icon: 'clipboard', tone: 'indigo', label: 'HR update' },
-  leave: { icon: 'calendar', tone: 'emerald', label: 'Leave' },
-  payroll: { icon: 'rupee', tone: 'amber', label: 'Payroll' },
-  attendance: { icon: 'clock', tone: 'blue', label: 'Attendance' },
-  document: { icon: 'document', tone: 'slate', label: 'Document' },
+  leave: { icon: 'calendar', tone: 'purple', label: 'Leave' },
+  attendance: { icon: 'clock', tone: 'purple', label: 'Attendance' },
+  payroll: { icon: 'rupee', tone: 'purple', label: 'Payroll' },
+  task: { icon: 'clipboardCheck', tone: 'purple', label: 'Task' },
+  document: { icon: 'document', tone: 'purple', label: 'Document' },
+  shift: { icon: 'clock', tone: 'purple', label: 'Shift' },
+  employee: { icon: 'user', tone: 'purple', label: 'Employee' },
+  system: { icon: 'info', tone: 'purple', label: 'Announcement' },
 };
 
-export const metaFor = (category) => CATEGORY_META[category] || CATEGORY_META.document;
+export const metaFor = (category) => CATEGORY_META[category] || CATEGORY_META.system;
 
-/** `days` ago at `hh:mm` local, as an ISO instant. */
-function ago(days, hh = 10, mm = 30) {
-  const d = new Date();
-  d.setDate(d.getDate() - days);
-  d.setHours(hh, mm, 0, 0);
-  return d.toISOString();
+/* ── 503 FEATURE_DISABLED helper ────────────────────────────────────────────
+   Every endpoint answers 503 { errorCode: 'FEATURE_DISABLED' } when the kill
+   switch is off — the client hides the UI rather than erroring. */
+
+export function isFeatureDisabledError(err) {
+  if (!err) return false;
+  const code = err?.data?.errorCode || err?.errorCode || '';
+  return err?.status === 503 && code === 'FEATURE_DISABLED';
 }
 
-const SEED = [
-  {
-    id: 'n-1',
-    category: 'announcement',
-    title: 'New work-from-office policy',
-    preview: 'Please review the updated work-from-office policy, effective from the 1st of next month.',
-    body: [
-      'Dear Team,',
-      'We are sharing an important update to our work-from-office policy, effective from the 1st of next month.',
-      'The update introduces a hybrid working model, fixed office days per team, and flexible working guidelines intended to support better collaboration without losing the flexibility everyone has been working with this year.',
-      'Please take a moment to read the full policy document attached below. If you have any questions, your reporting manager or the HR team can walk you through what changes for your team specifically.',
-      'Thank you,\nHR Team',
-    ].join('\n\n'),
-    created_at: ago(0, 10, 30),
-    read: false,
-    attachment: { name: 'Work-from-office-policy.pdf', size_label: '2.4 MB' },
-  },
-  {
-    id: 'n-2',
-    category: 'leave',
-    title: 'Leave request approved',
-    preview: 'Your leave request has been approved by your reporting manager.',
-    body: [
-      'Your leave request has been approved.',
-      'The days have been deducted from your Earned Leave balance and your attendance for those days will show as "On leave". You can see the updated balance on the Leave tab.',
-      'If your plans change, cancel the request from the Leave tab before the first day — once a leave has started it has to be cancelled by your manager.',
-    ].join('\n\n'),
-    created_at: ago(0, 9, 15),
-    read: false,
-    attachment: null,
-  },
-  {
-    id: 'n-3',
-    category: 'payroll',
-    title: 'Payslip available',
-    preview: 'Last month’s payslip is now available. You can view and download it from the Pay tab.',
-    body: [
-      'Your payslip for last month has been released.',
-      'You can view the full breakdown — earnings, deductions and net pay — on the Pay tab, and download a PDF copy for your records.',
-      'If anything looks wrong, raise it with the payroll team within seven days of release so it can be corrected in the current cycle rather than as an adjustment in the next one.',
-    ].join('\n\n'),
-    created_at: ago(1, 18, 5),
-    read: false,
-    attachment: null,
-  },
-  {
-    id: 'n-4',
-    category: 'attendance',
-    title: 'Missing check-out on Tuesday',
-    preview: 'Your attendance for Tuesday has no check-out time. Submit a correction so the day is counted.',
-    body: [
-      'We could not find a check-out time against your attendance for Tuesday.',
-      'A day without a check-out is not counted towards worked hours, and it stays open until it is corrected.',
-      'Open My Time, find the day, and submit a correction with the time you actually left. Your manager will see the request and approve it.',
-    ].join('\n\n'),
-    created_at: ago(1, 8, 40),
-    read: true,
-    attachment: null,
-  },
-  {
-    id: 'n-5',
-    category: 'hr',
-    title: 'Welcome to the team',
-    preview: 'A new colleague has joined the product team this week.',
-    body: [
-      'Please join us in welcoming a new member to the product team.',
-      'They will be working across the mobile and web products, and will be reaching out to each team over the next couple of weeks to get up to speed.',
-      'You can find their details and reporting line in the Directory.',
-    ].join('\n\n'),
-    created_at: ago(3, 11, 0),
-    read: true,
-    attachment: null,
-  },
-  {
-    id: 'n-6',
-    category: 'announcement',
-    title: 'Office closed for the public holiday',
-    preview: 'The office will remain closed on the upcoming public holiday. Support rosters are unchanged.',
-    body: [
-      'The office will remain closed for the upcoming public holiday.',
-      'Teams on a support roster should follow the schedule already shared by their manager; everyone else is not expected to be reachable that day.',
-      'The holiday is already reflected in the attendance calendar, so no leave needs to be applied for.',
-    ].join('\n\n'),
-    created_at: ago(5, 16, 20),
-    read: true,
-    attachment: null,
-  },
-  {
-    id: 'n-7',
-    category: 'hr',
-    title: 'Documents verified',
-    preview: 'The documents you submitted have been verified. No further action is needed.',
-    body: [
-      'The documents you submitted have been checked and verified.',
-      'Nothing further is needed from you. You can see the current state of each document, including anything still outstanding, under My Documents.',
-    ].join('\n\n'),
-    created_at: ago(7, 14, 10),
-    read: true,
-    attachment: null,
-  },
-];
+/* ── Local cache for the bell badge ─────────────────────────────────────────
+   The screen is the source of truth for the list; the badge needs a cheap
+   synchronous read for first paint and a subscription so a mutation here
+   clears it without a round trip. */
 
-/* The in-memory store. Marking something read has to survive leaving the screen
-   and coming back, and until there is an endpoint this is where that lives.
-   A module-level array is correct for placeholder data and WRONG for the real
-   thing — the real one re-reads from the server. */
-let store = SEED.map((n) => ({ ...n }));
+let cachedUnread = 0;
+let cachedIsCapped = false;
+let cachedDisabled = false;
+const listeners = new Set();
 
-const byNewest = (a, b) => (a.created_at < b.created_at ? 1 : -1);
+function emit() {
+  listeners.forEach((fn) => {
+    try { fn({ unread: cachedUnread, isCapped: cachedIsCapped, disabled: cachedDisabled }); }
+    catch (err) { if (__DEV__) console.error('[notifications] listener failed', err); }
+  });
+}
 
-/** Pretend-network delay, so loading states are visible in development. */
-const settle = (value, ms = 220) => new Promise((resolve) => { setTimeout(() => resolve(value), ms); });
+export function subscribeInbox(cb) {
+  listeners.add(cb);
+  cb({ unread: cachedUnread, isCapped: cachedIsCapped, disabled: cachedDisabled });
+  return () => listeners.delete(cb);
+}
+
+export function cachedUnreadCount() {
+  return { unread: cachedUnread, isCapped: cachedIsCapped, disabled: cachedDisabled };
+}
+
+/** Hint from a push: a new notification just arrived; bump the badge. */
+export function bumpUnread(by = 1) {
+  cachedUnread += by;
+  cachedDisabled = false;
+  emit();
+}
+
+/* ── API-backed reads ───────────────────────────────────────────────────── */
 
 /**
- * @param {{category?: string}} params
- * @returns {Promise<{notifications: object[], unread: number}>}
+ * @param {{ category?: string, page?: number, limit?: number, is_read?: boolean, signal?: AbortSignal }} params
+ * @returns {Promise<{ items: object[], pagination: object, disabled: boolean }>}
  */
-export async function listNotifications({ category = 'all' } = {}) {
-  const all = [...store].sort(byNewest);
-  const notifications = category === 'all' ? all : all.filter((n) => n.category === category);
-  return settle({ notifications, unread: all.filter((n) => !n.read).length });
+export async function listNotifications(params = {}) {
+  const query = { page: 1, limit: 20, ...params };
+  if (query.category === 'all') delete query.category;
+  try {
+    const res = await notificationsAPI.listNotifications(query);
+    const data = res?.data ?? res ?? {};
+    cachedDisabled = false;
+    return {
+      items: Array.isArray(data.items) ? data.items : [],
+      pagination: data.pagination || { page: 1, limit: query.limit, total: 0, total_pages: 1 },
+      disabled: false,
+    };
+  } catch (err) {
+    if (isFeatureDisabledError(err)) {
+      cachedDisabled = true;
+      cachedUnread = 0;
+      cachedIsCapped = false;
+      emit();
+      return { items: [], pagination: { page: 1, limit: query.limit, total: 0, total_pages: 1 }, disabled: true };
+    }
+    throw err;
+  }
 }
 
-/** @returns {Promise<object|null>} */
-export async function getNotification(id) {
-  return settle(store.find((n) => n.id === id) || null, 80);
-}
-
-/** How many are unread, synchronously — for the bell badge on Home. */
-export const unreadCount = () => store.filter((n) => !n.read).length;
-
-export function markRead(id) {
-  store = store.map((n) => (n.id === id ? { ...n, read: true } : n));
-  return unreadCount();
-}
-
-export function markAllRead() {
-  store = store.map((n) => ({ ...n, read: true }));
-  return 0;
+/** Refresh the bell badge from the server. */
+export async function refreshUnreadCount(options) {
+  try {
+    const res = await notificationsAPI.getUnreadCount(options);
+    const data = res?.data ?? res ?? {};
+    cachedUnread = Number(data.unread_count) || 0;
+    cachedIsCapped = !!data.is_capped;
+    cachedDisabled = false;
+    emit();
+    return { unread: cachedUnread, isCapped: cachedIsCapped, disabled: false };
+  } catch (err) {
+    if (isFeatureDisabledError(err)) {
+      cachedUnread = 0;
+      cachedIsCapped = false;
+      cachedDisabled = true;
+      emit();
+      return { unread: 0, isCapped: false, disabled: true };
+    }
+    throw err;
+  }
 }
 
 /**
- * The newest announcements, for the Home strip. Home shows ANNOUNCEMENTS only
- * — a leave approval or a payslip notice belongs in the bell, not pinned to
- * the dashboard where it stays long after it was acted on.
+ * Mark one read, update the local cache. Idempotent on the server, so a
+ * second call does not drive the badge negative.
  */
-export async function listAnnouncements(limit = 2) {
-  const rows = [...store].filter((n) => n.category === 'announcement').sort(byNewest);
-  return settle({ announcements: rows.slice(0, limit) });
+export async function markRead(id, options) {
+  try {
+    await notificationsAPI.markRead(id, options);
+  } catch (err) {
+    if (isFeatureDisabledError(err)) return;
+    throw err;
+  }
+  if (cachedUnread > 0) {
+    cachedUnread -= 1;
+    emit();
+  }
+}
+
+/** Mark everything read in the server's "as of now" watermark. Clears the badge. */
+export async function markAllRead(options) {
+  try {
+    const res = await notificationsAPI.markAllRead(options);
+    const updated = Number(res?.data?.updated_count) || 0;
+    cachedUnread = 0;
+    cachedIsCapped = false;
+    emit();
+    return updated;
+  } catch (err) {
+    if (isFeatureDisabledError(err)) return 0;
+    throw err;
+  }
+}
+
+/** Dismiss (hard delete). A second DELETE returns 404 — treat as success. */
+export async function dismiss(id, options) {
+  try {
+    await notificationsAPI.dismiss(id, options);
+  } catch (err) {
+    if (isFeatureDisabledError(err)) return;
+    if (err?.status === 404) return;
+    throw err;
+  }
+}
+
+/** For the push handler: a fresh notification arrived — nudge the badge. */
+export function onPushReceived() {
+  bumpUnread(1);
 }

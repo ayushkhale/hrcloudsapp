@@ -24,13 +24,14 @@
 // hrcloudsweb, use the same api in our app too, and show location details,
 // not coordinates." — user
 //
-// The address is OpenStreetMap's Nominatim, through lib/geocoding.js (ported
-// from the web's shared/utils/geocoding.js), looked up ONCE when the camera
+// The address is Google Geocoding v4, falling back to OpenStreetMap's Nominatim
+// (since 2026-10-24 — a Google demo key with a daily limit), through
+// lib/geocoding.js (ported from the web's shared/utils/geocoding.js), looked up ONCE when the camera
 // opens. The map tile is OpenStreetMap's tile server — the one the web's
 // GeofenceMapPicker draws. The stamp prints the PLACE (building / street, then
 // locality, city, state, pincode), not numbers.
 //
-// Only if the address can't be found (offline, Nominatim down) does the stamp
+// Only if the address can't be found (offline, both providers down) does the stamp
 // fall back to the coordinates — a photo with no location at all is worse
 // evidence than one with numbers on it. The address also travels with the
 // punch in `metadata.punch_photo.address`.

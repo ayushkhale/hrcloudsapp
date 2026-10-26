@@ -181,7 +181,7 @@ function PayHero({ payslips, hidden, canHide, onToggle, busy }) {
 /* ─── The screen ──────────────────────────────────────────────────────────── */
 
 export default function PayScreen({ navigation, route }) {
-  const [section, setSection] = useState('payslips');
+  const [section, setSection] = useState('salary');
   const privacy = usePayPrivacy();
   const [unlocking, setUnlocking] = useState(false);
   const { unlock } = privacy;
@@ -203,8 +203,8 @@ export default function PayScreen({ navigation, route }) {
   });
 
   const sections = useMemo(() => [
-    { value: 'payslips', label: 'Payslips', icon: icons.document },
     { value: 'salary', label: 'Salary', icon: icons.chart },
+    { value: 'payslips', label: 'Payslips', icon: icons.document },
     { value: 'bank', label: 'Bank', icon: icons.bank },
     available.claims !== false && { value: 'claims', label: 'Claims', icon: icons.claims },
     available.benefits !== false && { value: 'benefits', label: 'Benefits', icon: icons.heart },
@@ -216,7 +216,7 @@ export default function PayScreen({ navigation, route }) {
   // A section that disappears under somebody standing on it sends them back to
   // the default rather than leaving the strip pointing at nothing.
   useEffect(() => {
-    if (!sections.some((s) => s.value === section)) setSection('payslips');
+    if (!sections.some((s) => s.value === section)) setSection('salary');
   }, [sections, section]);
 
   /* A drawer row or a Home quick action names its section

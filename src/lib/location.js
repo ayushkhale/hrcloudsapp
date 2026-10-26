@@ -45,6 +45,7 @@ import Geolocation from 'react-native-geolocation-service';
 import {
   PERMISSIONS, RESULTS, check, openSettings, request,
 } from 'react-native-permissions';
+import { reverseGeocode as lookupPlace } from './geocoding';
 
 export const GEO_STATUS = Object.freeze({
   GRANTED: 'granted',
@@ -323,44 +324,25 @@ export function locationPayload(fix) {
 /* ─── Reverse geocoding ──────────────────────────────────────────────────── */
 
 /**
- * Best-effort reverse geocode — turn lat/lng into a human-readable address.
+ * Best-effort reverse geocode — turn lat/lng into a SHORT one-line address
+ * like "Sector 62, Noida, Uttar Pradesh". NEVER rejects — `null` on any
+ * failure so the caller can fall back to raw coordinates without a try/catch.
  *
- * Uses OpenStreetMap Nominatim (free, no API key). The result is a SHORT
- * address string like "Sector 62, Noida, Uttar Pradesh" suitable for a photo
- * stamp or a one-line display. NEVER rejects — returns `null` on any failure
- * so the caller can fall back to raw coordinates without a try/catch.
+ * A thin wrapper over lib/geocoding.js since 2026-10-24: this used to call
+ * Nominatim itself, which made it a second address source beside the one the
+ * clock-in photo uses (Google, then Nominatim). One provider chain, one answer.
  *
- * This is fire-and-forget: it must NEVER block a punch. The stamp shows
- * coordinates immediately and the address replaces them when it arrives.
+ * This is fire-and-forget: it must NEVER block a punch.
  */
 export async function reverseGeocode(latitude, longitude) {
-  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return null;
-  try {
-    const url =
-      `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json&addressdetails=1&zoom=18`;
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 5000);
-    const res = await fetch(url, {
-      headers: {
-        'User-Agent': 'HRCloudsEmployee/1.0',
-        'Accept-Language': 'en',
-      },
-      signal: controller.signal,
-    });
-    clearTimeout(timer);
-    if (!res.ok) return null;
-    const data = await res.json();
-    // Build a short, readable address from the structured parts.
-    const a = data?.address;
-    if (!a) return data?.display_name || null;
-    const parts = [
-      a.road || a.pedestrian || a.neighbourhood || a.hamlet,
-      a.suburb || a.village || a.town,
-      a.city || a.city_district || a.county,
-      a.state,
-    ].filter(Boolean);
-    return parts.length ? parts.join(', ') : data?.display_name || null;
-  } catch {
-    return null;
-  }
+  const place = await lookupPlace(latitude, longitude, { timeout: 5000 });
+  if (!place) return null;
+  const a = place.parts || {};
+  const parts = [
+    a.road || a.pedestrian || a.neighbourhood || a.hamlet,
+    a.suburb || a.village || a.town,
+    place.city || a.city_district || a.county,
+    place.state,
+  ].filter(Boolean);
+  return parts.length ? [...new Set(parts)].join(', ') : place.address || null;
 }

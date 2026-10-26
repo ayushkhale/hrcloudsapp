@@ -79,10 +79,16 @@ import { PunchCard } from '../../attendance/components/PunchCard';
 import { useMonthGraph } from '../useMonthGraph';
 import { MyMonthCard } from '../components/MyMonthCard';
 import { AttendanceMixCard } from '../components/AttendanceMixCard';
+import { requestAllAppPermissions } from '../../../lib/permissions';
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const { today, shift, loading, error, refresh } = useTodayAttendance();
+
+  // All permissions (location, camera, notifications, media) asked upfront on homepage navigation
+  useEffect(() => {
+    requestAllAppPermissions().catch(() => {});
+  }, []);
 
   const [contract, setContract] = useState(null);
   const navigation = useNavigation();

@@ -12,7 +12,7 @@
 // around itself. The purple-labelled group they sit in is the frame.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { color, radius, space, text } from '../../../theme/tokens';
 import { icons } from '../../../theme/icons';
@@ -103,16 +103,42 @@ function FileChip({ file, onRemove, busy }) {
  */
 export function FilesEditor({ taskId, context = 'submission', files = [], onChange, disabled = false, label = 'Files' }) {
   const [busy, setBusy] = useState(false);
+  // One controller per in-flight upload: aborted when the user removes the
+  // "Uploading…" chip, closes the sheet, or presses the hardware back. The
+  // handshake stops BEFORE confirm (see taskUpload.js) so a cancelled upload
+  // never attaches the file to the task — which is the "I pressed back but it
+  // still got sent" bug this hook pair is here to prevent.
+  const abortRef = useRef(null);
+  const mountedRef = useRef(true);
+
+  useEffect(() => () => {
+    mountedRef.current = false;
+    abortRef.current?.abort();
+  }, []);
+
+  const cancel = useCallback(() => {
+    abortRef.current?.abort();
+    abortRef.current = null;
+    setBusy(false);
+  }, []);
 
   const add = useCallback(async (file) => {
+    // Any earlier upload still in flight is abandoned the moment a new file
+    // is picked — one at a time, same as the chip states show.
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
     setBusy(true);
     try {
-      const saved = await uploadTaskFile({ file, taskId, context });
+      const saved = await uploadTaskFile({ file, taskId, context, signal: controller.signal });
+      if (!mountedRef.current || controller.signal.aborted) return;
       if (saved?.id) onChange([...files, saved]);
     } catch (err) {
-      showToast(taskUploadErrorMessage(err), 'error');
+      if (controller.signal.aborted || err?.name === 'AbortError') return;
+      if (mountedRef.current) showToast(taskUploadErrorMessage(err), 'error');
     } finally {
-      setBusy(false);
+      if (abortRef.current === controller) abortRef.current = null;
+      if (mountedRef.current) setBusy(false);
     }
   }, [taskId, context, files, onChange]);
 
@@ -124,7 +150,7 @@ export function FilesEditor({ taskId, context = 'submission', files = [], onChan
       {files.map((f) => (
         <FileChip key={f.id} file={f} onRemove={() => remove(f.id)} />
       ))}
-      {busy ? <FileChip file={{ file_name: 'Uploading…' }} busy /> : null}
+      {busy ? <FileChip file={{ file_name: 'Uploading…' }} busy onRemove={cancel} /> : null}
       <AttachmentPicker
         label="Add a file"
         onPicked={add}

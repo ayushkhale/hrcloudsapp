@@ -42,7 +42,7 @@
 import CONFIG from "./fieldHelp.employee.json";
 
 export const FIELD_HELP_WORKSPACES = ["employee", "manager", "hr", "guest"];
-export const FIELD_HELP_KINDS = ["form", "data"];
+export const FIELD_HELP_KINDS = ["form", "data", "screen", "list"];
 export const HINT_MAX_LENGTH = 160;
 // Maya's default `limits.maxQueryLength`; the widget also clamps to the live value.
 export const QUESTION_MAX_LENGTH = 1000;
