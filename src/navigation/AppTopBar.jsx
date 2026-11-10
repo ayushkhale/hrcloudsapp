@@ -11,7 +11,7 @@ import { DrawerButton } from './AppDrawer';
 import { useDrawer } from './DrawerContext';
 import { useGo, useRouteTarget } from './routes';
 import {
-  cachedUnreadCount, refreshUnreadCount, subscribeInbox,
+  badgeLabel, cachedUnreadCount, refreshUnreadCount, subscribeInbox,
 } from '../features/notifications/notifications.data';
 import { mayaAvailable, openMaya } from '../features/maya/mayaBridge';
 
@@ -140,7 +140,7 @@ export function AppTopBar() {
             })}
           >
             {Bell ? <Bell size={iconSize.md} color={color.textSecondary} /> : null}
-            {badge.unread ? (
+            {badge.unread > 0 ? (
               <View
                 style={{
                   position: 'absolute',
@@ -152,13 +152,13 @@ export function AppTopBar() {
                   borderRadius: 9,
                   alignItems: 'center',
                   justifyContent: 'center',
-                  backgroundColor: color.brand,
+                  backgroundColor: color.danger.dot,
                   borderWidth: 2,
                   borderColor: color.surface,
                 }}
               >
                 <Text style={[text.caption, { color: '#fff', fontWeight: '700', fontSize: 10, lineHeight: 12 }]}>
-                  {badge.isCapped ? `${badge.unread}+` : (badge.unread > 99 ? '99+' : String(badge.unread))}
+                  {badgeLabel(badge.unread, badge.isCapped)}
                 </Text>
               </View>
             ) : null}

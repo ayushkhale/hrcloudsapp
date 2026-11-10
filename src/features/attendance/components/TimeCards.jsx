@@ -48,7 +48,7 @@ import { DAY_CHIPS, dayChipKey } from '../../../lib/dayStatus';
 import {
   fmtDateShort, fmtMinutes, fmtTime, monthLabel, todayYMD, ymdOnly,
 } from '../../../lib/dates';
-import { humanize } from '../../../lib/enums';
+import { humanize, normalizeStatusKey } from '../../../lib/enums';
 import { color, radius, space, text } from '../../../theme/tokens';
 import { icons } from '../../../theme/icons';
 import { MonthStepper, SkeletonBlock, StatusBadge } from '../../../ui';
@@ -131,17 +131,6 @@ export function MonthHero({ period, onChangePeriod, headline, caption, facts = [
      badge         the record's status
      meta strip    Clock in · Clock out · Worked, under a hairline */
 
-const DAY_ICON = {
-  present: icons.ok,
-  late: icons.clock,
-  half_day: icons.clock,
-  on_leave: icons.leave,
-  absent: icons.warn,
-  holiday: icons.holiday,
-  weekly_off: icons.calendar,
-  no_data: icons.calendar,
-  upcoming: icons.calendar,
-};
 
 /**
  * One day of attendance.
@@ -167,7 +156,7 @@ export function DayCard({ record, today, onPress }) {
 
   const subtitle = late > 0 ? `${fmtMinutes(late)} late`
     : record?.work_mode ? humanize(record.work_mode)
-    : !punched ? chip.label
+    : !punched ? chip?.label
     : null;
 
   // Never a dash (§5): a side that didn't happen says so in words. Today's
@@ -179,15 +168,24 @@ export function DayCard({ record, today, onPress }) {
     worked != null ? { label: 'Worked', value: fmtMinutes(worked, '0m') } : null,
   ].filter(Boolean) : [];
 
+  const status = (() => {
+    const raw = normalizeStatusKey(record?.status);
+    if (raw === 'in_progress') return 'in_progress';
+    if (isToday && inAt && !outAt && raw !== 'absent' && raw !== 'on_leave') return 'in_progress';
+    if (raw && raw !== 'not_marked') return raw;
+    if (chipKey && chipKey !== 'no_data') return chipKey;
+    return raw || 'not_marked';
+  })();
+
   return (
     <RecordCard
-      icon={DAY_ICON[chipKey] || icons.calendar}
-      tone={chip?.tone || 'slate'}
+      icon={icons.calendar}
+      tone="purple"
       onPress={onPress}
       accessibilityLabel={`${fmtDateShort(ymd, 'This day')}, ${chip?.label || ''}. Open this day.`}
       title={fmtDateShort(ymd, 'That day')}
       subtitle={subtitle}
-      badge={<StatusBadge kind="record" status={record?.status || 'not_marked'} dense />}
+      badge={<StatusBadge kind="record" status={status} dense />}
       meta={meta}
     />
   );

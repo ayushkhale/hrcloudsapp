@@ -58,6 +58,8 @@ import { color, elevate, font, iconSize, radius, space, text } from '../theme/to
 import { useConfirm, useToast } from '../ui';
 import { mayaAvailable, openMaya } from '../features/maya/mayaBridge';
 import { useGo, useRouteTarget } from './routes';
+import { useUnreadCount, badgeLabel } from '../features/notifications/notifications.data';
+import { useBadgeCounts } from '../hooks/useBadgeCounts';
 
 const LOGO_COLORED = require('../assets/brand/logocolored.png');
 
@@ -78,6 +80,7 @@ const SECTIONS = [
     title: null,
     items: [
       { key: 'home', label: 'Dashboard', icon: icons.dashboard },
+      { key: 'notifications', label: 'Notifications', icon: icons.bell, badge: 'notifications' },
     ],
   },
   {
@@ -120,7 +123,7 @@ const SECTIONS = [
       { key: 'documentsHome', label: 'My Document Home', icon: icons.folder },
       { key: 'documents', label: 'My Personal Documents', icon: icons.folder },
       { key: 'companyDocuments', label: 'My Company Documents', icon: icons.office },
-      { key: 'documentRequests', label: 'My Document Requests', icon: icons.clipboard },
+      { key: 'documentRequests', label: 'My Document Requests', icon: icons.clipboard, badge: 'documentRequests' },
       { key: 'forms', label: 'Forms & Templates', icon: icons.attachment },
     ],
   },
@@ -129,11 +132,12 @@ const SECTIONS = [
   {
     title: 'My Tasks',
     icon: icons.clipboardCheck,
+    badge: 'tasks',
     items: [
-      { key: 'myTasks', label: 'My Tasks', icon: icons.clipboardCheck },
+      { key: 'myTasks', label: 'My Tasks', icon: icons.clipboardCheck, badge: 'myTasks' },
       // The flag, not a warning sign: the Overdue section tile on My Tasks
       // wears the flag, and one destination wears one icon (CLAUDE.md §5).
-      { key: 'overdueTasks', label: 'Overdue Tasks', icon: icons.flag },
+      { key: 'overdueTasks', label: 'Overdue Tasks', icon: icons.flag, badge: 'overdueTasks' },
     ],
   },
   {
@@ -287,7 +291,7 @@ function OrgHeader({ org, user }) {
 
 /* ── Rows & Dropdowns ─────────────────────────────────────────────────────── */
 
-function MenuRow({ label, icon: Icon, onPress }) {
+function MenuRow({ label, icon: Icon, onPress, badge }) {
   return (
     <Pressable
       onPress={onPress}
@@ -310,11 +314,26 @@ function MenuRow({ label, icon: Icon, onPress }) {
       <Text numberOfLines={1} style={[text.body, { flex: 1, color: color.textBody }]}>
         {label}
       </Text>
+      {badge ? (
+        <View
+          style={{
+            minWidth: 20,
+            height: 20,
+            paddingHorizontal: 6,
+            borderRadius: radius.full,
+            backgroundColor: color.danger.dot,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <Text style={[text.badge, { color: color.textOnBrand }]}>{badge}</Text>
+        </View>
+      ) : null}
     </Pressable>
   );
 }
 
-function SubMenuRow({ label, icon: Icon, onPress }) {
+function SubMenuRow({ label, icon: Icon, badge, onPress }) {
   return (
     <Pressable
       onPress={onPress}
@@ -334,11 +353,26 @@ function SubMenuRow({ label, icon: Icon, onPress }) {
       <Text numberOfLines={1} style={[text.body, { flex: 1, fontSize: 13.5, color: color.textBody }]}>
         {label}
       </Text>
+      {badge ? (
+        <View
+          style={{
+            minWidth: 18,
+            height: 18,
+            paddingHorizontal: 5,
+            borderRadius: radius.full,
+            backgroundColor: color.danger.dot,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <Text style={[text.badge, { fontSize: 10, lineHeight: 12, color: color.textOnBrand }]}>{badge}</Text>
+        </View>
+      ) : null}
     </Pressable>
   );
 }
 
-function DropdownSection({ section, isExpanded, onToggle, onPick, targets, count = 0 }) {
+function DropdownSection({ section, isExpanded, onToggle, onPick, targets, count = 0, getItemBadge }) {
   const Icon = section.icon;
   const Chevron = isExpanded ? icons.chevronUp : icons.chevronDown;
 
@@ -407,6 +441,7 @@ function DropdownSection({ section, isExpanded, onToggle, onPick, targets, count
               key={item.key}
               label={item.label}
               icon={item.icon}
+              badge={getItemBadge ? getItemBadge(item) : null}
               onPress={() => onPick(targets[item.key])}
             />
           ))}
@@ -423,7 +458,7 @@ function DropdownSection({ section, isExpanded, onToggle, onPick, targets, count
  * @param {boolean} props.open
  * @param {Function} props.onClose
  */
-export function AppDrawer({ open, onClose, inbox = 0 }) {
+export function AppDrawer({ open, onClose, inbox = 0, badgeCounts: propBadges }) {
   const insets = useSafeAreaInsets();
   const { width: screenWidth } = useWindowDimensions();
   const { user, logout } = useAuth();
@@ -431,6 +466,25 @@ export function AppDrawer({ open, onClose, inbox = 0 }) {
   const { showToast } = useToast();
   const reduced = useReducedMotion();
   const go = useGo();
+  const { unread: unreadCount, isCapped: unreadCapped } = useUnreadCount();
+  const hookBadges = useBadgeCounts({ enabled: open });
+  const badges = propBadges || hookBadges;
+
+  const getItemBadge = useCallback((item) => {
+    if (!item?.badge) return null;
+    let val = 0;
+    if (item.badge === 'documentRequests') {
+      val = badges?.documents?.outstanding || 0;
+    } else if (item.badge === 'overdueTasks') {
+      val = badges?.tasks?.overdue || 0;
+    } else if (item.badge === 'myTasks') {
+      val = badges?.tasks?.open || 0;
+    }
+    if (val > 0) {
+      return val > 99 ? '99+' : String(val);
+    }
+    return null;
+  }, [badges]);
 
   // Seeded from this session's cache — the same entry Org Profile fills.
   const [org, setOrg] = useState(() => readCache('org-details') || null);
@@ -455,6 +509,7 @@ export function AppDrawer({ open, onClose, inbox = 0 }) {
   // destinations the rows above name.
   const targets = {
     home: useRouteTarget('home'),
+    notifications: useRouteTarget('notifications'),
     attendance: useRouteTarget('attendance'),
     workLocations: useRouteTarget('workLocations'),
     leaves: useRouteTarget('leaves'),
@@ -631,16 +686,34 @@ export function AppDrawer({ open, onClose, inbox = 0 }) {
               if (!section.title) {
                 return (
                   <View key={`s${si}`} style={{ marginBottom: space[2] }}>
-                    {section.items.map((item) => (
-                      <MenuRow
-                        key={item.key}
-                        label={item.label}
-                        icon={item.icon}
-                        onPress={() => pick(targets[item.key])}
-                      />
-                    ))}
+                    {section.items.map((item) => {
+                      let itemBadge = null;
+                      if (item.badge === 'notifications') {
+                        if (unreadCount > 0) {
+                          itemBadge = badgeLabel(unreadCount, unreadCapped);
+                        } else if (badges?.sidebar?.notificationsUnread > 0) {
+                          itemBadge = badgeLabel(badges.sidebar.notificationsUnread, false);
+                        }
+                      }
+                      return (
+                        <MenuRow
+                          key={item.key}
+                          label={item.label}
+                          icon={item.icon}
+                          badge={itemBadge}
+                          onPress={() => pick(targets[item.key])}
+                        />
+                      );
+                    })}
                   </View>
                 );
+              }
+
+              let count = 0;
+              if (section.badge === 'inbox') {
+                count = badges?.documentBadgeCount ?? inbox;
+              } else if (section.badge === 'tasks') {
+                count = badges?.taskBadgeCount ?? 0;
               }
 
               return (
@@ -651,7 +724,8 @@ export function AppDrawer({ open, onClose, inbox = 0 }) {
                   onToggle={() => toggleSection(section.title)}
                   onPick={pick}
                   targets={targets}
-                  count={section.badge === 'inbox' ? inbox : 0}
+                  count={count}
+                  getItemBadge={getItemBadge}
                 />
               );
             })}

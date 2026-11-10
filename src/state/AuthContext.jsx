@@ -25,6 +25,7 @@ import { showToast } from '../ui/Toast';
 import { clearMemoryCache } from '../lib/memoryCache';
 import { clearImageCache } from '../lib/imageCache';
 import { deregisterThisDevice } from '../features/notifications/pushDevice';
+import { refreshUnreadCount, resetUnreadCount } from '../features/notifications/notifications.data';
 
 const AuthContext = createContext(null);
 

@@ -99,7 +99,7 @@ export async function checkForAppUpdate({
       return;
     }
 
-    const currentVersion = ENV.APP_VERSION || '1.0.1';
+    const currentVersion = ENV.APP_VERSION || '1.0.2';
 
     // Passing `curVersion` ensures the library doesn't try to query external device-info modules.
     const checkOptions = Platform.select({

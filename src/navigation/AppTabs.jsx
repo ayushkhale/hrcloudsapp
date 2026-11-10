@@ -48,9 +48,7 @@ import { icons, tabIcons, iconFor } from '../theme/icons';
 import { color, elevate, font, iconSize, radius } from '../theme/tokens';
 import { haptic } from '../ui/haptics';
 import { useAuth } from '../state/AuthContext';
-import { ATTENDANCE_EVENTS, useAttendanceChanged } from '../lib/events';
-import { documentsAPI } from '../api';
-import { listFrom } from '../lib/normalize';
+import { useBadgeCounts } from '../hooks/useBadgeCounts';
 import { tabsForWorkspace } from './tabs.employee';
 import { screenFor } from './screens';
 import { DrawerProvider, useDrawer } from './DrawerContext';
@@ -138,62 +136,9 @@ function makeStack(tab) {
   return TabStack;
 }
 
-/**
- * The inbox count: things waiting on the PERSON. It rode on the Docs tab; since
- * Docs moved into the sidebar (2026-10-22) it is drawn on the sidebar's My
- * Documents group instead (AppDrawer `inbox`).
- *
- * Company documents they haven't acknowledged, plus document requests HR has
- * made of them. Not their own pending requests — see tabs.employee.js.
- *
- * It subscribes to the event bus, so an acknowledgement clears it WITHOUT A
- * RELOAD (CLAUDE.md §7). A queue whose decisions aren't emitted goes stale
- * until the app restarts.
- */
-function useInboxCount() {
-  const [count, setCount] = useState(0);
-
-  const load = React.useCallback(async () => {
-    try {
-      const [issued, reqs] = await Promise.all([
-        // `compliance_state` is the server's own word for "this one still
-        // needs the employee" — asking for pending and overdue separately
-        // would be two requests for one number.
-        documentsAPI.getMyIssuedDocuments({ compliance_state: 'pending', limit: 50 }).catch(() => null),
-        // `open` + `overdue` — a request is never `pending`, so asking for
-        // that counted nothing (fixed 2026-10-20).
-        documentsAPI.getMyDocumentRequests({ status: ['open', 'overdue'], limit: 1 }).catch(() => null),
-      ]);
-      const ackCount = issued ? listFrom(issued, ['documents', 'issued_documents']).length : 0;
-      // `limit: 1` keeps the payload tiny; the TOTAL is the number we want.
-      // Both pagination spellings are checked — the two halves of the gateway
-      // disagree (10-api/05-contract-traps.md).
-      const reqCount = Number(
-        reqs?.data?.pagination?.total
-        ?? reqs?.data?.pagination?.total_count
-        ?? reqs?.data?.total
-        ?? 0,
-      ) || 0;
-      setCount(ackCount + reqCount);
-    } catch {
-      // A badge is never worth an error state. No number is better than a
-      // wrong one, and the screens themselves report their own failures.
-      setCount(0);
-    }
-  }, []);
-
-  useEffect(() => { load(); }, [load]);
-  useAttendanceChanged(
-    [ATTENDANCE_EVENTS.ACKNOWLEDGEMENT, ATTENDANCE_EVENTS.DOCUMENT_REQUEST],
-    load,
-  );
-
-  return count;
-}
-
-function DrawerOverlay({ inbox }) {
+function DrawerOverlay({ inbox, badgeCounts }) {
   const { open, closeDrawer } = useDrawer();
-  return <AppDrawer open={open} onClose={closeDrawer} inbox={inbox} />;
+  return <AppDrawer open={open} onClose={closeDrawer} inbox={inbox} badgeCounts={badgeCounts} />;
 }
 
 const styles = StyleSheet.create({
@@ -299,7 +244,8 @@ function renderTabScreen(tab, inbox, tabBarStyle) {
 export function AppTabs() {
   const { workspace } = useAuth();
   const insets = useSafeAreaInsets();
-  const inbox = useInboxCount();
+  const badgeCounts = useBadgeCounts();
+  const inbox = badgeCounts.documentBadgeCount;
   const [actionsOpen, setActionsOpen] = useState(false);
 
   const bottomPadding = Math.max(insets.bottom, 14);
@@ -382,7 +328,7 @@ export function AppTabs() {
 
           {stacks.slice(2).map((tab) => renderTabScreen(tab, inbox, tabBarStyle))}
         </Tab.Navigator>
-        <DrawerOverlay inbox={inbox} />
+        <DrawerOverlay inbox={inbox} badgeCounts={badgeCounts} />
         <ActionSheet visible={actionsOpen} onClose={() => setActionsOpen(false)} />
         {/* Maya mounts once here, over every tab (features/maya/MayaProvider). */}
         <MayaProvider />

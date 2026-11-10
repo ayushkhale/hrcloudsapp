@@ -61,6 +61,7 @@ import { launchCamera, launchImageLibrary } from 'react-native-image-picker';
 import { organizationAPI } from '../../../api';
 import { useAuth } from '../../../state/AuthContext';
 import { useResource } from '../../../hooks/useResource';
+import { useListRefresh } from '../../../hooks/useListRefresh';
 import { color, radius, space } from '../../../theme/tokens';
 import { icons } from '../../../theme/icons';
 import {
@@ -96,9 +97,9 @@ export default function ProfileScreen() {
   const [choosingPhoto, setChoosingPhoto] = useState(false);
   const [uploading, setUploading] = useState(false);
 
-  // Drawn at once from the last read this session, refreshed underneath (2026-10-22).
-  const resource = useResource(() => organizationAPI.getMyProfile(), { cacheKey: 'my-profile' });
+  const resource = useResource(() => organizationAPI.getMyProfile());
   const { data, loading, error, reload } = resource;
+  const { onRefresh, refreshing } = useListRefresh(reload, loading);
 
   // `useResource` unwraps the envelope; keep the newest of the two.
   const record = profile || data;
@@ -174,8 +175,15 @@ export default function ProfileScreen() {
   if (loading && !record) {
     return (
       <Screen edges={['bottom']} gutters={false} contentStyle={{ paddingHorizontal: space[4], paddingTop: space[3], gap: space[4] }}>
-        <SkeletonBlock height={220} radius={radius.xl} />
-        <Skeleton type="rows" rows={6} />
+        <SkeletonBlock height={200} radius={radius.xl} />
+        <View style={{ backgroundColor: color.surface, borderRadius: radius.lg, padding: space[4], borderWidth: 1, borderColor: color.borderSubtle, gap: space[3] }}>
+          <SkeletonBlock height={20} width="40%" />
+          <Skeleton type="rows" rows={4} />
+        </View>
+        <View style={{ backgroundColor: color.surface, borderRadius: radius.lg, padding: space[4], borderWidth: 1, borderColor: color.borderSubtle, gap: space[3] }}>
+          <SkeletonBlock height={20} width="35%" />
+          <Skeleton type="rows" rows={3} />
+        </View>
       </Screen>
     );
   }
@@ -196,8 +204,8 @@ export default function ProfileScreen() {
   return (
     <>
       <Screen
-        refreshing={loading && !!record}
-        onRefresh={reload}
+        refreshing={refreshing}
+        onRefresh={onRefresh}
         edges={['bottom']}
         gutters={false}
         contentStyle={{

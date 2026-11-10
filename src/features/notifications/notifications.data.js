@@ -38,6 +38,7 @@
 // from a push. AppTopBar's bell uses it so the dot clears without a reload.
 // ─────────────────────────────────────────────────────────────────────────────
 
+import { useEffect, useState } from 'react';
 import { notificationsAPI } from '../../api';
 
 /** The filter strip, in order. `all` is not a category — it is the absence of one. */
@@ -102,6 +103,31 @@ export function subscribeInbox(cb) {
   return () => listeners.delete(cb);
 }
 
+
+/**
+ * Format badge label: '99+' when capped or > 99, otherwise exact count, or empty when 0.
+ */
+export function badgeLabel(count, isCapped = false) {
+  const n = Number(count) || 0;
+  if (n <= 0) return '';
+  if (isCapped || n > 99) return '99+';
+  return String(n);
+}
+
+/** React hook subscribing to unread count changes anywhere in the app */
+export function useUnreadCount() {
+  const [state, setState] = useState(() => cachedUnreadCount());
+  useEffect(() => subscribeInbox(setState), []);
+  return state;
+}
+
+export function resetUnreadCount() {
+  cachedUnread = 0;
+  cachedIsCapped = false;
+  cachedDisabled = false;
+  emit();
+}
+
 export function cachedUnreadCount() {
   return { unread: cachedUnread, isCapped: cachedIsCapped, disabled: cachedDisabled };
 }
@@ -148,8 +174,8 @@ export async function refreshUnreadCount(options) {
   try {
     const res = await notificationsAPI.getUnreadCount(options);
     const data = res?.data ?? res ?? {};
-    cachedUnread = Number(data.unread_count) || 0;
-    cachedIsCapped = !!data.is_capped;
+    cachedUnread = Number(data.unread_count != null ? data.unread_count : res?.unread_count) || 0;
+    cachedIsCapped = Boolean(data.is_capped ?? res?.is_capped);
     cachedDisabled = false;
     emit();
     return { unread: cachedUnread, isCapped: cachedIsCapped, disabled: false };
@@ -161,7 +187,8 @@ export async function refreshUnreadCount(options) {
       emit();
       return { unread: 0, isCapped: false, disabled: true };
     }
-    throw err;
+    // Network errors leave cached counts as is without crashing
+    return { unread: cachedUnread, isCapped: cachedIsCapped, disabled: cachedDisabled };
   }
 }
 
@@ -170,40 +197,50 @@ export async function refreshUnreadCount(options) {
  * second call does not drive the badge negative.
  */
 export async function markRead(id, options) {
-  try {
-    await notificationsAPI.markRead(id, options);
-  } catch (err) {
-    if (isFeatureDisabledError(err)) return;
-    throw err;
-  }
   if (cachedUnread > 0) {
     cachedUnread -= 1;
     emit();
+  }
+  try {
+    await notificationsAPI.markRead(id, options);
+    refreshUnreadCount().catch(() => {});
+  } catch (err) {
+    if (isFeatureDisabledError(err)) return;
+    refreshUnreadCount().catch(() => {});
+    throw err;
   }
 }
 
 /** Mark everything read in the server's "as of now" watermark. Clears the badge. */
 export async function markAllRead(options) {
+  cachedUnread = 0;
+  cachedIsCapped = false;
+  emit();
   try {
     const res = await notificationsAPI.markAllRead(options);
     const updated = Number(res?.data?.updated_count) || 0;
-    cachedUnread = 0;
-    cachedIsCapped = false;
-    emit();
+    refreshUnreadCount().catch(() => {});
     return updated;
   } catch (err) {
     if (isFeatureDisabledError(err)) return 0;
+    refreshUnreadCount().catch(() => {});
     throw err;
   }
 }
 
 /** Dismiss (hard delete). A second DELETE returns 404 — treat as success. */
 export async function dismiss(id, options) {
+  if (cachedUnread > 0) {
+    cachedUnread -= 1;
+    emit();
+  }
   try {
     await notificationsAPI.dismiss(id, options);
+    refreshUnreadCount().catch(() => {});
   } catch (err) {
     if (isFeatureDisabledError(err)) return;
     if (err?.status === 404) return;
+    refreshUnreadCount().catch(() => {});
     throw err;
   }
 }

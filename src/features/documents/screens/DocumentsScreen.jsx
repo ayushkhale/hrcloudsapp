@@ -44,8 +44,10 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { View } from 'react-native';
 import { documentsAPI } from '../../../api';
+import { useBadgeCounts } from '../../../hooks/useBadgeCounts';
 import { isDocumentsDisabled } from '../../../lib/errors/documentErrors';
 import { ATTENDANCE_EVENTS, useAttendanceChanged } from '../../../lib/events';
+import { listFrom, normalizePaginated } from '../../../lib/normalize';
 import { color, space } from '../../../theme/tokens';
 import { icons } from '../../../theme/icons';
 import { EmptyState, HeroCard } from '../../../ui';
@@ -67,31 +69,100 @@ const FROM_PORTFOLIO = { my_documents: 'personal', org_documents: 'company', tem
 
 /** How many things need me, and the section holding most of them. */
 function useNeedsYou() {
-  const [state, setState] = useState({ loading: true, count: null, where: null, disabled: false });
+  const badgeCounts = useBadgeCounts();
+  const [state, setState] = useState({
+    loading: true,
+    count: null,
+    where: null,
+    requestsCount: 0,
+    companyCount: 0,
+    disabled: false,
+  });
 
   const load = useCallback(async () => {
     try {
-      const res = await documentsAPI.getMyComposedDocuments({ limit: 100 });
-      const sections = (res?.data ?? res ?? {}).sections || {};
-      let count = 0;
+      const [composedRes, reqRes, issuedRes] = await Promise.allSettled([
+        documentsAPI.getMyComposedDocuments({ limit: 100 }),
+        documentsAPI.getMyDocumentRequests({ status: ['open', 'overdue'], limit: 1 }),
+        documentsAPI.getMyIssuedDocuments({ compliance_state: 'pending', limit: 50 }),
+      ]);
+
+      let disabled = false;
+      let composedActions = 0;
+      let composedWhere = null;
+      let mostComposed = 0;
+      let reqCount = 0;
+      let compCount = 0;
+
+      if (composedRes.status === 'fulfilled') {
+        const sections = (composedRes.value?.data ?? composedRes.value ?? {}).sections || {};
+        Object.entries(sections).forEach(([key, s]) => {
+          const n = Array.isArray(s?.items) ? s.items.filter((i) => i?.requires_action).length : 0;
+          composedActions += n;
+          if (n > mostComposed && FROM_PORTFOLIO[key]) {
+            mostComposed = n;
+            composedWhere = FROM_PORTFOLIO[key];
+          }
+        });
+      } else if (isDocumentsDisabled(composedRes.reason)) {
+        disabled = true;
+      }
+
+      if (reqRes.status === 'fulfilled') {
+        reqCount = normalizePaginated(reqRes.value, ['requests', 'rows']).total;
+      }
+
+      if (issuedRes.status === 'fulfilled') {
+        const items = listFrom(issuedRes.value, ['documents', 'issued_documents']);
+        compCount = items.filter((d) => !d.acknowledged_at && d.compliance_state !== 'completed').length;
+      }
+
+      // Sync with unified badge count store (GET /inbox/badges)
+      const badgeReq = badgeCounts?.documents?.outstanding || 0;
+      const finalReq = Math.max(reqCount, badgeReq);
+      const badgeTotal = badgeCounts?.documentBadgeCount || 0;
+      const totalPending = composedActions + finalReq + compCount;
+      const finalCount = Math.max(totalPending, badgeTotal);
+
       let where = null;
-      let most = 0;
-      Object.entries(sections).forEach(([key, s]) => {
-        const n = Array.isArray(s?.items) ? s.items.filter((i) => i?.requires_action).length : 0;
-        count += n;
-        if (n > most && FROM_PORTFOLIO[key]) { most = n; where = FROM_PORTFOLIO[key]; }
+      if (finalReq > 0 && finalReq >= compCount && finalReq >= mostComposed) {
+        where = 'requests';
+      } else if (compCount > 0 && compCount >= mostComposed) {
+        where = 'company';
+      } else if (composedWhere) {
+        where = composedWhere;
+      } else if (finalCount > 0) {
+        where = finalReq > 0 ? 'requests' : (compCount > 0 ? 'company' : 'personal');
+      }
+
+      setState({
+        loading: false,
+        count: finalCount,
+        where,
+        requestsCount: finalReq,
+        companyCount: compCount,
+        disabled,
       });
-      setState({ loading: false, count, where, disabled: false });
     } catch (err) {
-      setState({ loading: false, count: null, where: null, disabled: isDocumentsDisabled(err) });
+      setState((prev) => ({
+        ...prev,
+        loading: false,
+        disabled: isDocumentsDisabled(err),
+      }));
     }
-  }, []);
+  }, [badgeCounts]);
 
   useEffect(() => { load(); }, [load]);
+
+  const refreshBadges = badgeCounts.refresh;
   useAttendanceChanged(
     [ATTENDANCE_EVENTS.DOCUMENT, ATTENDANCE_EVENTS.DOCUMENT_REQUEST, ATTENDANCE_EVENTS.ACKNOWLEDGEMENT],
-    load,
+    useCallback(() => {
+      load();
+      refreshBadges();
+    }, [load, refreshBadges]),
   );
+
   return state;
 }
 
@@ -108,7 +179,11 @@ function Hero({ needs, onGo }) {
     ? 'Your files, the company’s and forms to fill in.'
     : n === 0
       ? 'Nothing to read, sign or upload right now.'
-      : 'A policy to confirm, or a document to upload.';
+      : needs.where === 'requests'
+        ? 'A document request awaiting your upload.'
+        : needs.where === 'company'
+          ? 'A company document or policy awaiting your review.'
+          : 'A policy to confirm, or a document to upload.';
   return (
     <HeroCard
       icon={icons.folder}
@@ -149,6 +224,12 @@ export default function DocumentsScreen({ navigation, route }) {
   const upload = useCallback((p = {}) => navigation.navigate('UploadDocument', p), [navigation]);
   const clearOpen = useCallback(() => setOpenId(null), []);
 
+  const sections = useMemo(() => SECTIONS.map((s) => {
+    if (s.value === 'requests' && needs.requestsCount > 0) return { ...s, badge: needs.requestsCount };
+    if (s.value === 'company' && needs.companyCount > 0) return { ...s, badge: needs.companyCount };
+    return s;
+  }), [needs.requestsCount, needs.companyCount]);
+
   const body = useMemo(() => {
     if (needs.disabled) {
       return (
@@ -172,7 +253,7 @@ export default function DocumentsScreen({ navigation, route }) {
         <View style={{ paddingHorizontal: space[4], paddingBottom: space[2] }}>
           <Hero needs={needs} onGo={setSection} />
         </View>
-        {!needs.disabled ? <CategoryStrip items={SECTIONS} value={section} onChange={setSection} /> : null}
+        {!needs.disabled ? <CategoryStrip items={sections} value={section} onChange={setSection} /> : null}
       </View>
       <View style={{ flex: 1 }}>{body}</View>
     </View>

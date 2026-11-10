@@ -42,7 +42,9 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { View } from 'react-native';
 import { tasksAPI } from '../../../api';
 import { useResource } from '../../../hooks/useResource';
+import { useBadgeCounts } from '../../../hooks/useBadgeCounts';
 import { ATTENDANCE_EVENTS, useAttendanceChanged } from '../../../lib/events';
+import { normalizePaginated } from '../../../lib/normalize';
 import { isTaskFeatureDisabled } from '../../../lib/errors/taskErrors';
 import { color, space } from '../../../theme/tokens';
 import { icons } from '../../../theme/icons';
@@ -72,11 +74,15 @@ const EMPTY = {
   overdue: { icon: icons.flag, title: 'Nothing overdue', message: 'Everything is either still inside its deadline or already handed in.' },
 };
 
-/** Total for a filter, read from #249's pagination at limit 1. */
+/** Total for a filter, read from #249's pagination at limit 1 with robust normalisation. */
 function useCount(params, enabled = true) {
   return useResource(
-    () => tasksAPI.getMyTasks({ ...params, limit: 1 }),
-    { enabled, select: (d) => Number(d?.pagination?.total ?? (Array.isArray(d?.tasks) ? d.tasks.length : 0)) || 0 },
+    async () => {
+      const res = await tasksAPI.getMyTasks({ ...params, limit: 1 });
+      const n = normalizePaginated(res, ['tasks'], { page: 1, limit: 1 });
+      return n.total;
+    },
+    { enabled },
   );
 }
 
@@ -112,18 +118,33 @@ function Hero({ overdue, pending, loading, onGo }) {
 
 export default function MyTasksScreen({ navigation, route }) {
   const [section, setSection] = useState('all');
+  const badgeCounts = useBadgeCounts();
 
   const overdue = useCount({ is_overdue: true });
   const pending = useCount({ status: 'pending' });
+
+  // Sync count sources: unified badge count API (GET /inbox/badges) + direct queries
+  const overdueBadge = badgeCounts?.tasks?.overdue;
+  const openBadge = badgeCounts?.tasks?.open;
+
+  const overdueCount = overdue.data != null
+    ? (overdueBadge != null ? Math.max(overdue.data, overdueBadge) : overdue.data)
+    : (overdueBadge ?? 0);
+
+  const pendingCount = pending.data != null
+    ? (openBadge != null ? Math.max(pending.data, openBadge) : pending.data)
+    : (openBadge ?? (badgeCounts?.taskBadgeCount && !overdueCount ? badgeCounts.taskBadgeCount : 0));
 
   // A task reassigned to me, a deadline moved, or one I just handed in all
   // change these counts and the open list (CLAUDE.md §7).
   const reloadOverdue = overdue.reload;
   const reloadPending = pending.reload;
+  const refreshBadges = badgeCounts.refresh;
   useAttendanceChanged([ATTENDANCE_EVENTS.TASK], useCallback(() => {
     reloadOverdue();
     reloadPending();
-  }, [reloadOverdue, reloadPending]));
+    refreshBadges();
+  }, [reloadOverdue, reloadPending, refreshBadges]));
 
   // A drawer row names its section ('overdueTasks' → { section: 'overdue' }).
   // Applied once and CLEARED, or it is sticky and the screen snaps back to it
@@ -136,13 +157,17 @@ export default function MyTasksScreen({ navigation, route }) {
   }, [requested, navigation]);
 
   const disabled = isTaskFeatureDisabled(overdue.error) || isTaskFeatureDisabled(pending.error);
-  const loadingCounts = (overdue.loading || pending.loading) && overdue.data == null && pending.data == null;
+  const loadingCounts = (overdue.loading || pending.loading)
+    && overdue.data == null
+    && pending.data == null
+    && badgeCounts.status === 'loading';
 
   const sections = useMemo(() => SECTIONS.map((s) => {
-    if (s.value === 'overdue' && overdue.data > 0) return { ...s, badge: overdue.data };
-    if (s.value === 'todo' && pending.data > 0) return { ...s, badge: pending.data };
+    if (s.value === 'overdue' && overdueCount > 0) return { ...s, badge: overdueCount };
+    if (s.value === 'todo' && pendingCount > 0) return { ...s, badge: pendingCount };
+    if (s.value === 'all' && (overdueCount + pendingCount) > 0) return { ...s, badge: overdueCount + pendingCount };
     return s;
-  }), [overdue.data, pending.data]);
+  }), [overdueCount, pendingCount]);
 
   const active = SECTIONS.find((s) => s.value === section) || SECTIONS[0];
   const openTask = useCallback((task) => navigation.navigate('TaskDetail', { task }), [navigation]);
@@ -167,8 +192,8 @@ export default function MyTasksScreen({ navigation, route }) {
       <View style={{ paddingTop: space[1] }}>
         <View style={{ paddingHorizontal: space[4], paddingBottom: space[2] }}>
           <Hero
-            overdue={overdue.data || 0}
-            pending={pending.data || 0}
+            overdue={overdueCount}
+            pending={pendingCount}
             loading={loadingCounts}
             onGo={setSection}
           />

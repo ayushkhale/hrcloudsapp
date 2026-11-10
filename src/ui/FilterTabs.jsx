@@ -33,8 +33,9 @@ import { haptic } from './haptics';
  * @param {string} props.value
  * @param {Function} props.onChange
  * @param {React.ReactNode} [props.help]  an ⓘ — rendered OUTSIDE the tablist
+ * @param {React.ReactNode} [props.children] extra controls rendered inside the tablist
  */
-export function FilterTabs({ options = [], value, onChange, help, style }) {
+export function FilterTabs({ options = [], value, onChange, help, children, style }) {
   const scroller = useRef(null);
   const offsets = useRef({});
 
@@ -99,6 +100,7 @@ export function FilterTabs({ options = [], value, onChange, help, style }) {
               </Pressable>
             );
           })}
+          {children}
         </ScrollView>
       </View>
       {/* Outside the tablist, on purpose. Rule 3. */}

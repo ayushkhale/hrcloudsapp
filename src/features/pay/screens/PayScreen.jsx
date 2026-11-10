@@ -137,12 +137,36 @@ function PayHero({ payslips, hidden, canHide, onToggle, busy }) {
   const loading = payslips.loading && !payslips.data?.length;
   const Eye = hidden ? icons.view : icons.eyeSlash;
 
+  // The toggle button is shown whenever the privacy setting is active,
+  // regardless of whether payslips exist yet — otherwise a newly joined
+  // employee with no payslips is trapped seeing dots for their salary.
+  const eyeButton = canHide && Eye ? (
+    <Pressable
+      onPress={onToggle}
+      disabled={busy}
+      accessibilityRole="button"
+      accessibilityLabel={hidden ? 'Show my pay' : 'Hide my pay'}
+      hitSlop={8}
+      style={({ pressed }) => ({
+        width: 40,
+        height: 40,
+        borderRadius: radius.full,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: pressed ? color.brandSoftBorder : color.brandChipBg,
+      })}
+    >
+      <Eye size={20} color={color.brandChipFg} />
+    </Pressable>
+  ) : null;
+
   if (!latest && !loading) {
     return (
       <HeroCard
         eyebrow="Your pay"
         title="No payslips yet"
         caption="One appears here once your employer releases that month’s pay."
+        right={eyeButton}
       />
     );
   }
@@ -154,26 +178,7 @@ function PayHero({ payslips, hidden, canHide, onToggle, busy }) {
       big
       title={latest ? formatPay(slipNet(latest)) : ''}
       loading={loading}
-      // Only when the setting is on: with it off there is nothing to toggle.
-      right={canHide && Eye ? (
-        <Pressable
-          onPress={onToggle}
-          disabled={busy}
-          accessibilityRole="button"
-          accessibilityLabel={hidden ? 'Show my pay' : 'Hide my pay'}
-          hitSlop={8}
-          style={({ pressed }) => ({
-            width: 40,
-            height: 40,
-            borderRadius: radius.full,
-            alignItems: 'center',
-            justifyContent: 'center',
-            backgroundColor: pressed ? color.brandSoftBorder : color.brandChipBg,
-          })}
-        >
-          <Eye size={20} color={color.brandChipFg} />
-        </Pressable>
-      ) : null}
+      right={eyeButton}
     />
   );
 }

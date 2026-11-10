@@ -49,6 +49,18 @@ export const palette = {
     50: '#f8fafc', 100: '#f1f5f9', 200: '#e2e8f0', 300: '#cbd5e1', 400: '#94a3b8',
     500: '#64748b', 600: '#475569', 700: '#334155', 800: '#1e293b', 900: '#0f172a',
   },
+  sky: {
+    50: '#f0f9ff', 100: '#e0f2fe', 200: '#bae6fd', 300: '#7dd3fc', 400: '#38bdf8',
+    500: '#0ea5e9', 600: '#0284c7', 700: '#0369a1', 800: '#075985', 900: '#0c4a6e',
+  },
+  blue: {
+    50: '#eff6ff', 100: '#dbeafe', 200: '#bfdbfe', 300: '#93c5fd', 400: '#60a5fa',
+    500: '#3b82f6', 600: '#2563eb', 700: '#1d4ed8', 800: '#1e40af', 900: '#1e3a8a',
+  },
+  indigo: {
+    50: '#eef2ff', 100: '#e0e7ff', 200: '#c7d2fe', 300: '#a5b4fc', 400: '#818cf8',
+    500: '#6366f1', 600: '#4f46e5', 700: '#4338ca', 800: '#3730a3', 900: '#312e81',
+  },
   white: '#ffffff',
 };
 
@@ -166,13 +178,13 @@ export const color = {
 export const tone = {
   emerald: { bg: palette.emerald[50], chip: palette.emerald[100], fg: palette.emerald[700], border: palette.emerald[200], dot: palette.emerald[500] },
   amber: { bg: palette.amber[50], chip: palette.amber[100], fg: palette.amber[700], border: palette.amber[200], dot: palette.amber[500] },
-  blue: color.info,
+  blue: { bg: palette.blue[50], chip: palette.blue[100], fg: palette.blue[700], border: palette.blue[200], dot: palette.blue[500] },
+  sky: { bg: palette.sky[50], chip: palette.sky[100], fg: palette.sky[700], border: palette.sky[200], dot: palette.sky[500] },
   purple: color.brandTone,
   rose: color.danger,
   slate: color.neutral,
-  indigo: { bg: palette.purple[100], chip: palette.purple[100], fg: palette.purple[800], border: palette.purple[300], dot: palette.purple[700] },
-  orange: { bg: palette.purple[100], chip: palette.purple[100], fg: palette.purple[700], border: palette.purple[300], dot: palette.purple[600] },
-  sky: { bg: palette.white, chip: palette.purple[50], fg: palette.purple[600], border: palette.purple[200], dot: palette.purple[300] },
+  indigo: { bg: palette.indigo[50], chip: palette.indigo[100], fg: palette.indigo[700], border: palette.indigo[200], dot: palette.indigo[500] },
+  orange: { bg: palette.amber[50], chip: palette.amber[100], fg: palette.amber[800], border: palette.amber[200], dot: palette.amber[600] },
 };
 
 export const toneOf = (key) => tone[key] || tone.slate;

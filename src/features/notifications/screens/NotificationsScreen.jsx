@@ -38,8 +38,9 @@ import { iconFor, icons } from '../../../theme/icons';
 import {
   Button, EmptyState, FilterTabs, IconTile, Screen, Skeleton, showToast, useConfirm, useHeaderMenu,
 } from '../../../ui';
+import { useBadgeCounts } from '../../../hooks/useBadgeCounts';
 import {
-  CATEGORIES, dismiss, listNotifications, markAllRead, markRead, metaFor, refreshUnreadCount,
+  CATEGORIES, badgeLabel, dismiss, listNotifications, markAllRead, markRead, metaFor, refreshUnreadCount, useUnreadCount,
 } from '../notifications.data';
 
 const PAGE_SIZE = 20;
@@ -132,9 +133,13 @@ function NotificationRow({ item, onPress, onDismiss }) {
 const RowSpacer = () => <View style={{ height: space[2] }} />;
 
 export default function NotificationsScreen({ navigation }) {
+  const [readFilter, setReadFilter] = useState('all'); // 'all' | 'unread' | 'read'
   const [category, setCategory] = useState('all');
+  const { unread: unreadCountRaw, isCapped: unreadCapped } = useUnreadCount();
+  const badgeCounts = useBadgeCounts();
+  const unreadCount = Math.max(unreadCountRaw || 0, badgeCounts?.sidebar?.notificationsUnread || 0);
   const [state, setState] = useState({
-    loading: true, failed: false, disabled: false, items: [], hasMore: false, page: 1,
+    loading: true, failed: false, disabled: false, items: [], hasMore: false, page: 1, total: 0,
   });
   const [refreshing, setRefreshing] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -147,8 +152,10 @@ export default function NotificationsScreen({ navigation }) {
     const controller = new AbortController();
     abortRef.current = controller;
     try {
+      const isReadParam = readFilter === 'all' ? undefined : readFilter === 'read';
       const { items, pagination, disabled } = await listNotifications({
         category,
+        is_read: isReadParam,
         page,
         limit: PAGE_SIZE,
         signal: controller.signal,
@@ -161,12 +168,13 @@ export default function NotificationsScreen({ navigation }) {
         items: page === 1 ? items : [...prev.items, ...items],
         hasMore: !!pagination && pagination.page < pagination.total_pages,
         page: pagination?.page || page,
+        total: pagination?.total != null ? pagination.total : (page === 1 ? items.length : prev.total),
       }));
     } catch (err) {
       if (controller.signal.aborted || err?.name === 'AbortError') return;
       setState((prev) => ({ ...prev, loading: false, failed: true }));
     }
-  }, [category]);
+  }, [category, readFilter]);
 
   useEffect(() => { load(); refreshUnreadCount().catch(() => {}); }, [load]);
 
@@ -180,10 +188,11 @@ export default function NotificationsScreen({ navigation }) {
     try {
       await load({ quiet: true });
       await refreshUnreadCount().catch(() => {});
+      badgeCounts.refresh();
     } finally {
       setRefreshing(false);
     }
-  }, [load]);
+  }, [load, badgeCounts]);
 
   const onLoadMore = useCallback(async () => {
     if (loadingMore || !state.hasMore || state.loading) return;
@@ -207,7 +216,7 @@ export default function NotificationsScreen({ navigation }) {
   const onDismiss = useCallback(async (item) => {
     const ok = await confirm({
       title: 'Dismiss this notification?',
-      message: 'This can’t be undone.',
+      message: 'This cannot be undone.',
       confirmText: 'Dismiss',
       destructive: true,
     });
@@ -216,13 +225,13 @@ export default function NotificationsScreen({ navigation }) {
     setState((prev) => ({ ...prev, items: prev.items.filter((n) => n.id !== item.id) }));
     try {
       await dismiss(item.id);
-      await refreshUnreadCount().catch(() => {});
+      refreshUnreadCount().catch(() => {});
+      badgeCounts.refresh();
     } catch {
-      // Put it back where it was and let the toast carry the error.
       setState((prev) => ({ ...prev, items: prevItems }));
-      showToast('Couldn’t dismiss that one. Try again.', 'error');
+      showToast('Could not dismiss that one. Try again.', 'error');
     }
-  }, [confirm, state.items]);
+  }, [confirm, state.items, badgeCounts]);
 
   const onMarkAll = useCallback(async () => {
     const prevItems = state.items;
@@ -230,23 +239,25 @@ export default function NotificationsScreen({ navigation }) {
     try {
       await markAllRead();
       showToast('All caught up.', 'success');
+      load({ quiet: true });
+      refreshUnreadCount().catch(() => {});
+      badgeCounts.refresh();
     } catch {
       setState((prev) => ({ ...prev, items: prevItems }));
-      showToast('Couldn’t mark everything read. Try again.', 'error');
+      showToast('Could not mark everything read. Try again.', 'error');
     }
-  }, [state.items]);
+  }, [load, state.items, badgeCounts]);
 
   const { loading, failed, disabled, items, hasMore } = state;
-  const filtered = category !== 'all';
-  const unreadInView = items.filter((n) => !n.is_read).length;
+  const isFiltered = category !== 'all' || readFilter !== 'all';
 
   useHeaderMenu(navigation, [
     {
       key: 'read',
       label: 'Mark all as read',
-      caption: unreadInView > 0 ? `${unreadInView} unread here` : 'Nothing unread',
+      caption: unreadCount > 0 ? `${badgeLabel(unreadCount, unreadCapped)} unread` : 'All caught up',
       icon: icons.check,
-      disabled: unreadInView === 0,
+      disabled: unreadCount === 0,
       onPress: onMarkAll,
     },
     {
@@ -254,12 +265,23 @@ export default function NotificationsScreen({ navigation }) {
       label: 'Refresh',
       caption: 'Check for anything new',
       icon: icons.refresh,
-      onPress: () => load({ quiet: true }),
+      onPress: () => {
+        load({ quiet: true });
+        refreshUnreadCount().catch(() => {});
+        badgeCounts.refresh();
+      },
     },
   ], 'Notifications');
 
+  const statusOptions = [
+    { value: 'all', label: 'All', count: readFilter === 'all' ? state.total : undefined },
+    { value: 'unread', label: 'Unread', count: unreadCount },
+    { value: 'read', label: 'Read', count: readFilter === 'read' ? state.total : undefined },
+  ];
+
   const header = (
-    <View style={{ paddingBottom: space[3] }}>
+    <View style={{ paddingBottom: space[3], gap: space[2] }}>
+      <FilterTabs options={statusOptions} value={readFilter} onChange={setReadFilter} />
       <FilterTabs options={CATEGORIES} value={category} onChange={setCategory} />
     </View>
   );
@@ -317,12 +339,12 @@ export default function NotificationsScreen({ navigation }) {
               message="Check your connection and pull down to try again."
               action={<Button title="Try again" onPress={() => load()} />}
             />
-          ) : filtered ? (
+          ) : isFiltered ? (
             <EmptyState
               filtered
               title="Nothing in this filter"
               message="There are no notifications in this category yet. Try All to see everything."
-              action={<Button title="Show all" variant="soft" onPress={() => setCategory('all')} />}
+              action={<Button title="Show all" variant="soft" onPress={() => { setCategory('all'); setReadFilter('all'); }} />}
             />
           ) : (
             <EmptyState

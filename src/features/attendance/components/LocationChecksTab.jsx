@@ -20,12 +20,12 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { FlatList, Linking, Text, View } from 'react-native';
+import { FlatList, Linking, Pressable, Text, View } from 'react-native';
 import { attendanceAPI } from '../../../api';
 import { useAuth } from '../../../state/AuthContext';
 import { usePagedList } from '../../../hooks/usePagedList';
 import { useListRefresh } from '../../../hooks/useListRefresh';
-import { fmtDateTime } from '../../../lib/dates';
+import { fmtDateShort, fmtDateTime, todayYMD, ymdOnly } from '../../../lib/dates';
 import { humanize } from '../../../lib/enums';
 import { errorMessage } from '../../../lib/errors';
 import { isUuid, personName } from '../../../lib/normalize';
@@ -36,7 +36,7 @@ import { TERMS } from '../../../config/dictionary';
 import { card, color, radius, space, text, tone } from '../../../theme/tokens';
 import { icons } from '../../../theme/icons';
 import {
-  Button, EmptyState, ErrorState, FilterTabs, ListFooter, RecordSheet, SheetFooterNote, SheetSection, SheetStats,
+  Button, DatePicker, EmptyState, ErrorState, FilterTabs, ListFooter, RecordSheet, SheetFooterNote, SheetSection, SheetStats,
   SheetText, showToast,
 } from '../../../ui';
 import { CardsSkeleton, RecordCard, cardListStyle } from '../../../ui/ListCards';
@@ -412,7 +412,9 @@ export function LocationChecksTab() {
   // null = still reading the flag; the notice stays hidden until we know.
   const [acknowledged, setAcknowledged] = useState(null);
   const [busy, setBusy] = useState(false);
-  const [filter, setFilter] = useState('all');
+  const [filter, setFilter] = useState('reported');
+  const [selectedDate, setSelectedDate] = useState(() => todayYMD());
+  const [pickingDate, setPickingDate] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -421,8 +423,8 @@ export function LocationChecksTab() {
   }, [userId]);
 
   const list = usePagedList(
-    ({ page, limit }) => attendanceAPI.getMyLocationRequests({ page, limit }),
-    { limit: 20, keys: ['requests'], accumulate: true },
+    ({ page, limit }) => attendanceAPI.getMyLocationRequests({ page, limit, date: selectedDate }),
+    { limit: 20, keys: ['requests'], filterKey: selectedDate, accumulate: true },
   );
   const { refreshControl } = useListRefresh(list.reload, list.loading);
 
@@ -449,31 +451,74 @@ export function LocationChecksTab() {
 
   const filterOptions = useMemo(() => {
     const raw = Array.isArray(list?.items) ? list.items : [];
-    const items = raw.filter(Boolean);
-    const allCount = items.length;
+    const items = raw.filter(Boolean).filter((r) => {
+      const itemDate = ymdOnly(r?.created_at || r?.captured_at || r?.responded_at);
+      return !selectedDate || !itemDate || itemDate === selectedDate;
+    });
     const reportedCount = items.filter((r) => statusOf(r) === 'reported').length;
     const notSentCount = items.filter((r) => statusOf(r) === 'not_sent').length;
 
     return [
-      { value: 'all', label: 'All', count: allCount },
       { value: 'reported', label: 'Reported', count: reportedCount },
       { value: 'not_sent', label: 'Not sent', count: notSentCount },
     ];
-  }, [list?.items]);
+  }, [list?.items, selectedDate]);
 
   const visibleItems = useMemo(() => {
     const raw = Array.isArray(list?.items) ? list.items : [];
     const items = raw.filter(Boolean);
-    if (filter === 'all') return items;
-    return items.filter((r) => statusOf(r) === filter);
-  }, [list?.items, filter]);
+    return items.filter((r) => {
+      if (statusOf(r) !== filter) return false;
+      const itemDate = ymdOnly(r?.created_at || r?.captured_at || r?.responded_at);
+      if (selectedDate && itemDate && itemDate !== selectedDate) return false;
+      return true;
+    });
+  }, [list?.items, filter, selectedDate]);
+
+  const dateLabel = selectedDate === todayYMD() ? 'Today' : fmtDateShort(selectedDate);
 
   const header = (
     <View style={{ gap: space[3], paddingBottom: space[2] }}>
       {acknowledged === false ? (
         <NoticeCard busy={busy} onAcknowledge={acknowledge} />
       ) : null}
-      <FilterTabs options={filterOptions} value={filter} onChange={setFilter} />
+      <FilterTabs options={filterOptions} value={filter} onChange={setFilter}>
+        <Pressable
+          onPress={() => setPickingDate(true)}
+          accessibilityRole="button"
+          accessibilityLabel={`Date filter: ${dateLabel}. Tap to pick a date.`}
+          style={({ pressed }) => ({
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 6,
+            paddingHorizontal: space[3] + 2,
+            paddingVertical: 8,
+            borderRadius: radius.full,
+            borderWidth: 1,
+            minHeight: 38,
+            justifyContent: 'center',
+            backgroundColor: pressed ? color.brandSoftBg : color.surface,
+            borderColor: selectedDate !== todayYMD() ? color.brand : color.borderSubtle,
+          })}
+        >
+          {icons.calendar ? (
+            <icons.calendar size={15} color={selectedDate !== todayYMD() ? color.brand : color.textSecondary} />
+          ) : null}
+          <Text
+            style={[
+              text.smallStrong,
+              {
+                color: selectedDate !== todayYMD() ? color.brand : color.textPrimary,
+              },
+            ]}
+          >
+            {dateLabel}
+          </Text>
+          {icons.chevronDown ? (
+            <icons.chevronDown size={14} color={selectedDate !== todayYMD() ? color.brand : color.textMuted} />
+          ) : null}
+        </Pressable>
+      </FilterTabs>
     </View>
   );
 
@@ -507,20 +552,16 @@ export function LocationChecksTab() {
             <CardsSkeleton rows={4} height={96} />
           ) : (
             <EmptyState
-              icon={filter === 'all' ? icons.ok : icons.locationCheck}
+              icon={filter === 'reported' ? icons.location : icons.locationCheck}
               title={
                 filter === 'reported'
                   ? 'No reported locations'
-                  : filter === 'not_sent'
-                    ? 'No unsent checks'
-                    : 'No location checks'
+                  : 'No unsent checks'
               }
               message={
                 filter === 'reported'
-                  ? 'None of your location checks have reported coordinates yet.'
-                  : filter === 'not_sent'
-                    ? 'All your location checks have been reported.'
-                    : 'Nobody has asked for your location.'
+                  ? `None of your location checks have reported coordinates for ${selectedDate === todayYMD() ? 'today' : fmtDateShort(selectedDate)}.`
+                  : `None of your location checks were unsent for ${selectedDate === todayYMD() ? 'today' : fmtDateShort(selectedDate)}.`
               }
             />
           )
@@ -530,7 +571,7 @@ export function LocationChecksTab() {
             <ListFooter
               page={list.page}
               totalPages={list.totalPages}
-              total={filter === 'all' ? list.total : visibleItems.length}
+              total={visibleItems.length}
               loading={list.loading}
               noun="check"
             />
@@ -538,6 +579,17 @@ export function LocationChecksTab() {
         }
         contentContainerStyle={cardListStyle}
         refreshControl={refreshControl}
+      />
+
+      <DatePicker
+        open={pickingDate}
+        value={selectedDate}
+        onChange={(d) => {
+          setPickingDate(false);
+          if (d) setSelectedDate(d);
+        }}
+        onClose={() => setPickingDate(false)}
+        max={todayYMD()}
       />
 
       {selected ? <LocationCheckSheet item={selected} onClose={() => setSelected(null)} /> : null}
